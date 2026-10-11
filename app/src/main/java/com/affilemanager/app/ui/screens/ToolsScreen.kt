@@ -99,7 +99,6 @@ import com.affilemanager.app.ui.theme.AppearanceRules
 import com.affilemanager.app.ui.theme.AppearanceSettings
 import com.affilemanager.app.ui.theme.palettePreviewColors
 import com.affilemanager.app.ui.theme.CustomThemeColors
-import com.affilemanager.app.update.AppUpdateState
 import java.io.File
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -116,7 +115,6 @@ fun ToolsScreen(
     val safLocations by viewModel.safLocations.collectAsStateWithLifecycle()
     val appLockEnabled by viewModel.appLockEnabled.collectAsStateWithLifecycle()
     val syncSchedules by viewModel.syncSchedules.collectAsStateWithLifecycle()
-    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val appearanceSettings by viewModel.appearanceSettings.collectAsStateWithLifecycle()
     val featureVisibility by viewModel.featureVisibility.collectAsStateWithLifecycle()
     var expandedSections by rememberSaveable { mutableStateOf(emptyList<String>()) }
@@ -356,13 +354,6 @@ fun ToolsScreen(
             }
         }
 
-        item { SectionHeader("Programos atnaujinimas", BuildConfig.VERSION_NAME.removeSuffix("-debug")) }
-        item {
-            AppUpdateCard(
-                state = updateState, onCheck = viewModel::checkForUpdates,
-                onDownload = viewModel::downloadUpdate, onInstall = viewModel::installUpdate,
-            )
-        }
         }
 
         item { SettingsSectionHeader("Privatumas", "privacy", "privacy" in expandedSections) { toggleSection("privacy") } }
@@ -831,77 +822,6 @@ internal fun AppearanceSettingsCard(
                     onCheckedChange = onAmoledBlack,
                     modifier = Modifier.testTag("amoled_black"),
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AppUpdateCard(
-    state: AppUpdateState,
-    onCheck: () -> Unit,
-    onDownload: (com.affilemanager.app.update.AppRelease) -> Unit,
-    onInstall: () -> Unit,
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.SystemUpdate, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
-                Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                    LText("AF File Manager ${BuildConfig.VERSION_NAME.removeSuffix("-debug")}", fontWeight = FontWeight.SemiBold)
-                    LText("Saugūs leidimai iš viešos GitHub repozitorijos", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            when (state) {
-                AppUpdateState.Idle -> {
-                    LText("Paleidus programą nauja versija tikrinama ne dažniau kaip kas 6 valandas. APK automatiškai siunčiamas tik nematuojamame tinkle.", style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = onCheck) { LText("Tikrinti dabar") }
-                }
-                AppUpdateState.Checking -> {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    LText("Tikrinamas naujausias GitHub leidimas…", style = MaterialTheme.typography.bodySmall)
-                }
-                is AppUpdateState.UpToDate -> {
-                    LText("Įdiegta naujausia versija ${state.currentVersion}.", style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = onCheck) { LText("Tikrinti dar kartą") }
-                }
-                is AppUpdateState.Available -> {
-                    LText("Galima versija ${state.release.version}.", fontWeight = FontWeight.SemiBold)
-                    if (state.release.notes.isBlank()) {
-                        LText("Paskelbtas naujas stabilus leidimas.", style = MaterialTheme.typography.bodySmall)
-                    } else {
-                        Text(state.release.notes, style = MaterialTheme.typography.bodySmall, maxLines = 4, overflow = TextOverflow.Ellipsis)
-                    }
-                    Button(onClick = { onDownload(state.release) }) { LText("Atsisiųsti ir patikrinti") }
-                }
-                is AppUpdateState.Downloading -> {
-                    val total = state.release.asset.sizeBytes.coerceAtLeast(1L)
-                    LinearProgressIndicator(
-                        progress = { (state.downloadedBytes.toFloat() / total).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    LText("${FileSystemRules.humanBytes(state.downloadedBytes)} / ${FileSystemRules.humanBytes(total)}", style = MaterialTheme.typography.bodySmall)
-                }
-                is AppUpdateState.Ready -> {
-                    LText("Versija ${state.release.version} atsisiųsta ir patikrinta.", fontWeight = FontWeight.SemiBold)
-                    LText(
-                        if (state.installPermissionRequired) "Android nustatymuose leiskite diegti iš AF File Manager, grįžkite ir spauskite „Diegti“." else "Diegimą dar turės patvirtinti Android sistemos lange.",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Button(onClick = onInstall) { LText("Diegti") }
-                }
-                is AppUpdateState.Failed -> {
-                    LText(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    AfActionRow {
-                        state.release?.let { release ->
-                            Button(onClick = { onDownload(release) }) { LText("Bandyti siųsti dar kartą") }
-                        }
-                        OutlinedButton(onClick = onCheck) { LText("Tikrinti dar kartą") }
-                    }
-                }
             }
         }
     }
