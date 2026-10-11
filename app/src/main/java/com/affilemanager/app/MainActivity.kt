@@ -28,11 +28,9 @@ import kotlinx.coroutines.delay
 import java.io.File
 
 data class IncomingViewRequest(val uri: Uri, val mimeType: String?)
-data class IncomingShareRequest(val uris: List<Uri>, val mimeType: String?)
 
 class MainActivity : AppCompatActivity() {
     private val pendingViewRequest = mutableStateOf<IncomingViewRequest?>(null)
-    private val pendingShareRequest = mutableStateOf<IncomingShareRequest?>(null)
     private val pendingBenchmarkRequest = mutableStateOf<BenchmarkRequest?>(null)
     private val pendingStorageRefresh = mutableStateOf(false)
     private var storageReceiversRegistered = false
@@ -51,7 +49,6 @@ class MainActivity : AppCompatActivity() {
         AppLanguageManager.ensureEnglishDefault(this)
         super.onCreate(savedInstanceState)
         pendingViewRequest.value = intent.toIncomingViewRequest()
-        pendingShareRequest.value = intent.toIncomingShareRequest()
         pendingBenchmarkRequest.value = intent.toBenchmarkRequest()
         pendingStorageRefresh.value = intent.action in storageChangeActions
         enableEdgeToEdge()
@@ -112,8 +109,6 @@ class MainActivity : AppCompatActivity() {
                         viewModel = mainViewModel,
                         incomingViewRequest = pendingViewRequest.value,
                         onIncomingViewRequestConsumed = { pendingViewRequest.value = null },
-                        incomingShareRequest = pendingShareRequest.value,
-                        onIncomingShareRequestConsumed = { pendingShareRequest.value = null },
                     )
                 }
             }
@@ -123,7 +118,6 @@ class MainActivity : AppCompatActivity() {
     public override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         pendingViewRequest.value = intent.toIncomingViewRequest()
-        pendingShareRequest.value = intent.toIncomingShareRequest()
         pendingBenchmarkRequest.value = intent.toBenchmarkRequest()
         pendingStorageRefresh.value = intent.action in storageChangeActions
     }
@@ -172,29 +166,6 @@ class MainActivity : AppCompatActivity() {
         return IncomingViewRequest(viewUri, type)
     }
 
-    @Suppress("DEPRECATION")
-    private fun Intent.toIncomingShareRequest(): IncomingShareRequest? {
-        if (action !in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE)) return null
-        val candidates = ArrayList<Uri>()
-        if (action == Intent.ACTION_SEND) {
-            (getParcelableExtra(Intent.EXTRA_STREAM) as? Uri)?.let(candidates::add)
-        } else {
-            getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let(candidates::addAll)
-        }
-        clipData?.let { clips ->
-            repeat(clips.itemCount.coerceAtMost(MAX_INCOMING_SHARE_URIS)) { index ->
-                clips.getItemAt(index).uri?.let(candidates::add)
-            }
-        }
-        if (candidates.isEmpty()) data?.let(candidates::add)
-        val accepted = candidates.asSequence()
-            .filter { it.scheme in setOf(ContentResolver.SCHEME_CONTENT, ContentResolver.SCHEME_FILE) }
-            .distinctBy(Uri::toString)
-            .take(MAX_INCOMING_SHARE_URIS)
-            .toList()
-        return accepted.takeIf(List<Uri>::isNotEmpty)?.let { IncomingShareRequest(it, type) }
-    }
-
     private fun Intent.toBenchmarkRequest(): BenchmarkRequest? {
         if (BuildConfig.BUILD_TYPE !in BENCHMARK_BUILD_TYPES) return null
         getStringExtra(EXTRA_BENCHMARK_DATASET)?.takeIf { it in BENCHMARK_DATASETS }?.let {
@@ -216,7 +187,6 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_BENCHMARK_REMOTE_PROFILE = "af_benchmark_remote_profile"
         private val BENCHMARK_BUILD_TYPES = setOf("benchmark", "profile")
         private val BENCHMARK_DATASETS = setOf("large", "thumbnails")
-        private const val MAX_INCOMING_SHARE_URIS = 1_000
         private val storageChangeActions = setOf(
             UsbManager.ACTION_USB_DEVICE_ATTACHED,
             UsbManager.ACTION_USB_DEVICE_DETACHED,

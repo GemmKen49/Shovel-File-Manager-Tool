@@ -39,8 +39,6 @@ import com.affilemanager.app.security.CredentialVault
 import com.affilemanager.app.security.AppLockRepository
 import com.affilemanager.app.security.FileVaultEngine
 import com.affilemanager.app.sharing.LocalShareManager
-import com.affilemanager.app.transfer.NearbySourcePreparer
-import com.affilemanager.app.transfer.QuickTunnelController
 import com.affilemanager.app.workflow.AfAutomationRepository
 import com.affilemanager.app.workflow.AfAutomationScheduler
 import com.affilemanager.app.workflow.AfExecutionRepository
@@ -48,7 +46,6 @@ import com.affilemanager.app.workflow.AfPlanRepository
 import com.affilemanager.app.workflow.AfStorageSessionFactory
 import com.affilemanager.app.workflow.AfTimelineRepository
 import com.affilemanager.app.workflow.AfWorkflowCoordinator
-import com.affilemanager.app.ui.TerminalSessionStore
 import com.affilemanager.app.ui.localization.UiTranslationCatalog
 import com.affilemanager.app.ui.theme.AppearanceRepository
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
@@ -64,7 +61,6 @@ class AFFileManagerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         UiTranslationCatalog.initialize(this)
-        QuickTunnelController.initialize(this)
         PDFBoxResourceLoader.init(this)
         graph = AppGraph(this)
         graph.applicationScope.launch {
@@ -77,7 +73,6 @@ class AFFileManagerApplication : Application() {
 
 class AppGraph(application: Application) {
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    val terminalSessions = TerminalSessionStore(application, applicationScope)
     val advancedAccess = AdvancedAccessManager(application)
     val privilegedFiles = PrivilegedFileRepository(application, advancedAccess)
     val sharedStorageIndex: com.affilemanager.app.data.SharedStorageIndex = com.affilemanager.app.data.SharedStorageIndex(application).apply {
@@ -116,7 +111,6 @@ class AppGraph(application: Application) {
     val similarImages by lazy { SimilarImageEngine() }
     val archives = ArchiveEngine(onMutation = sharedStorageIndex::changed)
     val localShare by lazy { LocalShareManager(application, archives) }
-    val nearbySources by lazy { NearbySourcePreparer(application, fileCategories) }
     val credentialVault = CredentialVault()
     val appLock = AppLockRepository(application)
     val networkProfiles = NetworkProfileStore(application, credentialVault)
