@@ -41,8 +41,6 @@ import com.affilemanager.app.security.FileVaultEngine
 import com.affilemanager.app.sharing.LocalShareManager
 import com.affilemanager.app.transfer.NearbySourcePreparer
 import com.affilemanager.app.transfer.QuickTunnelController
-import com.affilemanager.app.sync.SyncEngine
-import com.affilemanager.app.sync.SyncScheduleRepository
 import com.affilemanager.app.workflow.AfAutomationRepository
 import com.affilemanager.app.workflow.AfAutomationScheduler
 import com.affilemanager.app.workflow.AfExecutionRepository
@@ -70,7 +68,6 @@ class AFFileManagerApplication : Application() {
         PDFBoxResourceLoader.init(this)
         graph = AppGraph(this)
         graph.applicationScope.launch {
-            graph.syncSchedules.restoreWork()
             graph.durableTransfers.restore()
             graph.workflows.restore()
             graph.trashRetentionScheduler.synchronize(graph.trashRetentionSettings.load())
@@ -127,8 +124,6 @@ class AppGraph(application: Application) {
     val remoteCopies by lazy { RemoteCopyEngine(sharedStorageIndex::changed) }
     val safFiles = SafFileRepository(application, sharedStorageIndex::changed)
     val fileVault by lazy { FileVaultEngine(sharedStorageIndex::changed) }
-    val sync by lazy { SyncEngine(sharedStorageIndex::changed) }
-    val syncSchedules = SyncScheduleRepository(application)
     val workflows: AfWorkflowCoordinator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         AfWorkflowCoordinator(
             scope = applicationScope,
