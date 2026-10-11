@@ -2,45 +2,8 @@ package com.affilemanager.app.data
 
 import android.content.Context
 import com.affilemanager.app.model.EntryKind
-import com.affilemanager.app.transfer.LanTransferProtocol
-import com.affilemanager.app.transfer.LanSessionDuration
-import com.affilemanager.app.transfer.NearbyGroupInvite
 import org.json.JSONArray
 import org.json.JSONObject
-
-data class ShareScreenPreferences(
-    val sharedPath: String,
-    val protocol: LanTransferProtocol = LanTransferProtocol.WEB,
-    val durationMinutes: Int = 15,
-    val portText: String = "",
-    val username: String = "",
-    val readOnly: Boolean = false,
-    val anonymous: Boolean = false,
-    val receiverName: String = "Android phone",
-    val groupName: String = "AF group",
-    val ftpPath: String = sharedPath,
-    val webDavPath: String = sharedPath,
-    val nearbyReceivePath: String = sharedPath,
-    val nearbyPathHistory: List<String> = emptyList(),
-    val receiverAvatarUri: String = "",
-    val groupAvatarUri: String = "",
-) {
-    fun withNearbyReceivePath(path: String): ShareScreenPreferences = copy(
-        nearbyReceivePath = path,
-        nearbyPathHistory = (listOf(path, nearbyReceivePath) + nearbyPathHistory).distinct().take(6),
-    )
-    fun pathFor(protocol: LanTransferProtocol): String = when (protocol) {
-        LanTransferProtocol.WEB -> sharedPath
-        LanTransferProtocol.FTP -> ftpPath
-        LanTransferProtocol.WEBDAV -> webDavPath
-    }
-
-    fun withPathFor(protocol: LanTransferProtocol, path: String): ShareScreenPreferences = when (protocol) {
-        LanTransferProtocol.WEB -> copy(sharedPath = path)
-        LanTransferProtocol.FTP -> copy(ftpPath = path)
-        LanTransferProtocol.WEBDAV -> copy(webDavPath = path)
-    }
-}
 
 enum class SearchScopePreference { CURRENT_FOLDER, ALL_STORAGE, SELECTED_STORAGE }
 
@@ -69,57 +32,6 @@ data class RecentViewPreferences(
 /** Persists non-secret screen choices. Temporary passwords and pairing codes never enter this store. */
 class UiPreferenceRepository(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-    fun loadShare(defaultPath: String, defaultReceiverName: String): ShareScreenPreferences = runCatching {
-        val json = JSONObject(preferences.getString(KEY_SHARE, null) ?: return@runCatching defaultShare(defaultPath, defaultReceiverName))
-        UiPreferenceRules.normalizeShare(
-            ShareScreenPreferences(
-                sharedPath = json.optString("sharedPath", defaultPath),
-                protocol = enumValueOrDefault(json.optString("protocol"), LanTransferProtocol.WEB),
-                durationMinutes = json.optInt("durationMinutes", 15),
-                portText = json.optString("portText"),
-                username = json.optString("username"),
-                readOnly = json.optBoolean("readOnly"),
-                anonymous = json.optBoolean("anonymous"),
-                receiverName = json.optString("receiverName", defaultReceiverName),
-                groupName = json.optString("groupName", "AF group"),
-                ftpPath = json.optString("ftpPath", json.optString("sharedPath", defaultPath)),
-                webDavPath = json.optString("webDavPath", json.optString("sharedPath", defaultPath)),
-                nearbyReceivePath = json.optString("nearbyReceivePath", json.optString("sharedPath", defaultPath)),
-                nearbyPathHistory = json.optJSONArray("nearbyPathHistory")?.let { history ->
-                    (0 until history.length()).map { index -> history.optString(index) }
-                }.orEmpty(),
-                receiverAvatarUri = json.optString("receiverAvatarUri"),
-                groupAvatarUri = json.optString("groupAvatarUri"),
-            ),
-            defaultPath = defaultPath,
-            defaultReceiverName = defaultReceiverName,
-        )
-    }.getOrElse { defaultShare(defaultPath, defaultReceiverName) }
-
-    fun saveShare(value: ShareScreenPreferences, defaultPath: String, defaultReceiverName: String) {
-        val normalized = UiPreferenceRules.normalizeShare(value, defaultPath, defaultReceiverName)
-        val json = JSONObject()
-            .put("version", 4)
-            .put("sharedPath", normalized.sharedPath)
-            .put("ftpPath", normalized.ftpPath)
-            .put("webDavPath", normalized.webDavPath)
-            .put("nearbyReceivePath", normalized.nearbyReceivePath)
-            .put("nearbyPathHistory", JSONArray(normalized.nearbyPathHistory))
-            .put("receiverAvatarUri", normalized.receiverAvatarUri)
-            .put("groupAvatarUri", normalized.groupAvatarUri)
-            .put("protocol", normalized.protocol.name)
-            .put("durationMinutes", normalized.durationMinutes)
-            .put("portText", normalized.portText)
-            .put("username", normalized.username)
-            .put("readOnly", normalized.readOnly)
-            .put("anonymous", normalized.anonymous)
-            .put("receiverName", normalized.receiverName)
-            .put("groupName", normalized.groupName)
-        check(preferences.edit().putString(KEY_SHARE, json.toString()).commit()) {
-            "Nustatymų įrašyti nepavyko"
-        }
-    }
 
     fun loadSearchDraft(): SearchDraftPreferences = runCatching {
         val json = JSONObject(preferences.getString(KEY_SEARCH, null) ?: return@runCatching SearchDraftPreferences())
@@ -197,13 +109,6 @@ class UiPreferenceRepository(context: Context) {
         }
     }
 
-    private fun defaultShare(defaultPath: String, defaultReceiverName: String): ShareScreenPreferences =
-        UiPreferenceRules.normalizeShare(
-            ShareScreenPreferences(sharedPath = defaultPath, receiverName = defaultReceiverName),
-            defaultPath,
-            defaultReceiverName,
-        )
-
     private fun JSONObject.stringSet(key: String): Set<String> {
         val array = optJSONArray(key) ?: return emptySet()
         return buildSet {
@@ -226,7 +131,6 @@ class UiPreferenceRepository(context: Context) {
 
     private companion object {
         const val PREFS = "ui_preferences_v1"
-        const val KEY_SHARE = "share"
         const val KEY_SEARCH = "search"
         const val KEY_RECENT_VIEW = "recent_view"
         const val KEY_FEATURES = "feature_visibility"
@@ -237,36 +141,10 @@ internal object UiPreferenceRules {
     private const val MAX_PATH_LENGTH = 4_096
     private const val MAX_USERNAME_LENGTH = 128
     private const val MAX_RECEIVER_NAME_LENGTH = 80
-    private const val MAX_GROUP_NAME_LENGTH = NearbyGroupInvite.MAX_GROUP_NAME_LENGTH
     private const val MAX_SELECTED_ROOTS = 32
     private const val MAX_TAGS = 40
     private const val MAX_TAG_LENGTH = 120
     private val supportedDayChoices = setOf(7, 30, 365)
-
-    fun normalizeShare(
-        value: ShareScreenPreferences,
-        defaultPath: String,
-        defaultReceiverName: String,
-    ): ShareScreenPreferences {
-        val safeDefaultPath = cleanSingleLine(defaultPath, MAX_PATH_LENGTH).ifBlank { "/" }
-        val safeDefaultName = cleanSingleLine(defaultReceiverName, MAX_RECEIVER_NAME_LENGTH).ifBlank { "Android phone" }
-        return value.copy(
-            sharedPath = cleanSingleLine(value.sharedPath, MAX_PATH_LENGTH).ifBlank { safeDefaultPath },
-            ftpPath = cleanSingleLine(value.ftpPath, MAX_PATH_LENGTH).ifBlank { safeDefaultPath },
-            webDavPath = cleanSingleLine(value.webDavPath, MAX_PATH_LENGTH).ifBlank { safeDefaultPath },
-            nearbyReceivePath = cleanSingleLine(value.nearbyReceivePath, MAX_PATH_LENGTH).ifBlank { safeDefaultPath },
-            nearbyPathHistory = value.nearbyPathHistory.asSequence()
-                .map { cleanSingleLine(it, MAX_PATH_LENGTH) }
-                .filter(String::isNotBlank).distinct().take(6).toList(),
-            receiverAvatarUri = value.receiverAvatarUri.takeIf { it.startsWith("content://") && it.length <= 2_048 }.orEmpty(),
-            groupAvatarUri = value.groupAvatarUri.takeIf { it.startsWith("content://") && it.length <= 2_048 }.orEmpty(),
-            durationMinutes = LanSessionDuration.normalize(value.durationMinutes),
-            portText = value.portText.filter(Char::isDigit).take(5),
-            username = cleanSingleLine(value.username, MAX_USERNAME_LENGTH),
-            receiverName = cleanSingleLine(value.receiverName, MAX_RECEIVER_NAME_LENGTH).ifBlank { safeDefaultName },
-            groupName = cleanSingleLine(value.groupName, MAX_GROUP_NAME_LENGTH).ifBlank { "AF group" },
-        )
-    }
 
     fun normalizeSearch(value: SearchDraftPreferences): SearchDraftPreferences = value.copy(
         selectedStoragePaths = value.selectedStoragePaths.asSequence()
