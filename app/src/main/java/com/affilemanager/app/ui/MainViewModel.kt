@@ -110,11 +110,6 @@ import com.affilemanager.app.pdfsigning.PdfSignaturePlacement
 import com.affilemanager.app.pdfsigning.SavedSignature
 import com.affilemanager.app.pdfsigning.SignatureDrawing
 import com.affilemanager.app.security.VaultHeader
-import com.affilemanager.app.sync.SyncActionType
-import com.affilemanager.app.sync.SyncConflictPolicy
-import com.affilemanager.app.sync.SyncMode
-import com.affilemanager.app.sync.SyncPreview
-import com.affilemanager.app.sync.SyncSchedule
 import com.affilemanager.app.terminal.LocalPtyBackend
 import com.affilemanager.app.terminal.PrivilegedPtyBackend
 import com.affilemanager.app.terminal.ShellCommandRules
@@ -448,16 +443,6 @@ data class TrashBrowserUiState(
     val error: String? = null,
 )
 
-data class SyncUiState(
-    val mode: SyncMode = SyncMode.TWO_WAY,
-    val conflictPolicy: SyncConflictPolicy = SyncConflictPolicy.REPORT_ONLY,
-    val localRoot: String = "",
-    val remoteRoot: String = "/",
-    val preview: SyncPreview? = null,
-    val running: Boolean = false,
-    val error: String? = null,
-)
-
 data class FileEditUiState(
     val sourceKey: String? = null,
     val temporaryDownload: Boolean = false,
@@ -769,12 +754,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _tagSnapshot = MutableStateFlow(FileTagSnapshot())
     val tagSnapshot: StateFlow<FileTagSnapshot> = _tagSnapshot.asStateFlow()
 
-    private val _syncState = MutableStateFlow(SyncUiState())
-    val syncState: StateFlow<SyncUiState> = _syncState.asStateFlow()
-
-    private val _syncSchedules = MutableStateFlow<List<SyncSchedule>>(emptyList())
-    val syncSchedules: StateFlow<List<SyncSchedule>> = _syncSchedules.asStateFlow()
-
     val appLockEnabled = graph.appLock.enabled
 
     private val _preview = MutableStateFlow<PreviewTarget?>(null)
@@ -854,7 +833,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshNavigationState()
         refreshRecentFiles()
         refreshTags()
-        refreshSyncSchedules()
         viewModelScope.launch {
             operations.collectLatest { snapshots ->
                 snapshots.filter {
@@ -890,8 +868,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             graph.advancedAccess.refreshCapabilities()
             refreshTrash()
             refreshSafLocations()
-            refreshSyncSchedules()
-        }
+            }
     }
 
     fun updateShareScreenPreferences(transform: (ShareScreenPreferences) -> ShareScreenPreferences) {
@@ -5921,7 +5898,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         sortDirection = sortSettings.direction,
                     ).withDirectoryDisplaySettings(displaySettings)
                 }
-                _syncState.update { it.copy(remoteRoot = path, localRoot = activePanelState().path, preview = null, error = null) }
                 refreshRemote(path)
             }.onFailure { error ->
                 _networkState.update {
@@ -6558,88 +6534,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         RemoteSelectionInfoScanner().scan(entries, client)
     }
 
-    fun setSyncMode(mode: SyncMode) {
-        _syncState.update { it.copy(mode = mode, preview = null, error = null) }
-    }
-
-    fun setSyncConflictPolicy(policy: SyncConflictPolicy) {
-        _syncState.update { it.copy(conflictPolicy = policy, preview = null, error = null) }
-    }
-
-    fun previewSync() {
-        val client = remoteClient ?: return
-        val local = activePanelState().path
-        val remote = _networkState.value.path
-        val mode = _syncState.value.mode
-        val policy = _syncState.value.conflictPolicy
-        viewModelScope.launch {
-            _syncState.update { it.copy(localRoot = local, remoteRoot = remote, running = true, preview = null, error = null) }
-            runCatching { graph.sync.preview(File(local), remote, client, mode, policy) }
-                .onSuccess { preview -> _syncState.update { it.copy(preview = preview, running = false) } }
-                .onFailure { error -> _syncState.update { it.copy(running = false, error = error.message) } }
-        }
-    }
-
-    fun executeSync() {
-        val client = remoteClient ?: return
-        val snapshot = _syncState.value
-        val preview = snapshot.preview ?: return
-        graph.operationManager.submit("Sinchronizuojama") {
-            val fresh = graph.sync.preview(
-                File(snapshot.localRoot),
-                snapshot.remoteRoot,
-                client,
-                snapshot.mode,
-                snapshot.conflictPolicy,
-            )
-            require(fresh == preview) { "Turinys pasikeitė po peržiūros; atnaujinkite sinchronizavimo planą" }
-            require(fresh.actions.none { it.type == SyncActionType.CONFLICT }) { "Plane liko neišspręstų konfliktų" }
-            graph.sync.execute(fresh, File(snapshot.localRoot), snapshot.remoteRoot, client, this)
-        }.onSuccess {
-            _syncState.update { it.copy(preview = null) }
-        }.onFailure { message(it.message ?: "Sinchronizavimo pradėti nepavyko", true) }
-    }
-
-    fun refreshSyncSchedules() {
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.syncSchedules.list() }
-                .onSuccess { _syncSchedules.value = it }
-                .onFailure { message(it.message ?: "Tvarkaraščių perskaityti nepavyko", true) }
-        }
-    }
-
-    fun scheduleCurrentSync(intervalHours: Long, unmeteredOnly: Boolean) {
-        val profile = _networkState.value.connectedProfile ?: return
-        val state = _syncState.value
-        val schedule = SyncSchedule(
-            id = "",
-            profileId = profile.id,
-            profileName = profile.name,
-            localRoot = activePanelState().path,
-            remoteRoot = _networkState.value.path,
-            mode = state.mode,
-            conflictPolicy = state.conflictPolicy,
-            intervalHours = intervalHours,
-            unmeteredOnly = unmeteredOnly,
-        )
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.syncSchedules.save(schedule) }
-                .onSuccess {
-                    _syncSchedules.value = graph.syncSchedules.list()
-                    message("Sinchronizavimo tvarkaraštis išsaugotas")
-                }
-                .onFailure { message(it.message ?: "Tvarkaraščio išsaugoti nepavyko", true) }
-        }
-    }
-
-    fun removeSyncSchedule(id: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.syncSchedules.remove(id) }
-                .onSuccess { _syncSchedules.value = graph.syncSchedules.list() }
-                .onFailure { message(it.message ?: "Tvarkaraščio pašalinti nepavyko", true) }
-        }
-    }
-
     fun disconnectNetwork() {
         viewModelScope.launch { disconnectRemote() }
     }
@@ -7150,7 +7044,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
         _remoteClipboard.value = null
-        _syncState.value = SyncUiState()
     }
 
     private fun cancelRemoteFileOpen() {
