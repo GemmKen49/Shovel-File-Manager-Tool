@@ -53,10 +53,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import com.affilemanager.app.data.OptionalFeature
-import com.affilemanager.app.transfer.LanTransferController
-import com.affilemanager.app.transfer.LanTransferStatus
-import com.affilemanager.app.transfer.NearbyTransferController
-import com.affilemanager.app.transfer.NearbyTransferStatus
 import com.affilemanager.app.ui.components.LocalFeatureVisibility
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -90,7 +86,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import com.affilemanager.app.operations.OperationStatus
 import com.affilemanager.app.ui.components.OperationProgressDialog
 import com.affilemanager.app.IncomingViewRequest
-import com.affilemanager.app.IncomingShareRequest
 import com.affilemanager.app.ui.preview.FilePreviewDialog
 import com.affilemanager.app.ui.components.BatchRenameDialog
 import com.affilemanager.app.ui.components.BackgroundPlaybackBar
@@ -102,10 +97,8 @@ import com.affilemanager.app.ui.screens.AfWorkflowDialog
 import com.affilemanager.app.ui.screens.ConnectionsScreen
 import com.affilemanager.app.ui.screens.FilesScreen
 import com.affilemanager.app.ui.screens.ToolsScreen
-import com.affilemanager.app.ui.screens.SharingScreen
 import com.affilemanager.app.ui.screens.TrashBrowserDialog
 import com.affilemanager.app.ui.screens.SafBrowserDialog
-import com.affilemanager.app.ui.terminal.TerminalOverlay
 import java.io.File
 
 private data class SectionDestination(
@@ -118,7 +111,6 @@ private val destinations = listOf(
     SectionDestination(AppSection.FILES, "Failai", Icons.Rounded.Folder),
     SectionDestination(AppSection.ANALYZE, "Analizė", Icons.Rounded.Analytics),
     SectionDestination(AppSection.CONNECTIONS, "Ryšiai", Icons.Rounded.Storage),
-    SectionDestination(AppSection.SHARE, "Bendrinti", Icons.Rounded.Share),
     SectionDestination(AppSection.TOOLS, "Daugiau", Icons.Rounded.MoreHoriz),
 )
 
@@ -127,8 +119,6 @@ fun AFFileManagerApp(
     viewModel: MainViewModel = viewModel(),
     incomingViewRequest: IncomingViewRequest? = null,
     onIncomingViewRequestConsumed: () -> Unit = {},
-    incomingShareRequest: IncomingShareRequest? = null,
-    onIncomingShareRequestConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val interfaceLanguage = LocalConfiguration.current.locales[0].language
@@ -136,19 +126,13 @@ fun AFFileManagerApp(
     val section by viewModel.section.collectAsStateWithLifecycle()
     val featureVisibility by viewModel.featureVisibility.collectAsStateWithLifecycle()
     val networkState by viewModel.networkState.collectAsStateWithLifecycle()
-    val sharingState by LanTransferController.state.collectAsStateWithLifecycle()
-    val nearbyState by NearbyTransferController.state.collectAsStateWithLifecycle()
-    val sharingActive = sharingState.status in setOf(LanTransferStatus.STARTING, LanTransferStatus.RUNNING) ||
-        nearbyState.status in setOf(NearbyTransferStatus.STARTING, NearbyTransferStatus.RUNNING)
     val visibleDestinations = destinations.filter { destination ->
         val feature = when (destination.section) {
             AppSection.ANALYZE -> OptionalFeature.ANALYSIS
             AppSection.CONNECTIONS -> OptionalFeature.NETWORK
-            AppSection.SHARE -> OptionalFeature.SHARING
             else -> null
         }
         feature == null || featureVisibility.isVisible(feature) || destination.section == section ||
-            destination.section == AppSection.SHARE && sharingActive ||
             destination.section == AppSection.CONNECTIONS && networkState.connectedProfile != null
     }
     val filesHomeVisible by viewModel.filesHomeVisible.collectAsStateWithLifecycle()
@@ -157,7 +141,6 @@ fun AFFileManagerApp(
     val preview by viewModel.preview.collectAsStateWithLifecycle()
     val fileEditState by viewModel.fileEditState.collectAsStateWithLifecycle()
     val signatureLibrary by viewModel.signatureLibrary.collectAsStateWithLifecycle()
-    val terminalState by viewModel.terminalState.collectAsStateWithLifecycle()
     val activePanel by viewModel.activePanel.collectAsStateWithLifecycle()
     val leftPanel by viewModel.leftPanel.collectAsStateWithLifecycle()
     val rightPanel by viewModel.rightPanel.collectAsStateWithLifecycle()
@@ -209,7 +192,7 @@ fun AFFileManagerApp(
     )
 
     BackHandler(
-        enabled = (!appLockEnabled || unlocked) && !terminalState.visible && systemBackAction != SystemBackAction.DEFER_TO_SYSTEM,
+        enabled = (!appLockEnabled || unlocked) && systemBackAction != SystemBackAction.DEFER_TO_SYSTEM,
     ) {
         when (systemBackAction) {
             SystemBackAction.CLOSE_PREVIEW -> viewModel.closePreview()
@@ -239,7 +222,6 @@ fun AFFileManagerApp(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshTerminalClipboard()
                 val current = hasFullFileAccess(context)
                 if (current != hasAllFilesAccess) {
                     hasAllFilesAccess = current
@@ -363,7 +345,6 @@ fun AFFileManagerApp(
                         )
                         AppSection.ANALYZE -> AnalyzeScreen(viewModel, padding)
                         AppSection.CONNECTIONS -> ConnectionsScreen(viewModel, padding)
-                        AppSection.SHARE -> SharingScreen(viewModel, padding)
                         AppSection.TOOLS -> ToolsScreen(
                             viewModel = viewModel,
                             contentPadding = padding,
@@ -401,13 +382,6 @@ fun AFFileManagerApp(
                     }
                 }
             }
-        }
-    }
-
-    LaunchedEffect(incomingShareRequest) {
-        incomingShareRequest?.let { request ->
-            viewModel.beginIncomingShare(request.uris)
-            onIncomingShareRequestConsumed()
         }
     }
 
@@ -491,21 +465,6 @@ fun AFFileManagerApp(
     BatchRenameDialog(viewModel)
 
     AfWorkflowDialog(viewModel)
-
-    TerminalOverlay(
-        state = terminalState,
-        onRequestClose = viewModel::requestTerminalClose,
-        onConfirmClose = viewModel::confirmTerminalClose,
-        onDismissCloseConfirmation = viewModel::dismissTerminalCloseConfirmation,
-        onPaste = viewModel::pasteIntoTerminal,
-        onMultilinePaste = viewModel::requestTerminalMultilinePaste,
-        onResolveMultilinePaste = viewModel::resolveTerminalMultilinePaste,
-        onDismissMultilinePaste = viewModel::dismissTerminalMultilinePaste,
-        onCopyLastOutput = viewModel::copyLastTerminalOutput,
-        onKey = viewModel::dispatchTerminalKey,
-        onToggleCtrl = viewModel::toggleTerminalCtrl,
-        onToggleAlt = viewModel::toggleTerminalAlt,
-    )
 
     visibleOperation?.let { operation ->
         OperationProgressDialog(

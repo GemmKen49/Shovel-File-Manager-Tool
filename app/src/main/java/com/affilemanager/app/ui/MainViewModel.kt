@@ -30,7 +30,6 @@ import com.affilemanager.app.data.RecentItem
 import com.affilemanager.app.data.RecentFileItem
 import com.affilemanager.app.data.SavedSearch
 import com.affilemanager.app.data.SearchDraftPreferences
-import com.affilemanager.app.data.ShareScreenPreferences
 import com.affilemanager.app.data.TrashBrowserEntry
 import com.affilemanager.app.data.TrashItem
 import com.affilemanager.app.data.TrashPathRules
@@ -110,13 +109,6 @@ import com.affilemanager.app.pdfsigning.PdfSignaturePlacement
 import com.affilemanager.app.pdfsigning.SavedSignature
 import com.affilemanager.app.pdfsigning.SignatureDrawing
 import com.affilemanager.app.security.VaultHeader
-import com.affilemanager.app.terminal.LocalPtyBackend
-import com.affilemanager.app.terminal.PrivilegedPtyBackend
-import com.affilemanager.app.terminal.ShellCommandRules
-import com.affilemanager.app.terminal.SshTerminalBackend
-import com.affilemanager.app.terminal.TerminalPasteRules
-import com.affilemanager.app.terminal.TerminalPasteResult
-import com.affilemanager.app.transfer.PreparedNearbyTransfer
 import com.affilemanager.app.workflow.AfAutomationRule
 import com.affilemanager.app.workflow.AfAutomationSchedule
 import com.affilemanager.app.workflow.AfDestinationRef
@@ -174,7 +166,6 @@ enum class AppSection {
     FILES,
     ANALYZE,
     CONNECTIONS,
-    SHARE,
     TOOLS,
 }
 
@@ -256,11 +247,6 @@ data class AnalysisUiState(
     val progress: AnalysisProgress? = null,
     val cancelled: Boolean = false,
     val error: String? = null,
-)
-
-data class IncomingShareUiState(
-    val requestId: Long,
-    val uris: List<Uri>,
 )
 
 data class DeviceCleanupUiState(
@@ -541,7 +527,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val initialDownloadsPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         .takeIf(File::isDirectory)?.absolutePath ?: initialPrimaryPath
     private val initialWorkspace = graph.workspaceSession.load(initialDownloadsPath, initialPrimaryPath)
-    private val defaultReceiverName = Build.MODEL.take(80).ifBlank { "Android phone" }
     private val homeBuiltInShortcuts = listOf(
         HomeShortcut(
             id = "builtin.downloads",
@@ -683,11 +668,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _searchDraftPreferences = MutableStateFlow(graph.uiPreferences.loadSearchDraft())
     val searchDraftPreferences: StateFlow<SearchDraftPreferences> = _searchDraftPreferences.asStateFlow()
 
-    private val _shareScreenPreferences = MutableStateFlow(
-        graph.uiPreferences.loadShare(initialPrimaryPath, defaultReceiverName),
-    )
-    val shareScreenPreferences: StateFlow<ShareScreenPreferences> = _shareScreenPreferences.asStateFlow()
-
     private val _featureVisibility = MutableStateFlow(graph.uiPreferences.loadFeatureVisibility())
     val featureVisibility = _featureVisibility.asStateFlow()
 
@@ -739,9 +719,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _safBrowser = MutableStateFlow(SafBrowserUiState())
     val safBrowser: StateFlow<SafBrowserUiState> = _safBrowser.asStateFlow()
 
-    private val _incomingShare = MutableStateFlow<IncomingShareUiState?>(null)
-    val incomingShare: StateFlow<IncomingShareUiState?> = _incomingShare.asStateFlow()
-
     private val _favorites = MutableStateFlow<List<String>>(emptyList())
     val favorites: StateFlow<List<String>> = _favorites.asStateFlow()
 
@@ -764,8 +741,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _signatureLibrary = MutableStateFlow(SignatureLibraryUiState())
     val signatureLibrary: StateFlow<SignatureLibraryUiState> = _signatureLibrary.asStateFlow()
-
-    val terminalState: StateFlow<TerminalUiState> = graph.terminalSessions.state
 
     val operations = graph.operationManager.operations
 
@@ -794,30 +769,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var rightPanelRefreshJob: Job? = null
     private val handledOperations = ArrayDeque<String>()
     private val workspaceSaveRequests = Channel<WorkspaceSession>(Channel.CONFLATED)
-    private val sharePreferenceSaveRequests = Channel<ShareScreenPreferences>(Channel.CONFLATED)
     private val searchDraftSaveRequests = Channel<SearchDraftPreferences>(Channel.CONFLATED)
 
     init {
-        viewModelScope.launch {
-            com.affilemanager.app.transfer.NearbyGroupController.state
-                .map { it.memberNotice to it.error }.distinctUntilChanged().collect { (notice, error) ->
-                    if (error != null) message(error, true)
-                    else if (notice != null) message(notice)
-                }
-        }
-        viewModelScope.launch {
-            graph.terminalSessions.notices.collectLatest { message(it, true) }
-        }
         graph.applicationScope.launch {
             for (session in workspaceSaveRequests) {
                 runCatching { graph.workspaceSession.save(session) }
                     .onFailure { message(it.message ?: "Darbo sesijos išsaugoti nepavyko", true) }
-            }
-        }
-        graph.applicationScope.launch {
-            for (settings in sharePreferenceSaveRequests) {
-                runCatching { graph.uiPreferences.saveShare(settings, initialPrimaryPath, defaultReceiverName) }
-                    .onFailure { message(it.message ?: "Nustatymų įrašyti nepavyko", true) }
             }
         }
         graph.applicationScope.launch {
@@ -869,13 +827,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             refreshTrash()
             refreshSafLocations()
             }
-    }
-
-    fun updateShareScreenPreferences(transform: (ShareScreenPreferences) -> ShareScreenPreferences) {
-        val updated = transform(_shareScreenPreferences.value)
-        if (updated == _shareScreenPreferences.value) return
-        _shareScreenPreferences.value = updated
-        sharePreferenceSaveRequests.trySend(updated)
     }
 
     fun updateSearchDraftPreferences(settings: SearchDraftPreferences) {
@@ -1514,17 +1465,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setTransparentMenus(enabled: Boolean) {
         runCatching { graph.appearance.setTransparentMenus(enabled) }
             .onFailure { message("Išvaizdos nustatymo išsaugoti nepavyko", true) }
-    }
-
-    fun beginIncomingShare(uris: List<Uri>) {
-        val accepted = uris.asSequence().distinctBy(Uri::toString).take(1_000).toList()
-        if (accepted.isEmpty()) return
-        _section.value = AppSection.SHARE
-        _incomingShare.value = IncomingShareUiState(System.nanoTime(), accepted)
-    }
-
-    fun consumeIncomingShare(requestId: Long) {
-        _incomingShare.update { current -> if (current?.requestId == requestId) null else current }
     }
 
     fun moveHomeStorage(id: String, offset: Int) {
@@ -2308,54 +2248,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _fileCategory.update { it.copy(scrollToTopRequest = it.scrollToTopRequest + 1L) }
             loadFileCategoryPage(reset = true, forceRefresh = true)
         }
-    }
-
-    suspend fun loadNearbyTransferCategoryPage(
-        category: FileCategory,
-        offset: Int,
-        sortMode: SortMode = SortMode.NAME,
-        sortDirection: SortDirection = SortDirection.ASCENDING,
-        query: String = "",
-        forceRefresh: Boolean = false,
-    ): Result<com.affilemanager.app.data.FileCategoryPage> =
-        withContext(Dispatchers.IO) {
-            try {
-                Result.success(graph.fileCategories.loadBrowsePage(
-                    category = category,
-                    offset = offset,
-                    sortMode = sortMode,
-                    sortDirection = sortDirection,
-                    query = query,
-                    forceRefresh = forceRefresh,
-                ))
-            } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                throw cancelled
-            } catch (failure: Exception) {
-                Result.failure(failure)
-            }
-        }
-
-    suspend fun prepareNearbyTransferEntries(
-        entries: Collection<FileEntry>,
-    ): Result<PreparedNearbyTransfer> = graph.nearbySources.prepareEntries(entries)
-
-    suspend fun prepareNearbyTransferDocuments(
-        uris: Collection<Uri>,
-        copyToPrivateStage: Boolean = true,
-    ): Result<PreparedNearbyTransfer> = graph.nearbySources.prepareContentUris(uris, copyToPrivateStage)
-
-    suspend fun loadNearbyContacts(): Result<com.affilemanager.app.transfer.NearbyContactPage> =
-        graph.nearbySources.loadContacts()
-
-    suspend fun prepareNearbyTransferContacts(
-        contacts: Collection<com.affilemanager.app.transfer.NearbyContact>,
-    ): Result<PreparedNearbyTransfer> = graph.nearbySources.prepareContacts(contacts)
-
-    suspend fun prepareNearbyTransferPaths(paths: Collection<String>): Result<PreparedNearbyTransfer> =
-        graph.nearbySources.prepareLocalPaths(paths)
-
-    fun discardNearbyTransferSources(prepared: PreparedNearbyTransfer) {
-        viewModelScope.launch { graph.nearbySources.discard(prepared) }
     }
 
     fun loadMoreFileCategory() = loadFileCategoryPage(reset = false)
@@ -5569,202 +5461,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _safBrowser.value = SafBrowserUiState()
     }
 
-    fun openLocalTerminal(panel: PanelId = _activePanel.value) {
-        val directory = File(panelFlow(panel).value.path)
-        if (directory.absolutePath == File.separator) {
-            val rootBackend = graph.advancedAccess.state.value.activeBackend in setOf(
-                AdvancedAccessBackend.ROOT,
-                AdvancedAccessBackend.SHIZUKU_ROOT,
-            )
-            if (rootBackend) openPrivilegedTerminal(directory.absolutePath)
-            else message(
-                "Root terminalui reikia aktyvios Root arba Shizuku root prieigos. Įprastas telefono terminalas root teisių neapsimeta.",
-                true,
-            )
-            return
-        }
-        graph.terminalSessions.begin(
-            location = TerminalLocation.PHONE,
-            title = "Telefono terminalas",
-            path = directory.absolutePath,
-            openBackend = {
-                val application = getApplication<Application>()
-                LocalPtyBackend.open(
-                    workingDirectory = directory,
-                    homeDirectory = File(application.filesDir, "terminal-home"),
-                    temporaryDirectory = File(application.cacheDir, "terminal-tmp"),
-                )
-            },
-            errorInfo = { error ->
-                TerminalFailureUi(
-                    title = "Telefono terminalo atidaryti nepavyko",
-                    detail = when (error) {
-                        is SecurityException -> "Android saugos politika neleido terminalui pasiekti šio aplanko."
-                        is IllegalArgumentException,
-                        is IllegalStateException,
-                        -> "Dabartinis aplankas terminalui nepasiekiamas arba nebegalioja."
-                        else -> "Android terminalo proceso paleisti nepavyko."
-                    },
-                    suggestion = "Atverkite kitą telefono aplanką ir bandykite dar kartą.",
-                    diagnosticCode = "LOCAL-PTY-${error.javaClass.simpleName.uppercase().filter(Char::isLetterOrDigit).take(24).ifBlank { "UNKNOWN" }}",
-                )
-            },
-        )
-    }
-
-    fun openAdvancedTerminal() {
-        val path = _advancedBrowser.value.path.takeIf(String::isNotBlank) ?: return
-        openPrivilegedTerminal(path)
-    }
-
-    private fun openPrivilegedTerminal(path: String) {
-        val access = graph.advancedAccess.state.value
-        if (access.activeBackend == AdvancedAccessBackend.NONE) {
-            message("Privilegijuota terminalo prieiga neaktyvi", true)
-            return
-        }
-        val rootSession = access.activeBackend in setOf(
-            AdvancedAccessBackend.ROOT,
-            AdvancedAccessBackend.SHIZUKU_ROOT,
-        )
-        graph.terminalSessions.begin(
-            location = TerminalLocation.PRIVILEGED,
-            title = if (rootSession) "Root terminalas" else "Shizuku terminalas",
-            path = path,
-            openBackend = {
-                PrivilegedPtyBackend.open(
-                    service = graph.advancedAccess.privilegedTerminalServiceOrThrow(),
-                    workingDirectory = path,
-                )
-            },
-            errorInfo = { error ->
-                TerminalFailureUi(
-                    title = "Privilegijuoto terminalo atidaryti nepavyko",
-                    detail = when (error) {
-                        is SecurityException -> "Privilegijuota tarnyba neleido terminalui pasiekti šio aplanko."
-                        is IllegalArgumentException,
-                        is IllegalStateException,
-                        -> "Privilegijuota prieiga arba dabartinis aplankas nebepasiekiamas."
-                        else -> "Privilegijuoto terminalo proceso paleisti nepavyko."
-                    },
-                    suggestion = "Patikrinkite Root arba Shizuku būseną skiltyje Daugiau ir bandykite dar kartą.",
-                    diagnosticCode = when (error) {
-                        is android.os.DeadObjectException -> "PRIV-PTY-DISCONNECTED"
-                        is SecurityException -> "PRIV-PTY-DENIED"
-                        is IllegalArgumentException -> "PRIV-PTY-PATH"
-                        is IllegalStateException -> "PRIV-PTY-STATE"
-                        is java.io.IOException -> "PRIV-PTY-IO"
-                        is UnsatisfiedLinkError -> "PRIV-PTY-NATIVE"
-                        else -> "PRIV-PTY-FAILED"
-                    },
-                )
-            },
-        )
-    }
-
-    fun openRemoteTerminal() {
-        val snapshot = _networkState.value
-        val connected = snapshot.connectedProfile ?: return
-        if (connected.protocol != NetworkProtocol.SFTP) {
-            message("Serverio terminalas pasiekiamas tik per SFTP/SSH jungtį", true)
-            return
-        }
-        val profileId = connected.id
-        val remotePath = snapshot.path
-        val pathStyle = ShellCommandRules.inferPathStyle(
-            path = remotePath,
-            directoryNames = snapshot.entries.asSequence().filter(RemoteEntry::directory).map(RemoteEntry::name).toList(),
-        )
-        graph.terminalSessions.begin(
-            location = TerminalLocation.SERVER,
-            title = connected.name,
-            path = remotePath,
-            openBackend = {
-                val latest = graph.networkProfiles.list().firstOrNull { it.id == profileId }
-                    ?: throw IllegalArgumentException("Išsaugotas SFTP/SSH profilis nebeegzistuoja")
-                val backend = graph.networkProfiles.secret(profileId).getOrThrow().use { secret ->
-                    SshTerminalBackend.open(
-                        profile = latest,
-                        password = secret.password.copyOf(),
-                        privateKeyPem = secret.privateKeyPem.copyOf(),
-                        workingDirectory = remotePath,
-                        pathStyle = pathStyle,
-                    )
-                }
-                if (latest.expectedHostKeySha256 == null) {
-                    graph.networkProfiles.updateSftpFingerprint(profileId, backend.trustedFingerprint).getOrThrow()
-                    refreshProfiles()
-                }
-                backend
-            },
-            errorInfo = { error ->
-                val info = RemoteErrorPresenter.present(NetworkProtocol.SFTP, RemoteOperation.CONNECT, error)
-                TerminalFailureUi(
-                    title = info.title,
-                    detail = info.detail,
-                    suggestion = info.suggestion,
-                    diagnosticCode = info.diagnosticCode,
-                )
-            },
-        )
-    }
-
-    fun requestTerminalClose() {
-        graph.terminalSessions.requestClose()
-    }
-
-    fun dismissTerminalCloseConfirmation() {
-        graph.terminalSessions.dismissCloseConfirmation()
-    }
-
-    fun confirmTerminalClose() {
-        graph.terminalSessions.confirmClose()
-    }
-
-    fun pasteIntoTerminal(text: String) {
-        if (text.isEmpty()) return
-        when (graph.terminalSessions.paste(text)) {
-            TerminalPasteResult.ACCEPTED -> Unit
-            TerminalPasteResult.TOO_LARGE ->
-                message("Iškarpinės turinys viršija 64 KiB terminalo įklijavimo ribą", true)
-            TerminalPasteResult.BUSY ->
-                message("Terminalo įvestis užimta; bandykite įklijuoti dar kartą", true)
-        }
-    }
-
-    fun requestTerminalMultilinePaste(text: String) {
-        graph.terminalSessions.requestMultilinePaste(text)
-    }
-
-    fun resolveTerminalMultilinePaste(asSingleLine: Boolean) {
-        val text = graph.terminalSessions.takePendingMultilinePaste() ?: return
-        pasteIntoTerminal(if (asSingleLine) TerminalPasteRules.asSingleLine(text) else text)
-    }
-
-    fun dismissTerminalMultilinePaste() {
-        graph.terminalSessions.dismissMultilinePaste()
-    }
-
-    fun refreshTerminalClipboard() {
-        graph.terminalSessions.refreshClipboardSnapshot()
-    }
-
-    fun copyLastTerminalOutput() {
-        graph.terminalSessions.copyLastOutput()
-    }
-
-    fun dispatchTerminalKey(key: Int) {
-        graph.terminalSessions.dispatchKey(key)
-    }
-
-    fun toggleTerminalCtrl() {
-        graph.terminalSessions.toggleCtrl()
-    }
-
-    fun toggleTerminalAlt() {
-        graph.terminalSessions.toggleAlt()
-    }
-
     fun openNextcloudSetup() {
         nextcloudLoginJob?.cancel()
         nextcloudLoginJob = null
@@ -6557,7 +6253,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         workspaceSaveRequests.trySend(currentWorkspace())
         workspaceSaveRequests.close()
         // Let queued writes finish, then release the workers' reference to this screen.
-        sharePreferenceSaveRequests.close()
         searchDraftSaveRequests.close()
         recentFilesJob?.cancel()
         recentFilesJob = null
