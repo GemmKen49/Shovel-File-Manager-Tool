@@ -145,9 +145,6 @@ import com.affilemanager.app.ui.localization.LText
 import com.affilemanager.app.ui.localization.uiText
 import com.affilemanager.app.ui.localization.rememberLocalizedDateTimeFormat
 import com.affilemanager.app.network.RemoteCopyEngine
-import com.affilemanager.app.sync.SyncActionType
-import com.affilemanager.app.sync.SyncConflictPolicy
-import com.affilemanager.app.sync.SyncMode
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -164,7 +161,6 @@ fun ConnectionsScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
     val activePanel by viewModel.activePanel.collectAsStateWithLifecycle()
     val left by viewModel.leftPanel.collectAsStateWithLifecycle()
     val right by viewModel.rightPanel.collectAsStateWithLifecycle()
-    val sync by viewModel.syncState.collectAsStateWithLifecycle()
     val localClipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val remoteClipboard by viewModel.remoteClipboard.collectAsStateWithLifecycle()
     val afClipboard by viewModel.afClipboard.collectAsStateWithLifecycle()
@@ -180,7 +176,6 @@ fun ConnectionsScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
     var createRemoteItem by remember { mutableStateOf(false) }
     var renameRemote by remember { mutableStateOf<RemoteEntry?>(null) }
     var deleteRemote by remember { mutableStateOf<List<RemoteEntry>?>(null) }
-    var showSync by remember { mutableStateOf(false) }
     var showUploadPicker by remember { mutableStateOf(false) }
     var showDisplaySettings by remember { mutableStateOf(false) }
     var remoteInfo by remember { mutableStateOf<RemoteEntry?>(null) }
@@ -265,7 +260,6 @@ fun ConnectionsScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                     onRename = { renameRemote = it },
                     onInfo = { remoteInfo = it },
                     onDelete = { deleteRemote = it },
-                    onSync = { showSync = true },
                     onToggleHidden = viewModel::toggleRemoteHidden,
                     onToggleGrid = viewModel::toggleRemoteGrid,
                     onDisplaySettings = { showDisplaySettings = true },
@@ -347,17 +341,6 @@ fun ConnectionsScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             onConfirm = { viewModel.remoteDelete(entries); deleteRemote = null },
             loadSummary = { viewModel.loadRemoteSelectionInfo(entries) },
             explanation = "Elementai bus ištrinti nuotoliniame serveryje be vietinės šiukšlinės.",
-        )
-    }
-    if (showSync) {
-        SyncDialog(
-            state = sync,
-            onDismiss = { showSync = false },
-            onMode = viewModel::setSyncMode,
-            onPolicy = viewModel::setSyncConflictPolicy,
-            onPreview = viewModel::previewSync,
-            onExecute = { viewModel.executeSync(); showSync = false },
-            onSchedule = viewModel::scheduleCurrentSync,
         )
     }
     if (showUploadPicker && state.connectedProfile != null) {
@@ -546,7 +529,6 @@ internal fun RemoteBrowser(
     onCreateFolder: () -> Unit,
     onRename: (RemoteEntry) -> Unit,
     onDelete: (List<RemoteEntry>) -> Unit,
-    onSync: () -> Unit,
     onToggleHidden: () -> Unit,
     onToggleGrid: () -> Unit,
     onDisplaySettings: () -> Unit = {},
@@ -617,7 +599,6 @@ internal fun RemoteBrowser(
                 onPasteLocalClipboard = onPasteLocalClipboard,
                 onPasteToMany = onPasteToMany,
                 onChooseUpload = onChooseUpload,
-                onSync = onSync,
                 onToggleHidden = onToggleHidden,
                 onToggleGrid = onToggleGrid,
                 onDisplaySettings = onDisplaySettings,
@@ -764,7 +745,6 @@ private fun RemoteFolderToolbar(
     onPasteLocalClipboard: () -> Unit,
     onPasteToMany: () -> Unit,
     onChooseUpload: () -> Unit,
-    onSync: () -> Unit,
     onToggleHidden: () -> Unit,
     onToggleGrid: () -> Unit,
     onDisplaySettings: () -> Unit,
@@ -801,7 +781,6 @@ private fun RemoteFolderToolbar(
             onPasteLocalClipboard = onPasteLocalClipboard,
             onPasteToMany = onPasteToMany,
             onChooseUpload = onChooseUpload,
-            onSync = onSync,
             onToggleHidden = onToggleHidden,
             onToggleGrid = onToggleGrid,
             onDisplaySettings = onDisplaySettings,
@@ -825,7 +804,6 @@ private fun RemoteFolderActionsMenu(
     onPasteLocalClipboard: () -> Unit,
     onPasteToMany: () -> Unit,
     onChooseUpload: () -> Unit,
-    onSync: () -> Unit,
     onToggleHidden: () -> Unit,
     onToggleGrid: () -> Unit,
     onDisplaySettings: () -> Unit,
@@ -867,12 +845,6 @@ private fun RemoteFolderActionsMenu(
                 enabled = !state.loading,
                 modifier = Modifier.testTag("remote_upload_choose"),
                 onClick = { expanded = false; onChooseUpload() },
-            )
-            if (featureVisible(OptionalFeature.SYNC)) DropdownMenuItem(
-                text = { LText("Sinchronizuoti") },
-                leadingIcon = { Icon(Icons.Rounded.Sync, contentDescription = null) },
-                enabled = !state.loading,
-                onClick = { expanded = false; onSync() },
             )
             DropdownMenuItem(
                 text = { LText("Operacijų centras") },
@@ -1596,138 +1568,6 @@ private fun RemoteNameDialog(
     )
 }
 
-@Composable
-private fun SyncDialog(
-    state: com.affilemanager.app.ui.SyncUiState,
-    onDismiss: () -> Unit,
-    onMode: (SyncMode) -> Unit,
-    onPolicy: (SyncConflictPolicy) -> Unit,
-    onPreview: () -> Unit,
-    onExecute: () -> Unit,
-    onSchedule: (Long, Boolean) -> Unit,
-) {
-    val conflicts = state.preview?.actions?.count { it.type == SyncActionType.CONFLICT } ?: 0
-    var intervalHours by remember { mutableStateOf(24L) }
-    var unmeteredOnly by remember { mutableStateOf(true) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Rounded.Sync, contentDescription = null) },
-        title = { LText("Aplankų sinchronizavimas") },
-        text = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                item {
-                    val localRootLabel = state.localRoot.ifBlank { uiText("aktyvus failų langas") }
-                    LText("Vietinis: $localRootLabel", style = MaterialTheme.typography.bodySmall)
-                    LText("Nuotolinis: ${state.remoteRoot}", style = MaterialTheme.typography.bodySmall)
-                    LText("Prieš vykdymą planas apskaičiuojamas dar kartą. Failai tyliai netrinami.", style = MaterialTheme.typography.labelSmall)
-                }
-                item {
-                    LText("Kryptis", fontWeight = FontWeight.SemiBold)
-                    Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        SyncMode.entries.forEach { mode ->
-                            AssistChip(onClick = { onMode(mode) }, label = { LText(syncModeLabel(mode)) }, leadingIcon = {
-                                Checkbox(checked = state.mode == mode, onCheckedChange = null)
-                            })
-                        }
-                    }
-                }
-                if (state.mode == SyncMode.TWO_WAY) {
-                    item {
-                        LText("Konfliktai", fontWeight = FontWeight.SemiBold)
-                        Column {
-                            SyncConflictPolicy.entries.forEach { policy ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    androidx.compose.material3.RadioButton(selected = state.conflictPolicy == policy, onClick = { onPolicy(policy) })
-                                    LText(syncPolicyLabel(policy))
-                                }
-                            }
-                        }
-                    }
-                }
-                item {
-                    LText("Fono tvarkaraštis", fontWeight = FontWeight.SemiBold)
-                    Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(1L, 6L, 12L, 24L, 168L).forEach { hours ->
-                            AssistChip(
-                                onClick = { intervalHours = hours },
-                                label = { LText(if (hours == 168L) "Kas savaitę" else "Kas $hours val.") },
-                                leadingIcon = { Checkbox(checked = intervalHours == hours, onCheckedChange = null) },
-                            )
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = unmeteredOnly, onCheckedChange = { unmeteredOnly = it })
-                        LText("Tik nematuojamas tinklas (Wi‑Fi / Ethernet)")
-                    }
-                    OutlinedButton(onClick = { onSchedule(intervalHours, unmeteredOnly) }) { LText("Išsaugoti tvarkaraštį") }
-                    LText("Fone vienu paleidimu leidžiama iki 10 000 veiksmų ir 1 GB; konfliktai bei trynimai nevykdomi tyliai.", style = MaterialTheme.typography.labelSmall)
-                }
-                if (state.running) item { CircularProgressIndicator() }
-                state.error?.let {
-                    item {
-                        NetworkError(
-                            RemoteErrorInfo(
-                                title = "Sinchronizavimas nepavyko",
-                                detail = "Sinchronizavimo plano arba operacijos užbaigti nepavyko.",
-                                suggestion = "Patikrinkite abi vietas, ryšį ir bandykite parengti planą dar kartą.",
-                                diagnosticCode = "SYNC-FAILED",
-                            ),
-                        )
-                    }
-                }
-                state.preview?.let { preview ->
-                    item {
-                        LText(
-                            "Planas: ${preview.actions.count { it.type != SyncActionType.SKIP }} veiksmų · ${FileSystemRules.humanBytes(preview.totalTransferBytes)} · konfliktų $conflicts",
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                    items(preview.actions.filter { it.type != SyncActionType.SKIP }.take(100)) { action ->
-                        val actionLabel = uiText(syncActionLabel(action.type))
-                        val reason = uiText(action.reason)
-                        Text("$actionLabel: ${action.relativePath}${action.targetRelativePath?.let { " → $it" }.orEmpty()} — $reason", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            if (state.preview == null) {
-                Button(onClick = onPreview, enabled = !state.running) { LText("Peržiūrėti planą") }
-            } else {
-                Button(onClick = onExecute, enabled = conflicts == 0 && !state.running) { LText("Vykdyti planą") }
-            }
-        },
-        dismissButton = {
-            Row {
-                if (state.preview != null) TextButton(onClick = onPreview) { LText("Atnaujinti") }
-                TextButton(onClick = onDismiss) { LText("Uždaryti") }
-            }
-        },
-    )
-}
-
-private fun syncActionLabel(type: SyncActionType): String = when (type) {
-    SyncActionType.CREATE_LOCAL_DIRECTORY -> "Kurti vietinį aplanką"
-    SyncActionType.CREATE_REMOTE_DIRECTORY -> "Kurti nuotolinį aplanką"
-    SyncActionType.UPLOAD -> "Įkelti"
-    SyncActionType.DOWNLOAD -> "Atsisiųsti"
-    SyncActionType.CONFLICT -> "Konfliktas"
-    SyncActionType.SKIP -> "Praleisti"
-}
-
-private fun syncModeLabel(mode: SyncMode): String = when (mode) {
-    SyncMode.LOCAL_TO_REMOTE -> "Vietinis → serveris"
-    SyncMode.REMOTE_TO_LOCAL -> "Serveris → vietinis"
-    SyncMode.TWO_WAY -> "Abiem kryptimis"
-}
-
-private fun syncPolicyLabel(policy: SyncConflictPolicy): String = when (policy) {
-    SyncConflictPolicy.REPORT_ONLY -> "Tik pranešti"
-    SyncConflictPolicy.NEWEST_WINS -> "Naujesnis laimi"
-    SyncConflictPolicy.LOCAL_WINS -> "Vietinis laimi"
-    SyncConflictPolicy.REMOTE_WINS -> "Nuotolinis laimi"
-    SyncConflictPolicy.KEEP_BOTH -> "Palikti abi versijas"
-}
 
 @Composable
 internal fun NetworkProfileDialog(

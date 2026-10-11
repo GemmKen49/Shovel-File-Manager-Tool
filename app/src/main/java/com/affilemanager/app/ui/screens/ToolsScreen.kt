@@ -114,7 +114,6 @@ fun ToolsScreen(
     val trash by viewModel.trashItems.collectAsStateWithLifecycle()
     val safLocations by viewModel.safLocations.collectAsStateWithLifecycle()
     val appLockEnabled by viewModel.appLockEnabled.collectAsStateWithLifecycle()
-    val syncSchedules by viewModel.syncSchedules.collectAsStateWithLifecycle()
     val appearanceSettings by viewModel.appearanceSettings.collectAsStateWithLifecycle()
     val featureVisibility by viewModel.featureVisibility.collectAsStateWithLifecycle()
     var expandedSections by rememberSaveable { mutableStateOf(emptyList<String>()) }
@@ -327,35 +326,6 @@ fun ToolsScreen(
         }
 
         }
-        item { SettingsSectionHeader("Fono procesai", "background", "background" in expandedSections) { toggleSection("background") } }
-        if ("background" in expandedSections) {
-        item { SectionHeader("Fono sinchronizavimas", syncSchedules.size.toString()) }
-        if (syncSchedules.isEmpty()) {
-            item { InfoCard("Tvarkaraščių nėra", "Prisijunkite skiltyje „Ryšiai“, atidarykite sinchronizavimą ir pasirinkite intervalą.", Icons.Rounded.Sync) }
-        } else {
-            items(syncSchedules, key = { it.id }) { schedule ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Sync, contentDescription = null)
-                        Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                            Text(schedule.profileName, fontWeight = FontWeight.SemiBold)
-                            LText("${schedule.localRoot} ↔ ${schedule.remoteRoot}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            LText(
-                                "Kas ${schedule.intervalHours} val. · ${if (schedule.unmeteredOnly) "tik Wi‑Fi/Ethernet" else "bet koks tinklas"}",
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                            schedule.lastStatus?.let { LText(it, style = MaterialTheme.typography.labelSmall) }
-                        }
-                        IconButton(onClick = { viewModel.removeSyncSchedule(schedule.id) }) {
-                            Icon(Icons.Rounded.Delete, contentDescription = uiText("Atšaukti tvarkaraštį"))
-                        }
-                    }
-                }
-            }
-        }
-
-        }
-
         item { SettingsSectionHeader("Privatumas", "privacy", "privacy" in expandedSections) { toggleSection("privacy") } }
         if ("privacy" in expandedSections) {
         item { SectionHeader("Programos užraktas", if (appLockEnabled) "Įjungtas" else "Išjungtas") }
