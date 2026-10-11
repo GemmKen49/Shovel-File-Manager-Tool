@@ -25,10 +25,18 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.3.13750724" >/dev/null
           bash scripts/build-cloudflared-android.sh
 
-      - name: Build release APK
-        run: ./gradlew :app:assembleRelease -PafTargetAbi=arm64-v8a --no-daemon
+      - name: Restore signing key
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.AF_RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/my-release.jks"
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-apk
-          path: app/build/outputs/apk/release/*.apk
+      - name: Build release APK
+        env:
+          AF_KEYSTORE_PATH: ${{ runner.temp }}/my-release.jks
+          AF_KEYSTORE_PASSWORD: ${{ secrets.AF_KEYSTORE_PASSWORD }}
+          AF_KEY_ALIAS: ${{ secrets.AF_KEY_ALIAS }}
+          AF_KEY_PASSWORD: ${{ secrets.AF_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease -PafTargetAbi=arm64-v8a --no-daemon
