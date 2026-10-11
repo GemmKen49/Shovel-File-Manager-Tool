@@ -43,7 +43,6 @@ import com.affilemanager.app.transfer.NearbySourcePreparer
 import com.affilemanager.app.transfer.QuickTunnelController
 import com.affilemanager.app.sync.SyncEngine
 import com.affilemanager.app.sync.SyncScheduleRepository
-import com.affilemanager.app.update.AppUpdateManager
 import com.affilemanager.app.workflow.AfAutomationRepository
 import com.affilemanager.app.workflow.AfAutomationScheduler
 import com.affilemanager.app.workflow.AfExecutionRepository
@@ -76,7 +75,6 @@ class AFFileManagerApplication : Application() {
             graph.workflows.restore()
             graph.trashRetentionScheduler.synchronize(graph.trashRetentionSettings.load())
         }
-        graph.updates.check(automatic = true)
     }
 }
 
@@ -131,7 +129,6 @@ class AppGraph(application: Application) {
     val fileVault by lazy { FileVaultEngine(sharedStorageIndex::changed) }
     val sync by lazy { SyncEngine(sharedStorageIndex::changed) }
     val syncSchedules = SyncScheduleRepository(application)
-    val updates = AppUpdateManager(application)
     val workflows: AfWorkflowCoordinator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         AfWorkflowCoordinator(
             scope = applicationScope,
