@@ -1793,7 +1793,7 @@ private fun FileRow(
             modifier = Modifier.size(iconSize),
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (entry.isDirectory) FontWeight.SemiBold else FontWeight.Normal)
+            Text(entry.name, maxLines = 3, overflow = TextOverflow.Ellipsis, fontWeight = if (entry.isDirectory) FontWeight.SemiBold else FontWeight.Normal)
             LText(metadata, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (largestSizeBytes != null && entry.metadataComplete) {
                 FileSizeBar(
