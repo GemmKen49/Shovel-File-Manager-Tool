@@ -50,12 +50,6 @@ android {
         }
     }
 
-    externalNativeBuild {
-        ndkBuild {
-            path = file("src/main/cpp/Android.mk")
-        }
-    }
-
     signingConfigs {
         if (hasReleaseSigning) {
             create("release") {
@@ -120,7 +114,6 @@ android {
 
     packaging {
         jniLibs.useLegacyPackaging = true
-        jniLibs.keepDebugSymbols += "**/libcloudflared.so"
         resources.excludes += setOf(
             "META-INF/DEPENDENCIES",
             "META-INF/LICENSE*",
@@ -170,7 +163,6 @@ dependencies {
     implementation("androidx.exifinterface:exifinterface:1.4.2")
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
-    implementation("org.connectbot:termlib:0.1.0")
 
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
@@ -182,7 +174,6 @@ dependencies {
     implementation("com.hierynomus:smbj:0.14.0")
     implementation("commons-net:commons-net:3.12.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.zxing:core:3.5.4")
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.10")
     implementation("net.lingala.zip4j:zip4j:2.11.6")
