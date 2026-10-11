@@ -122,8 +122,6 @@ import com.affilemanager.app.terminal.SshTerminalBackend
 import com.affilemanager.app.terminal.TerminalPasteRules
 import com.affilemanager.app.terminal.TerminalPasteResult
 import com.affilemanager.app.transfer.PreparedNearbyTransfer
-import com.affilemanager.app.update.AppRelease
-import com.affilemanager.app.update.AppUpdateState
 import com.affilemanager.app.workflow.AfAutomationRule
 import com.affilemanager.app.workflow.AfAutomationSchedule
 import com.affilemanager.app.workflow.AfDestinationRef
@@ -622,7 +620,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _section = MutableStateFlow(AppSection.FILES)
     val section: StateFlow<AppSection> = _section.asStateFlow()
 
-    val updateState: StateFlow<AppUpdateState> = graph.updates.state
     val appearanceSettings = graph.appearance.settings
 
     private val _filesHomeVisible = MutableStateFlow(true)
@@ -6642,12 +6639,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .onFailure { message(it.message ?: "Tvarkaraščio pašalinti nepavyko", true) }
         }
     }
-
-    fun checkForUpdates() = graph.updates.check(automatic = false)
-
-    fun downloadUpdate(release: AppRelease) = graph.updates.download(release)
-
-    fun installUpdate() = graph.updates.installReady()
 
     fun disconnectNetwork() {
         viewModelScope.launch { disconnectRemote() }

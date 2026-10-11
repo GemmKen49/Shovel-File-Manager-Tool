@@ -106,7 +106,6 @@ import com.affilemanager.app.ui.screens.SharingScreen
 import com.affilemanager.app.ui.screens.TrashBrowserDialog
 import com.affilemanager.app.ui.screens.SafBrowserDialog
 import com.affilemanager.app.ui.terminal.TerminalOverlay
-import com.affilemanager.app.update.AppUpdateState
 import java.io.File
 
 private data class SectionDestination(
@@ -169,12 +168,10 @@ fun AFFileManagerApp(
     val advancedBrowser by viewModel.advancedBrowser.collectAsStateWithLifecycle()
     val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val appLockEnabled by viewModel.appLockEnabled.collectAsStateWithLifecycle()
-    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val safBrowser by viewModel.safBrowser.collectAsStateWithLifecycle()
     var hasAllFilesAccess by remember { mutableStateOf(hasFullFileAccess(context)) }
     var unlocked by remember(appLockEnabled) { mutableStateOf(!appLockEnabled) }
     var appStopped by remember { mutableStateOf(false) }
-    var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
     var hiddenOperationIds by remember { mutableStateOf(emptySet<String>()) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -521,40 +518,6 @@ fun AFFileManagerApp(
                 if (Build.VERSION.SDK_INT >= 33 &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
                 ) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            },
-        )
-    }
-
-    val offeredRelease = when (val update = updateState) {
-        is AppUpdateState.Available -> update.release
-        is AppUpdateState.Ready -> update.release
-        else -> null
-    }
-    if (offeredRelease != null && offeredRelease.version != dismissedUpdateVersion) {
-        val ready = updateState as? AppUpdateState.Ready
-        AlertDialog(
-            onDismissRequest = { dismissedUpdateVersion = offeredRelease.version },
-            title = { LText(if (ready == null) "Nauja AF File Manager versija" else "Atnaujinimas paruoštas") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LText("Versija ${offeredRelease.version}")
-                    LText(
-                        when {
-                            ready?.installPermissionRequired == true -> "Android nustatymuose leiskite diegti iš šios programos, tada grįžkite ir dar kartą pasirinkite „Diegti“."
-                            ready != null -> "APK SHA-256 ir pasirašymo sertifikatas patikrinti. Diegimą patvirtinsite Android sistemos lange."
-                            else -> offeredRelease.notes.ifBlank { "Paskelbtas naujas stabilus leidimas." }
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (ready == null) viewModel.downloadUpdate(offeredRelease) else viewModel.installUpdate()
-                }) { LText(if (ready == null) "Atsisiųsti" else "Diegti") }
-            },
-            dismissButton = {
-                TextButton(onClick = { dismissedUpdateVersion = offeredRelease.version }) { LText("Vėliau") }
             },
         )
     }
