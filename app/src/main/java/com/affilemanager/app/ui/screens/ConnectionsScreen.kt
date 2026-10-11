@@ -61,7 +61,6 @@ import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.Terminal
 import com.affilemanager.app.ui.theme.AfAlertDialog as AlertDialog
 import androidx.compose.material3.AssistChip
 import com.affilemanager.app.ui.theme.AfButton as Button
@@ -265,7 +264,6 @@ fun ConnectionsScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                     onDisplaySettings = { showDisplaySettings = true },
                     onSort = viewModel::setRemoteSort,
                     onDisconnect = viewModel::disconnectNetwork,
-                    onOpenTerminal = viewModel::openRemoteTerminal,
                     onOpenOperations = { viewModel.setSection(com.affilemanager.app.ui.AppSection.TOOLS) },
                     onSelectPaths = viewModel::selectRemotePaths,
                     onSetSelection = viewModel::setRemoteSelection,
@@ -534,7 +532,6 @@ internal fun RemoteBrowser(
     onDisplaySettings: () -> Unit = {},
     onSort: (SortMode) -> Unit,
     onDisconnect: () -> Unit,
-    onOpenTerminal: () -> Unit = {},
     onOpenOperations: () -> Unit = {},
     onInfo: (RemoteEntry) -> Unit = {},
     onSelectPaths: (List<String>) -> Unit = { onSelectAll() },
@@ -604,7 +601,6 @@ internal fun RemoteBrowser(
                 onDisplaySettings = onDisplaySettings,
                 onSort = onSort,
                 onDisconnect = onDisconnect,
-                onOpenTerminal = onOpenTerminal,
                 onOpenOperations = onOpenOperations,
                 searchActive = searchVisible,
                 onToggleSearch = {
@@ -750,7 +746,6 @@ private fun RemoteFolderToolbar(
     onDisplaySettings: () -> Unit,
     onSort: (SortMode) -> Unit,
     onDisconnect: () -> Unit,
-    onOpenTerminal: () -> Unit,
     onOpenOperations: () -> Unit,
     searchActive: Boolean,
     onToggleSearch: () -> Unit,
@@ -787,7 +782,6 @@ private fun RemoteFolderToolbar(
             onSort = onSort,
             onRefresh = onRefresh,
             onDisconnect = onDisconnect,
-            onOpenTerminal = onOpenTerminal,
             onOpenOperations = onOpenOperations,
             filterActive = filterActive,
             onOpenFilter = onOpenFilter,
@@ -810,7 +804,6 @@ private fun RemoteFolderActionsMenu(
     onSort: (SortMode) -> Unit,
     onRefresh: () -> Unit,
     onDisconnect: () -> Unit,
-    onOpenTerminal: () -> Unit,
     onOpenOperations: () -> Unit,
     filterActive: Boolean,
     onOpenFilter: () -> Unit,
@@ -871,13 +864,6 @@ private fun RemoteFolderActionsMenu(
                 onOpenFilter = onOpenFilter,
             )
             HorizontalDivider()
-            if (featureVisible(OptionalFeature.TERMINAL)) DropdownMenuItem(
-                text = { LText("Atidaryti serverio terminalą") },
-                leadingIcon = { Icon(Icons.Rounded.Terminal, contentDescription = null) },
-                enabled = !state.loading,
-                modifier = Modifier.testTag("remote_open_terminal"),
-                onClick = { expanded = false; onOpenTerminal() },
-            )
             DropdownMenuItem(
                 text = { LText("Atnaujinti") },
                 leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },

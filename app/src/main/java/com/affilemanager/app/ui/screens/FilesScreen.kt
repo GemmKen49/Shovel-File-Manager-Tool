@@ -81,7 +81,6 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.Apps
@@ -1242,11 +1241,6 @@ private fun CompactPanelActions(
                 onOpenFilter = onOpenFilter,
             )
             HorizontalDivider()
-            if (featureVisible(OptionalFeature.TERMINAL)) DropdownMenuItem(
-                text = { LText("Atidaryti terminalą šiame aplanke") },
-                leadingIcon = { Icon(Icons.Rounded.Terminal, contentDescription = null) },
-                onClick = { viewModel.openLocalTerminal(panelId); onExpandedChange(false) },
-            )
             DropdownMenuItem(
                 text = { LText("Atnaujinti") },
                 leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
