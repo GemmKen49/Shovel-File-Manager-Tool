@@ -25,10 +25,10 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.3.13750724" >/dev/null
           bash scripts/build-cloudflared-android.sh
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug -PafTargetAbi=arm64-v8a --no-daemon
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease -PafTargetAbi=arm64-v8a --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: release-apk
+          path: app/build/outputs/apk/release/*.apk
