@@ -44,20 +44,14 @@ jobs:
                 perl -CSD -pi -e "$SUBST" "$f"
               done
 
-          # 2. Workflow: rename env var names and the Gradle property, keep the repository secret names untouched.
-          wf=.github/workflows/debug-apk.yml
-          if [ -f "$wf" ]; then
-            perl -CSD -pi -e 's{^(\s*)AF_([A-Z_]+):}{$1SHOVEL_$2:}; s{-Paf(?=[A-Z])}{-Pshovel}g' "$wf"
-          fi
-
-          # 3. File names.
+          # 2. File names.
           find . -type f -not -path './.git/*' -not -path './.github/*' \( -name 'Af*' -o -name 'AFFileManager*' \) | while read -r p; do
             dir="$(dirname "$p")"; base="$(basename "$p")"
             new="$(printf '%s' "$base" | perl -CSD -pe "$SUBST")"
             if [ "$new" != "$base" ]; then mv "$p" "$dir/$new"; fi
           done
 
-          # 4. Fail loudly if anything is left (the secrets.AF_* names are the one exception).
+          # 3. Fail loudly if anything is left.
           left="$(grep -rInP '(?<![A-Za-z0-9])(AF|Af|af)(?![A-Za-z0-9])|(?<![A-Za-z0-9])AF(?=[A-Z][a-z])|(?<![A-Za-z0-9])Af(?=[A-Z])|(?<=[a-z0-9])Af(?=[A-Z])|(?<![A-Za-z0-9])af(?=[A-Z])|AFFile|af-file-manager' . \
             --exclude-dir=.git --exclude-dir=.github --exclude=LICENSE --exclude=README.md || true)"
           if [ -n "$left" ]; then echo "$left" | head -30; echo "AF mentions remain" >&2; exit 1; fi

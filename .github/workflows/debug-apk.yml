@@ -28,11 +28,11 @@ jobs:
 
       - name: Build release APK
         env:
-          AF_KEYSTORE_PATH: ${{ runner.temp }}/my-release.jks
-          AF_KEYSTORE_PASSWORD: ${{ secrets.AF_KEYSTORE_PASSWORD }}
-          AF_KEY_ALIAS: ${{ secrets.AF_KEY_ALIAS }}
-          AF_KEY_PASSWORD: ${{ secrets.AF_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease -PafTargetAbi=arm64-v8a --no-daemon
+          SHOVEL_KEYSTORE_PATH: ${{ runner.temp }}/my-release.jks
+          SHOVEL_KEYSTORE_PASSWORD: ${{ secrets.AF_KEYSTORE_PASSWORD }}
+          SHOVEL_KEY_ALIAS: ${{ secrets.AF_KEY_ALIAS }}
+          SHOVEL_KEY_PASSWORD: ${{ secrets.AF_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease -PshovelTargetAbi=arm64-v8a --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
