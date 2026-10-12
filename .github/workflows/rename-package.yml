@@ -37,7 +37,7 @@ jobs:
           done
 
           # 2. Rewrite every text file that mentions the old package.
-          grep -rIl 'affilemanager' . --exclude-dir=.git | while read -r f; do
+          grep -rIl 'affilemanager' . --exclude-dir=.git --exclude-dir=.github | while read -r f; do
             sed -i \
               -e 's#com\.affilemanager\.app#com.shovel.filemanager#g' \
               -e 's#com\.affilemanager\.#com.shovel.filemanager.#g' \
@@ -48,7 +48,7 @@ jobs:
           done
 
           # 3. Fail loudly if anything is left.
-          if grep -rIn -E 'com[./]affilemanager' . --exclude-dir=.git; then
+          if grep -rIn -E 'com[./]affilemanager' . --exclude-dir=.git --exclude-dir=.github; then
             echo "Old package references remain" >&2
             exit 1
           fi
