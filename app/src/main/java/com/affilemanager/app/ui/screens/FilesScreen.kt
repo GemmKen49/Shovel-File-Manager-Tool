@@ -266,7 +266,6 @@ fun FilesScreen(
     val activePanel by viewModel.activePanel.collectAsStateWithLifecycle()
     val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val remoteClipboard by viewModel.remoteClipboard.collectAsStateWithLifecycle()
-    val afClipboard by viewModel.afClipboard.collectAsStateWithLifecycle()
     val renameUndo by viewModel.renameUndo.collectAsStateWithLifecycle()
     val tagSnapshot by viewModel.tagSnapshot.collectAsStateWithLifecycle()
     val panelComparison by viewModel.panelComparison.collectAsStateWithLifecycle()
@@ -289,7 +288,7 @@ fun FilesScreen(
     var showHomeCustomization by remember { mutableStateOf(false) }
     var infoTargets by remember { mutableStateOf<List<FileEntry>?>(null) }
     var recentTrashEntries by remember { mutableStateOf<List<FileEntry>?>(null) }
-    val clipboardAvailable = clipboard != null || remoteClipboard != null || afClipboard != null
+    val clipboardAvailable = clipboard != null || remoteClipboard != null
 
     LaunchedEffect(clipboardAvailable) {
         if (!clipboardAvailable) pastePanel = null
@@ -444,7 +443,6 @@ fun FilesScreen(
                     onOpenTrash = viewModel::openTrashFromHome,
                     onOpenFavoritesPage = { viewModel.openHomeToolPage(HomeToolPage.FAVORITES) },
                     onOpenTagsPage = { viewModel.openHomeToolPage(HomeToolPage.TAGS) },
-                    onOpenPlans = { viewModel.openAfWorkflowCenter() },
                     onOpenCleanup = viewModel::openCleanupFromHome,
                     onRefreshRecent = viewModel::refreshRecentFiles,
                     onToggleLayout = viewModel::toggleHomeDisplayLayout,
@@ -665,19 +663,6 @@ fun FilesScreen(
                     viewModel.paste(panel, policy, verification, failurePolicy)
                     pastePanel = null
                 },
-            )
-        } else if (afClipboard != null) {
-            AlertDialog(
-                onDismissRequest = { pastePanel = null },
-                title = { LText("Mišrus kopijavimo rinkinys") },
-                text = { LText("Rinkinyje yra šaltinių iš kelių vietų. Atverkite „Įklijuoti į kelias vietas“, kad prieš vykdymą matytumėte visą planą.") },
-                confirmButton = {
-                    Button(onClick = {
-                        viewModel.startAfPlanFromClipboard(destinationPanel = panel)
-                        pastePanel = null
-                    }) { LText("Atverti planą") }
-                },
-                dismissButton = { TextButton(onClick = { pastePanel = null }) { LText("Atšaukti") } },
             )
         }
     }
@@ -1168,15 +1153,6 @@ private fun CompactPanelActions(
                     text = { LText("Įklijuoti") },
                     leadingIcon = { Icon(Icons.Rounded.ContentPaste, contentDescription = null) },
                     onClick = { onExpandedChange(false); onPaste() },
-                )
-                if (featureVisible(OptionalFeature.PLANS)) DropdownMenuItem(
-                    text = { LText("Įklijuoti į kelias vietas") },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
-                    onClick = {
-                        onExpandedChange(false)
-                        viewModel.startAfPlanFromClipboard(destinationPanel = panelId)
-                    },
-                    modifier = Modifier.testTag("paste_to_many_$panelId"),
                 )
             }
             if (batchRenameUndoAvailable) {

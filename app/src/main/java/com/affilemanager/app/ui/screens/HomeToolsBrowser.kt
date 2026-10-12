@@ -569,7 +569,6 @@ internal fun FilesHome(
     onOpenTrash: () -> Unit,
     onOpenFavoritesPage: () -> Unit,
     onOpenTagsPage: () -> Unit,
-    onOpenPlans: () -> Unit,
     onOpenCleanup: () -> Unit,
     onRefreshRecent: () -> Unit,
     onToggleLayout: (HomeDisplayArea) -> Unit,
@@ -685,7 +684,6 @@ internal fun FilesHome(
                         customization = customization,
                         shortcuts = toolShortcuts,
                         onOpenTrash = onOpenTrash,
-                        onOpenPlans = onOpenPlans,
                         onOpenFavorites = onOpenFavoritesPage,
                         onOpenTags = onOpenTagsPage,
                         // Always open the provider list: even with one saved location the user
@@ -1328,7 +1326,6 @@ private fun HomeToolsSection(
     customization: HomeCustomization,
     shortcuts: List<QuickLocation>,
     onOpenTrash: () -> Unit,
-    onOpenPlans: () -> Unit,
     onOpenFavorites: () -> Unit,
     onOpenTags: () -> Unit,
     onOpenCloud: () -> Unit,
@@ -1338,7 +1335,6 @@ private fun HomeToolsSection(
     LText("Įrankiai ir saugumas", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
     val builtInTools = listOf(
         HomeToolLocation("trash", "Šiukšlinė", itemCountLabel(trashCount), Icons.Rounded.Delete, onOpenTrash),
-        HomeToolLocation("plans", "AF planai", "AF planai ir operacijų istorija", Icons.AutoMirrored.Rounded.PlaylistAdd, onOpenPlans),
         HomeToolLocation("favorites", "Mėgstami", itemCountLabel(favoritesCount), Icons.Rounded.Star, onOpenFavorites),
         HomeToolLocation("tags", "Žymos", itemCountLabel(tagsCount), Icons.AutoMirrored.Rounded.Label, onOpenTags),
         HomeToolLocation("cloud", "Debesija", itemCountLabel(cloudCount), Icons.Rounded.Cloud, onOpenCloud),
@@ -1347,7 +1343,6 @@ private fun HomeToolsSection(
     val visibility = com.affilemanager.app.ui.components.LocalFeatureVisibility.current
     val tools = HomeCustomizationRules.orderedToolIds(customization).filter { id ->
         val feature = when (id) {
-            "plans" -> OptionalFeature.PLANS
             "favorites" -> OptionalFeature.FAVORITES
             "tags" -> OptionalFeature.TAGS
             "cloud" -> OptionalFeature.CLOUD

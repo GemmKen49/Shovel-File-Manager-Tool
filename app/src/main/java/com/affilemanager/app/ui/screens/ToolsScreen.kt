@@ -121,7 +121,6 @@ fun ToolsScreen(
         expandedSections = if (id in expandedSections) expandedSections - id else expandedSections + id
     }
     val advancedAccess by viewModel.advancedAccess.collectAsStateWithLifecycle()
-    val afClipboard by viewModel.afClipboard.collectAsStateWithLifecycle()
     val active = viewModel.activePanelState()
     val selectedEntry = active.entries.singleOrNull { it.absolutePath in active.selectedPaths }
     val context = LocalContext.current
@@ -133,8 +132,6 @@ fun ToolsScreen(
         languageOptions.firstOrNull { it.tag == interfaceLanguage }
             ?: languageOptions.first { it.tag == AppLanguageManager.ENGLISH }
     }
-    var encryptTarget by remember { mutableStateOf(selectedEntry) }
-    var showEncrypt by remember { mutableStateOf(false) }
     var showLanguagePicker by remember { mutableStateOf(false) }
     var editSaf by remember { mutableStateOf<com.affilemanager.app.data.SafLocation?>(null) }
     var removeSaf by remember { mutableStateOf<com.affilemanager.app.data.SafLocation?>(null) }
@@ -211,36 +208,6 @@ fun ToolsScreen(
 
         item { SettingsSectionHeader("Operacijų centras", "actions", "actions" in expandedSections) { toggleSection("actions") } }
         if ("actions" in expandedSections) {
-        if (featureVisibility.isVisible(OptionalFeature.PLANS)) {
-        item {
-            Card(
-                onClick = { viewModel.openAfWorkflowCenter() },
-                modifier = Modifier.fillMaxWidth().testTag("open_af_plans"),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Rounded.AutoAwesomeMotion,
-                        contentDescription = null,
-                        modifier = Modifier.size(38.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        LText("AF planai ir operacijų istorija", fontWeight = FontWeight.Bold)
-                        LText(
-                            "Kopijuokite į kelias vietas, pirmiausia patikrinkite konfliktus, eksportuokite kvitą ir saugiai atšaukite.",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        afClipboard?.let { LText("Kopijavimo rinkinyje: ${it.sources.size}", style = MaterialTheme.typography.labelSmall) }
-                    }
-                }
-            }
-        }
-
-        }
         item { SectionHeader("Operacijų centras", operations.size.toString()) }
         if (operations.isEmpty()) {
             item { InfoCard("Nėra operacijų", "Kopijavimas, archyvavimas ir tinklo perdavimai bus rodomi čia.", Icons.Rounded.CheckCircle) }
@@ -340,27 +307,6 @@ fun ToolsScreen(
                     Switch(checked = appLockEnabled, onCheckedChange = onToggleAppLock)
                 }
             }
-        }
-        if (featureVisibility.isVisible(OptionalFeature.ENCRYPTION)) {
-        item { SectionHeader("Šifruota saugykla", if (selectedEntry == null) "Pasirinkite failą" else "1 failas") }
-        item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Lock, contentDescription = null, modifier = Modifier.size(34.dp))
-                        Column(modifier = Modifier.padding(start = 12.dp)) {
-                            LText("AES-256-GCM failų šifravimas", fontWeight = FontWeight.SemiBold)
-                            LText("Slaptafrazė neišsaugoma. Originalas automatiškai netrinamas.", style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                    Button(
-                        onClick = { encryptTarget = selectedEntry; showEncrypt = true },
-                        enabled = selectedEntry?.isDirectory == false,
-                    ) { LText("Šifruoti pasirinktą failą") }
-                }
-            }
-        }
-
         }
         if (featureVisibility.isVisible(OptionalFeature.ADVANCED_ACCESS) || advancedAccess.connected) {
         item { SectionHeader("Pažengusio naudotojo režimas", "Neprivalomas") }
@@ -490,17 +436,6 @@ fun ToolsScreen(
         )
     }
 
-    if (showEncrypt && encryptTarget != null) {
-        PasswordDialog(
-            title = "Šifruoti ${encryptTarget?.name}",
-            explanation = "Mažiausiai 8 ženklai. Pametus slaptafrazę failo atkurti nebus galima.",
-            onDismiss = { showEncrypt = false },
-            onConfirm = { password ->
-                viewModel.encryptFile(requireNotNull(encryptTarget), password)
-                showEncrypt = false
-            },
-        )
-    }
 }
 
 @Composable
