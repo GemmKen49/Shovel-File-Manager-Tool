@@ -9,13 +9,11 @@ enum class HomeSection {
 
 /**
  * Display settings are deliberately scoped to the surface the user is looking at. Changing the
- * storage cards must not silently change Quick locations, Favorites, or Tags.
+ * storage cards must not silently change Quick locations.
  */
 enum class HomeDisplayArea {
     STORAGE,
     QUICK_LOCATIONS,
-    FAVORITES,
-    TAGS,
 }
 
 data class HomeShortcut(
@@ -63,7 +61,7 @@ object HomeCustomizationRules {
     const val MAX_PATH_LENGTH = 4_096
     const val MAX_ID_LENGTH = 120
     const val ROOT_STORAGE_ID = "af.root"
-    val DEFAULT_TOOL_IDS = listOf("trash", "favorites", "tags", "cloud", "bookmarks")
+    val DEFAULT_TOOL_IDS = listOf("trash", "cloud", "bookmarks")
     val SHORTCUT_SECTIONS = setOf(HomeSection.STORAGE, HomeSection.QUICK_LOCATIONS, HomeSection.TOOLS)
 
     fun normalize(

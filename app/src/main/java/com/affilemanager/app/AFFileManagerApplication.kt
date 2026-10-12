@@ -16,7 +16,6 @@ import com.affilemanager.app.data.UiPreferenceRepository
 import com.affilemanager.app.data.WorkspaceSessionRepository
 import com.affilemanager.app.cleanup.DeviceCleanupRepository
 import com.affilemanager.app.cleanup.PrivilegedAppProcessRepository
-import com.affilemanager.app.data.FileTagRepository
 import com.affilemanager.app.data.FileCategoryRepository
 import com.affilemanager.app.data.FileSelectionInfoScanner
 import com.affilemanager.app.editing.EditSessionStore
@@ -38,7 +37,6 @@ import com.affilemanager.app.search.SimilarImageEngine
 import com.affilemanager.app.security.CredentialVault
 import com.affilemanager.app.security.AppLockRepository
 import com.affilemanager.app.sharing.LocalShareManager
-import com.affilemanager.app.ui.localization.UiTranslationCatalog
 import com.affilemanager.app.ui.theme.AppearanceRepository
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import kotlinx.coroutines.CoroutineScope
@@ -52,7 +50,6 @@ class AFFileManagerApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        UiTranslationCatalog.initialize(this)
         PDFBoxResourceLoader.init(this)
         graph = AppGraph(this)
         graph.applicationScope.launch {
@@ -80,7 +77,6 @@ class AppGraph(application: Application) {
     val uiPreferences = UiPreferenceRepository(application)
     val appearance = AppearanceRepository(application)
     val workspaceSession = WorkspaceSessionRepository(application)
-    val fileTags = FileTagRepository.forApp(application)
     val editSessions by lazy { EditSessionStore(application.cacheDir) }
     val pdfSignatures by lazy { PdfVisualSignatureEngine(application.cacheDir) }
     val signatureLibrary by lazy {

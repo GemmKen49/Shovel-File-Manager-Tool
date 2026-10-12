@@ -1,6 +1,6 @@
 package com.affilemanager.app.ui.localization
 
-/** English is the canonical public UI; Lithuanian source copy is retained as the second locale. */
+/** The app is English only. UI copy in the source is Lithuanian and is mapped to English here. */
 object UiTranslator {
     private val english = mapOf(
         "Matomos funkcijos" to "Visible features",
@@ -435,14 +435,6 @@ object UiTranslator {
         "Bendrinti" to "Share",
         "Daugiau" to "More",
         "Kalba" to "Language",
-        "Programos sąsajos kalba" to "App interface language",
-        "Visi 59 kalbų paketai įtraukti į programą ir veikia neprisijungus." to "All 59 language packs are included in the app and work offline.",
-        "Anglų ir lietuvių vertimai peržiūrėti. Kitų kalbų pataisymai laukiami." to "English and Lithuanian translations are reviewed. Corrections for other languages are welcome.",
-        "Keisti kalbą" to "Change language",
-        "Pasirinkti kalbą" to "Choose language",
-        "Kalbos paieška" to "Search languages",
-        "Kalbų nerasta" to "No languages found",
-        "59 kalbos" to "59 languages",
         "Bendrinti su kompiuteriu" to "Share with a computer",
         "Laikinai atverkite pasirinktą aplanką tame pačiame privačiame Wi-Fi arba Ethernet tinkle." to "Temporarily share the selected folder on the same private Wi-Fi or Ethernet network.",
         "Bendrinamas aplankas" to "Shared folder",
@@ -1696,39 +1688,18 @@ object UiTranslator {
         "Telefonas ↔ telefonas" to "Phone-to-phone transfer",
     )
 
-    /**
-     * Some Android/library surfaces originate in English while most Compose copy is authored in
-     * Lithuanian. Keep one reverse index so either canonical form resolves to Lithuanian without
-     * a linear scan on every recomposition.
-     */
-    private val lithuanianByEnglish: Map<String, String> = buildMap {
-        english.forEach { (lithuanian, canonicalEnglish) -> putIfAbsent(canonicalEnglish, lithuanian) }
-        RuntimeMessageTranslations.english.forEach { (lithuanian, canonicalEnglish) ->
-            putIfAbsent(canonicalEnglish, lithuanian)
-        }
-        RuntimeMessageTranslations.lithuanian.forEach { (canonicalEnglish, lithuanian) ->
-            putIfAbsent(canonicalEnglish, lithuanian)
-        }
-    }
-
-    private val runtimeEnglishByLithuanian: Map<String, String> = buildMap {
-        RuntimeMessageTranslations.lithuanian.forEach { (canonicalEnglish, lithuanian) ->
-            putIfAbsent(lithuanian, canonicalEnglish)
-        }
-    }
-
     // These wrappers contain another interface message, not a filename/path placeholder.
     private val messageWrappers = listOf(
-        Triple("Įspėjimas: ", "Warning: {0}", "Įspėjimas: {0}"),
-        Triple("Warning: ", "Warning: {0}", "Įspėjimas: {0}"),
-        Triple("Klaida: ", "Error: {0}", "Klaida: {0}"),
-        Triple("Error: ", "Error: {0}", "Klaida: {0}"),
+        "Įspėjimas: " to "Warning: {0}",
+        "Warning: " to "Warning: {0}",
+        "Klaida: " to "Error: {0}",
+        "Error: " to "Error: {0}",
     )
 
-    private fun translateWrappedMessage(text: String, language: String): String? {
+    private fun translateWrappedMessage(text: String): String? {
         var body = text
         var wrapper = messageWrappers.firstOrNull { body.startsWith(it.first) } ?: return null
-        val wrappers = mutableListOf<Triple<String, String, String>>()
+        val wrappers = mutableListOf<Pair<String, String>>()
         // Bound nested exception/warning work. An oversized external chain remains unchanged.
         while (true) {
             if (wrappers.size == 8) return text
@@ -1737,13 +1708,8 @@ object UiTranslator {
             wrapper = messageWrappers.firstOrNull { body.startsWith(it.first) } ?: break
         }
         if (wrappers.isEmpty() || body.isBlank()) return null
-        var result = translate(body, language)
-        wrappers.asReversed().forEach { (_, englishTemplate, lithuanianTemplate) ->
-            val template = when (language) {
-                AppLanguageManager.ENGLISH -> englishTemplate
-                AppLanguageManager.LITHUANIAN -> lithuanianTemplate
-                else -> UiTranslationCatalog.translate(englishTemplate, language)
-            }
+        var result = translate(body)
+        wrappers.asReversed().forEach { (_, template) ->
             result = template.replace("{0}", result)
         }
         return result
@@ -1751,34 +1717,22 @@ object UiTranslator {
 
     private val codedTransferError = Regex("^(?:Serverio klaida|Server error) \\((AF-XFER-[A-Z]+|[0-9]+)\\)$")
 
-    fun translate(text: String, language: String): String {
+    /** Kept so existing call sites keep working; the language argument is ignored. */
+    @Suppress("UNUSED_PARAMETER")
+    fun translate(text: String, language: String): String = translate(text)
+
+    /** Turns the Lithuanian source copy into English. The app only ships English. */
+    fun translate(text: String): String {
         if (text.isBlank()) return text
-        val normalizedLanguage = AppLanguageManager.normalizeLanguageTag(language)
         codedTransferError.matchEntire(text)?.let { match ->
-            return "${translate("Serverio klaida", normalizedLanguage)} (${match.groupValues[1]})"
+            return "Server error (${match.groupValues[1]})"
         }
-        translateWrappedMessage(text, normalizedLanguage)?.let { return it }
-        if (
-            normalizedLanguage != AppLanguageManager.ENGLISH &&
-            normalizedLanguage != AppLanguageManager.LITHUANIAN
-        ) {
-            val canonicalEnglish = translate(text, AppLanguageManager.ENGLISH)
-            return UiTranslationCatalog.translate(canonicalEnglish, normalizedLanguage)
-        }
-        if (normalizedLanguage == AppLanguageManager.LITHUANIAN) {
-            RuntimeMessageTranslations.lithuanian[text]?.let { return it }
-            lithuanianByEnglish[text]?.let { return it }
-            lithuanianPatterns.firstNotNullOfOrNull { (pattern, transform) ->
-                pattern.matchEntire(text)?.let(transform)
-            }?.let { return it }
-            return text
-        }
+        translateWrappedMessage(text)?.let { return it }
         english[text]?.let { return it }
         RuntimeMessageTranslations.english[text]?.let { return it }
-        runtimeEnglishByLithuanian[text]?.let { return it }
 
         if (text.endsWith(" ↑") || text.endsWith(" ↓")) {
-            return translate(text.dropLast(2), language) + text.takeLast(2)
+            return translate(text.dropLast(2)) + text.takeLast(2)
         }
 
         val patterns = listOf(
@@ -1851,7 +1805,7 @@ object UiTranslator {
                 "Sources: ${match.groupValues[1]} · Destinations: ${match.groupValues[2]}"
             },
             Regex("^(.+) · (.+) · šalinti tik patvirtinus visas kopijas$") to { match: MatchResult ->
-                "${translate(match.groupValues[1], language)} · ${translate(match.groupValues[2], language)} · remove only after all copies are verified"
+                "${translate(match.groupValues[1])} · ${translate(match.groupValues[2])} · remove only after all copies are verified"
             },
             Regex("^Šaltiniai \\((\\d+)\\)$") to { match: MatchResult -> "Sources (${match.groupValues[1]})" },
             Regex("^Paskirtys \\((\\d+)\\)$") to { match: MatchResult -> "Destinations (${match.groupValues[1]})" },
@@ -1873,15 +1827,15 @@ object UiTranslator {
             },
             Regex("^Jau vienodi: (\\d+)$") to { match: MatchResult -> "Already identical: ${match.groupValues[1]}" },
             Regex("^Bus praleista: (\\d+)$") to { match: MatchResult -> "Will be skipped: ${match.groupValues[1]}" },
-            Regex("^Įspėjimas: (.+)$") to { match: MatchResult -> "Warning: ${translate(match.groupValues[1], language)}" },
+            Regex("^Įspėjimas: (.+)$") to { match: MatchResult -> "Warning: ${translate(match.groupValues[1])}" },
             Regex("^Įrašai: (\\d+) · Klaidos: (\\d+)$") to { match: MatchResult ->
                 "Entries: ${match.groupValues[1]} · Errors: ${match.groupValues[2]}"
             },
             Regex("^Būsena: (.+) · Patikra: (.+)$") to { match: MatchResult ->
-                "Status: ${translate(match.groupValues[1], language)} · Verification: ${translate(match.groupValues[2], language)}"
+                "Status: ${translate(match.groupValues[1])} · Verification: ${translate(match.groupValues[2])}"
             },
             Regex("^Šaltiniai pašalinti: (Taip|Ne)$") to { match: MatchResult ->
-                "Sources removed: ${translate(match.groupValues[1], language)}"
+                "Sources removed: ${translate(match.groupValues[1])}"
             },
             Regex("^Dar (\\d+) įrašų rasite eksportuotame kvite\\.$") to { match: MatchResult ->
                 "${match.groupValues[1]} more entries are available in the exported receipt."
@@ -1926,7 +1880,7 @@ object UiTranslator {
                 "Unexpected root service UID: ${match.groupValues[1]}"
             },
             Regex("^(Shizuku failų tarnybos paleisti nepavyko|Shizuku leidimo paprašyti nepavyko|Shizuku failų tarnyba neatsakė laiku|Root failų tarnybos paleisti nepavyko|Root leidimo paprašyti nepavyko|Root failų tarnyba neatsakė laiku): (.+)$") to { match: MatchResult ->
-                "${translate(match.groupValues[1], language)}: ${translate(match.groupValues[2], language)}"
+                "${translate(match.groupValues[1])}: ${translate(match.groupValues[2])}"
             },
             Regex("^(\\d+) s ryšio laukimo riba$") to { match: MatchResult -> "${match.groupValues[1]} s connection timeout" },
             Regex("^Paskirtyje jau yra „(.+)“$") to { match: MatchResult -> "The destination already contains “${match.groupValues[1]}”" },
@@ -2130,7 +2084,7 @@ object UiTranslator {
             Regex("^Vienu metu galima pervadinti iki (\\d+) elementų$") to { match: MatchResult -> "You can rename up to ${match.groupValues[1]} items at once" },
             Regex("^Pervadinta: (\\d+)$") to { match: MatchResult -> "Renamed: ${match.groupValues[1]}" },
             Regex("^Pavyko: (\\d+) veiksmų$") to { match: MatchResult -> "Succeeded: ${match.groupValues[1]} actions" },
-            Regex("^Nepavyko: (.+)$") to { match: MatchResult -> "Failed: ${translate(match.groupValues[1], language)}" },
+            Regex("^Nepavyko: (.+)$") to { match: MatchResult -> "Failed: ${translate(match.groupValues[1])}" },
             Regex("^Išpakuojamas (.+)$") to { match: MatchResult -> "Extracting ${match.groupValues[1]}" },
             Regex("^Įkelta kaip (.+)$") to { match: MatchResult -> "Uploaded as ${match.groupValues[1]}" },
             Regex("^Kuriamas (.+)$") to { match: MatchResult -> "Creating ${match.groupValues[1]}" },
@@ -2205,7 +2159,7 @@ object UiTranslator {
             Regex("^Sesijos trukmė · (\\d+) min\\.$") to { match: MatchResult -> "Session duration · ${match.groupValues[1]} min" },
             Regex("^Atsijungimas · (\\d+) min\\.$") to { match: MatchResult -> "Disconnect · ${match.groupValues[1]} min" },
             Regex("^Artimų įrenginių (rodymo paleisti nepavyko|paieška nepavyko) \\((\\d+)\\)$") to { match: MatchResult ->
-                "${translate("Artimų įrenginių ${match.groupValues[1]}", language)} (${match.groupValues[2]})"
+                "${translate("Artimų įrenginių ${match.groupValues[1]}")} (${match.groupValues[2]})"
             },
             Regex("^Naudotojas: (.+)$") to { match: MatchResult -> "User: ${match.groupValues[1]}" },
             Regex("^Kodas: (.+)$") to { match: MatchResult -> "Code: ${match.groupValues[1]}" },
@@ -2230,10 +2184,10 @@ object UiTranslator {
             Regex("^Kas (\\d+) val\\.(.*)$") to { match: MatchResult -> "Every ${match.groupValues[1]} hr${match.groupValues[2]}" },
             Regex("^Išplėstiniai filtrai · (\\d+)$") to { match: MatchResult -> "Advanced filters · ${match.groupValues[1]}" },
             Regex("^Pasirinkta saugyklų: (\\d+)$") to { match: MatchResult -> "Selected storage locations: ${match.groupValues[1]}" },
-            Regex("^Nuskaityti: (.+)$") to { match: MatchResult -> "Scan: ${translate(match.groupValues[1], language)}" },
+            Regex("^Nuskaityti: (.+)$") to { match: MatchResult -> "Scan: ${translate(match.groupValues[1])}" },
             Regex("^(\\d+) min\\.$") to { match: MatchResult -> "${match.groupValues[1]} min" },
             Regex("^Diagnostikos kodas: (.+)$") to { match: MatchResult -> "Diagnostic code: ${match.groupValues[1]}" },
-            Regex("^Ką daryti: (.+)$") to { match: MatchResult -> "What to do: ${translate(match.groupValues[1], language)}" },
+            Regex("^Ką daryti: (.+)$") to { match: MatchResult -> "What to do: ${translate(match.groupValues[1])}" },
             Regex("^Neseniai · (.+)$") to { match: MatchResult -> "Recent · ${match.groupValues[1]}" },
             Regex("^(\\d+) aplankų · (.+)$") to { match: MatchResult -> "${match.groupValues[1]} folders · ${match.groupValues[2]}" },
             Regex("^(.+)/s · liko apie (\\d+)s$") to { match: MatchResult -> "${match.groupValues[1]}/s · about ${match.groupValues[2]}s left" },
@@ -2250,7 +2204,7 @@ object UiTranslator {
             Regex("^(.+) miniatiūra$") to { match: MatchResult -> "${match.groupValues[1]} thumbnail" },
             Regex("^Aplankas · (.+)$") to { match: MatchResult -> "Folder · ${match.groupValues[1]}" },
             Regex("^Katalogas · (.+)$") to { match: MatchResult -> "Folder · ${match.groupValues[1]}" },
-            Regex("^(.+)\\. Paspauskite pieštuką\\.$") to { match: MatchResult -> "${translate(match.groupValues[1], language)}. Tap the pencil icon." },
+            Regex("^(.+)\\. Paspauskite pieštuką\\.$") to { match: MatchResult -> "${translate(match.groupValues[1])}. Tap the pencil icon." },
             Regex("^Atkurti (.+)$") to { match: MatchResult -> "Restore ${match.groupValues[1]}" },
             Regex("^Ištrinti (.+) visam laikui$") to { match: MatchResult -> "Delete ${match.groupValues[1]} permanently" },
             Regex("^Failo veiksmai: (.+)$") to { match: MatchResult -> "File actions: ${match.groupValues[1]}" },
@@ -2323,7 +2277,7 @@ object UiTranslator {
                 "File size unavailable: ${match.groupValues[1]}"
             },
             Regex("^(.+) · (.+) · (.+)$") to { match: MatchResult ->
-                "${translate(match.groupValues[1], language)} · ${translate(match.groupValues[2], language)} · ${translate(match.groupValues[3], language)}"
+                "${translate(match.groupValues[1])} · ${translate(match.groupValues[2])} · ${translate(match.groupValues[3])}"
             },
         )
         patterns.firstNotNullOfOrNull { (pattern, replacement) ->
@@ -2333,66 +2287,6 @@ object UiTranslator {
         return text
     }
 
-    private val lithuanianPatterns = listOf(
-        Regex("^Įspėjimas: (.+)$") to { match: MatchResult ->
-            "Įspėjimas: ${translate(match.groupValues[1], AppLanguageManager.LITHUANIAN)}"
-        },
-        Regex("^Source unavailable: (.+) \\((.+)\\)$") to { match: MatchResult ->
-            "Šaltinis nepasiekiamas: ${match.groupValues[1]} (${match.groupValues[2]})"
-        },
-        Regex("^Source is empty or unavailable: (.+)$") to { match: MatchResult ->
-            "Šaltinis tuščias arba nepasiekiamas: ${match.groupValues[1]}"
-        },
-        Regex("^Source could not be content-verified: (.+) \\((.+)\\)$") to { match: MatchResult ->
-            "Nepavyko patikrinti šaltinio turinio: ${match.groupValues[1]} (${match.groupValues[2]})"
-        },
-        Regex("^Destination unavailable: (.+) \\((.+)\\)$") to { match: MatchResult ->
-            "Paskirtis nepasiekiama: ${match.groupValues[1]} (${match.groupValues[2]})"
-        },
-        Regex("^Destination is not a folder: (.+)$") to { match: MatchResult -> "Paskirtis nėra aplankas: ${match.groupValues[1]}" },
-        Regex("^Destination folder does not exist: (.+)$") to { match: MatchResult -> "Paskirties aplanko nėra: ${match.groupValues[1]}" },
-        Regex("^Could not inspect (.+): (.+)$") to { match: MatchResult -> "Nepavyko patikrinti ${match.groupValues[1]}: ${match.groupValues[2]}" },
-        Regex("^Free space could not be confirmed for (.+)$") to { match: MatchResult -> "Nepavyko patvirtinti laisvos vietos: ${match.groupValues[1]}" },
-        Regex("^Not enough free space at (.+)$") to { match: MatchResult -> "Nepakanka laisvos vietos: ${match.groupValues[1]}" },
-        Regex("^Choose how to resolve (.+)$") to { match: MatchResult -> "Pasirinkite, kaip išspręsti konfliktą: ${match.groupValues[1]}" },
-        Regex("^Only folders can be merged: (.+)$") to { match: MatchResult -> "Sujungti galima tik aplankus: ${match.groupValues[1]}" },
-        Regex("^A free name could not be found for (.+)$") to { match: MatchResult -> "Nepavyko rasti laisvo vardo: ${match.groupValues[1]}" },
-        Regex("^Multiple sources in this plan would write to the same destination: (.+)$") to { match: MatchResult -> "Keli šio plano šaltiniai rašytų į tą pačią paskirtį: ${match.groupValues[1]}" },
-        Regex("^Could not inspect a merged destination item: (.+) \\((.+)\\)$") to { match: MatchResult -> "Nepavyko patikrinti sujungiamos paskirties elemento: ${match.groupValues[1]} (${match.groupValues[2]})" },
-        Regex("^A file and folder conflict inside the merged tree: (.+)$") to { match: MatchResult -> "Sujungiamame medyje kertasi failas ir aplankas: ${match.groupValues[1]}" },
-        Regex("^Different file content already exists inside the merged tree: (.+)$") to { match: MatchResult -> "Sujungiamame medyje jau yra kitokio turinio failas: ${match.groupValues[1]}" },
-        Regex("^A merged source file could not be content-verified: (.+)$") to { match: MatchResult -> "Nepavyko patikrinti sujungiamo šaltinio failo turinio: ${match.groupValues[1]}" },
-        Regex("^A merged destination file could not be content-verified: (.+)$") to { match: MatchResult -> "Nepavyko patikrinti sujungiamos paskirties failo turinio: ${match.groupValues[1]}" },
-        Regex("^Source selections overlap: (.+)$") to { match: MatchResult -> "Pasirinkti šaltiniai persidengia: ${match.groupValues[1]}" },
-        Regex("^Archive source selections overlap: (.+)$") to { match: MatchResult -> "Pasirinkti archyvo šaltiniai persidengia: ${match.groupValues[1]}" },
-        Regex("^Destination folders overlap: (.+)$") to { match: MatchResult -> "Paskirties aplankai persidengia: ${match.groupValues[1]}" },
-        Regex("^A source cannot be copied into itself: (.+)$") to { match: MatchResult -> "Šaltinio negalima kopijuoti į jį patį: ${match.groupValues[1]}" },
-        Regex("^A remote source cannot be copied into itself: (.+)$") to { match: MatchResult -> "Nuotolinio šaltinio negalima kopijuoti į jį patį: ${match.groupValues[1]}" },
-        Regex("^Completed with (\\d+) errors$") to { match: MatchResult -> "Baigta su ${match.groupValues[1]} klaidomis" },
-        Regex("^Failed: (.+)$") to { match: MatchResult -> "Nepavyko: ${match.groupValues[1]}" },
-        Regex("^Undo: (.+)$") to { match: MatchResult -> "Atšaukti: ${match.groupValues[1]}" },
-        Regex("^AF Plan: (.+)$") to { match: MatchResult -> "AF planas: ${match.groupValues[1]}" },
-        Regex("^File was saved and verified, but the recovery backup could not be removed: (.+)$") to { match: MatchResult ->
-            "Failas išsaugotas ir patikrintas, bet atkūrimo kopijos pašalinti nepavyko: ${match.groupValues[1]}"
-        },
-        Regex("^Remote save failed and automatic recovery also failed\\. Previous data remains at (.+)$") to { match: MatchResult ->
-            "Nuotolinis išsaugojimas ir automatinis atkūrimas nepavyko. Ankstesni duomenys liko čia: ${match.groupValues[1]}"
-        },
-        Regex("^AF Plan must contain (\\d+)–(\\d+) sources$") to { match: MatchResult ->
-            "AF plane turi būti nuo ${match.groupValues[1]} iki ${match.groupValues[2]} šaltinių"
-        },
-        Regex("^AF Plan must contain (\\d+)–(\\d+) destinations$") to { match: MatchResult ->
-            "AF plane turi būti nuo ${match.groupValues[1]} iki ${match.groupValues[2]} paskirčių"
-        },
-        Regex("^Error: (.+)$") to { match: MatchResult -> "Klaida: ${match.groupValues[1]}" },
-        Regex("^Unsupported (.+) version$") to { match: MatchResult -> "Nepalaikoma ${match.groupValues[1]} versija" },
-    )
-
     internal fun hasEnglishEntry(text: String): Boolean =
-        text in english || text in RuntimeMessageTranslations.english || text in runtimeEnglishByLithuanian
-
-    internal fun hasKnownUiEntry(text: String): Boolean =
-        text in english || text in english.values ||
-            text in RuntimeMessageTranslations.english || text in RuntimeMessageTranslations.english.values ||
-            text in RuntimeMessageTranslations.lithuanian || text in RuntimeMessageTranslations.lithuanian.values
+        text in english || text in RuntimeMessageTranslations.english
 }

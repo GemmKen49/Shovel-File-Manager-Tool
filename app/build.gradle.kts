@@ -20,6 +20,11 @@ android {
     namespace = "com.affilemanager.app"
     compileSdk = 36
     ndkVersion = "27.3.13750724"
+
+    androidResources {
+        // English only: drops translations bundled inside libraries too.
+        localeFilters += listOf("en")
+    }
     testBuildType = when {
         testIsolatedBenchmark -> "benchmark"
         testOptimizedRelease -> "release"

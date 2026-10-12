@@ -155,8 +155,6 @@ import com.affilemanager.app.data.RecentViewPreferences
 import com.affilemanager.app.data.UiPreferenceRepository
 import com.affilemanager.app.data.DirectoryGridStyle
 import com.affilemanager.app.data.DirectoryLayoutMode
-import com.affilemanager.app.data.FileTagDefinition
-import com.affilemanager.app.data.FileTagSnapshot
 import com.affilemanager.app.data.HomeCustomization
 import com.affilemanager.app.data.HomeCustomizationRules
 import com.affilemanager.app.network.NetworkProfile
@@ -169,7 +167,6 @@ import com.affilemanager.app.data.HomeShortcutNavigationRules
 import com.affilemanager.app.data.PanelWorkspace
 import com.affilemanager.app.data.RecentFileItem
 import com.affilemanager.app.data.RecentItem
-import com.affilemanager.app.data.TaggedFileRecord
 import com.affilemanager.app.data.SafLocation
 import com.affilemanager.app.model.ClipboardMode
 import com.affilemanager.app.model.ConflictPolicy
@@ -182,7 +179,6 @@ import com.affilemanager.app.operations.TransferFailurePolicy
 import com.affilemanager.app.operations.TransferVerification
 import com.affilemanager.app.ui.AppSection
 import com.affilemanager.app.ui.FileScrollKey
-import com.affilemanager.app.ui.HomeToolPage
 import com.affilemanager.app.ui.MainViewModel
 import com.affilemanager.app.ui.PanelComparisonStatus
 import com.affilemanager.app.ui.PanelId
@@ -215,332 +211,6 @@ import java.text.DateFormat
 import java.util.Date
 import kotlin.math.roundToInt
 
-/**
- * AF's own virtual browser for personal organization tools. It deliberately reuses the app's
- * standard directory chrome instead of reproducing another file manager's branded screen.
- */
-@Composable
-internal fun HomeToolsBrowser(
-    page: HomeToolPage,
-    favorites: List<String>,
-    tagSnapshot: FileTagSnapshot,
-    displaySettings: DirectoryDisplaySettings,
-    onBack: () -> Unit,
-    onOpenFavorite: (String) -> Unit,
-    onOpenTag: (String) -> Unit,
-    onToggleLayout: () -> Unit,
-    onOpenDisplaySettings: () -> Unit,
-    onRefresh: () -> Unit,
-) {
-    var searchVisible by remember(page) { mutableStateOf(false) }
-    var query by remember(page) { mutableStateOf("") }
-    LaunchedEffect(page) {
-        searchVisible = false
-        query = ""
-    }
-    val favoriteFiles = remember(favorites, query) {
-        val normalizedQuery = query.trim()
-        favorites.asSequence()
-            .map(::File)
-            .filter(File::exists)
-            .filter { normalizedQuery.isEmpty() || it.name.contains(normalizedQuery, ignoreCase = true) || it.absolutePath.contains(normalizedQuery, ignoreCase = true) }
-            .sortedWith(compareByDescending<File> { it.isDirectory }.thenBy { it.name.lowercase() })
-            .toList()
-    }
-    val tagDefinitions = remember(tagSnapshot.definitions, query) {
-        val normalizedQuery = query.trim()
-        tagSnapshot.definitions
-            .filter { normalizedQuery.isEmpty() || it.name.contains(normalizedQuery, ignoreCase = true) }
-            .sortedBy { it.name.lowercase() }
-    }
-    val count = when (page) {
-        HomeToolPage.FAVORITES -> favoriteFiles.size
-        HomeToolPage.TAGS -> tagDefinitions.size
-    }
-    val title = uiText(if (page == HomeToolPage.FAVORITES) "Mėgstami" else "Žymos")
-
-    Column(modifier = Modifier.fillMaxSize().testTag("home_tools_page_${page.name.lowercase()}")) {
-        DirectoryBrowserToolbar(
-            title = title,
-            path = uiText(if (count == 1) "1 elementas" else "$count elementų"),
-            backEnabled = true,
-            forwardEnabled = false,
-            upEnabled = false,
-            searchActive = searchVisible,
-            grid = displaySettings.layoutMode == DirectoryLayoutMode.GRID,
-            testTagPrefix = "home_${page.name.lowercase()}",
-            onBack = onBack,
-            onForward = {},
-            onUp = {},
-            onToggleSearch = {
-                searchVisible = !searchVisible
-                if (!searchVisible) query = ""
-            },
-            onToggleLayout = onToggleLayout,
-            onOpenSettings = onOpenDisplaySettings,
-            actions = {},
-        )
-        if (searchVisible) {
-            DirectoryQuickSearchField(
-                query = query,
-                onQueryChange = { query = it },
-                onClose = { searchVisible = false; query = "" },
-                modifier = Modifier.testTag("home_tools_search_${page.name.lowercase()}"),
-            )
-        }
-        AfPullToRefresh(
-            isRefreshing = false,
-            onRefresh = onRefresh,
-            modifier = Modifier.fillMaxSize(),
-            testTag = "pull_to_refresh_home_tools",
-        ) {
-            Box(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                when (page) {
-                    HomeToolPage.FAVORITES -> FavoriteBrowserItems(
-                        files = favoriteFiles,
-                        settings = displaySettings,
-                        onOpen = onOpenFavorite,
-                    )
-                    HomeToolPage.TAGS -> TagBrowserItems(
-                        definitions = tagDefinitions,
-                        snapshot = tagSnapshot,
-                        settings = displaySettings,
-                        onOpen = onOpenTag,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FavoriteBrowserItems(
-    files: List<File>,
-    settings: DirectoryDisplaySettings,
-    onOpen: (String) -> Unit,
-) {
-    if (files.isEmpty()) {
-        EmptyHomeToolPage("Mėgstamų vietų dar nėra", Icons.Rounded.Star)
-    } else if (settings.layoutMode == DirectoryLayoutMode.GRID) {
-        val columns = settings.gridColumns.coerceIn(1, 6)
-        val spacing = (8f * settings.spacingScalePercent / 100f).dp
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            modifier = Modifier.fillMaxSize().testTag("favorites_grid"),
-            horizontalArrangement = Arrangement.spacedBy(spacing),
-            verticalArrangement = Arrangement.spacedBy(spacing),
-        ) {
-            items(files, key = File::getAbsolutePath) { file ->
-                HomeBrowserGridCard(
-                    title = file.name.ifBlank { file.absolutePath },
-                    detail = file.absolutePath,
-                    icon = if (file.isDirectory) Icons.Rounded.Folder else Icons.AutoMirrored.Rounded.InsertDriveFile,
-                    compact = columns >= 4,
-                    iconScalePercent = settings.iconScalePercent,
-                    onClick = { onOpen(file.absolutePath) },
-                )
-            }
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().testTag("favorites_list"),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            items(files, key = File::getAbsolutePath) { file ->
-                HomeBrowserListCard(
-                    title = file.name.ifBlank { file.absolutePath },
-                    detail = file.absolutePath,
-                    icon = if (file.isDirectory) Icons.Rounded.Folder else Icons.AutoMirrored.Rounded.InsertDriveFile,
-                    onClick = { onOpen(file.absolutePath) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TagBrowserItems(
-    definitions: List<FileTagDefinition>,
-    snapshot: FileTagSnapshot,
-    settings: DirectoryDisplaySettings,
-    onOpen: (String) -> Unit,
-) {
-    if (definitions.isEmpty()) {
-        EmptyHomeToolPage("Žymų dar nėra", Icons.AutoMirrored.Rounded.Label)
-        return
-    }
-    val counts = remember(snapshot.records) {
-        buildMap<String, Int> {
-            snapshot.records.forEach { record -> record.tags.forEach { tag -> put(tag, getOrDefault(tag, 0) + 1) } }
-        }
-    }
-    if (settings.layoutMode == DirectoryLayoutMode.GRID) {
-        val columns = settings.gridColumns.coerceIn(1, 6)
-        val spacing = (8f * settings.spacingScalePercent / 100f).dp
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            modifier = Modifier.fillMaxSize().testTag("tags_grid"),
-            horizontalArrangement = Arrangement.spacedBy(spacing),
-            verticalArrangement = Arrangement.spacedBy(spacing),
-        ) {
-            items(definitions, key = FileTagDefinition::name) { tag ->
-                HomeBrowserGridCard(
-                    title = tag.name,
-                    detail = uiText(itemCountLabel(counts[tag.name] ?: 0)),
-                    icon = Icons.AutoMirrored.Rounded.Label,
-                    accent = Color(tag.colorArgb),
-                    compact = columns >= 4,
-                    iconScalePercent = settings.iconScalePercent,
-                    onClick = { onOpen(tag.name) },
-                )
-            }
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().testTag("tags_list"),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            items(definitions, key = FileTagDefinition::name) { tag ->
-                HomeBrowserListCard(
-                    title = tag.name,
-                    detail = uiText(itemCountLabel(counts[tag.name] ?: 0)),
-                    icon = Icons.AutoMirrored.Rounded.Label,
-                    accent = Color(tag.colorArgb),
-                    onClick = { onOpen(tag.name) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeBrowserListCard(
-    title: String,
-    detail: String,
-    icon: ImageVector,
-    accent: Color = MaterialTheme.colorScheme.primary,
-    onClick: () -> Unit,
-) {
-    ElevatedCard(
-        elevation = com.affilemanager.app.ui.theme.appearanceCardElevation(),
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(32.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeBrowserGridCard(
-    title: String,
-    detail: String,
-    icon: ImageVector,
-    accent: Color = MaterialTheme.colorScheme.primary,
-    compact: Boolean = false,
-    iconScalePercent: Int = 100,
-    onClick: () -> Unit,
-) {
-    val iconSize = ((if (compact) 26f else 38f) * iconScalePercent / 100f).dp
-    ElevatedCard(
-        elevation = com.affilemanager.app.ui.theme.appearanceCardElevation(),
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).heightIn(min = if (compact) 104.dp else 132.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(iconSize))
-            Text(title, modifier = Modifier.padding(top = 8.dp), minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-            if (!compact) {
-                Text(detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyHomeToolPage(message: String, icon: ImageVector) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
-        LText(message, modifier = Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-internal fun FavoriteLocationsDialog(
-    favorites: List<String>,
-    onDismiss: () -> Unit,
-    onOpen: (String) -> Unit,
-    onRefresh: () -> Unit,
-) {
-    val files = remember(favorites) { favorites.map(::File).filter(File::exists) }
-    AfModalDialog(
-        title = "Mėgstami",
-        icon = Icons.Rounded.Star,
-        onDismissRequest = onDismiss,
-        modifier = Modifier.testTag("favorite_locations_dialog"),
-        showFooter = false,
-        expandedContent = true,
-        actions = {},
-    ) {
-        AfPullToRefresh(
-            isRefreshing = false,
-            onRefresh = onRefresh,
-            modifier = Modifier.fillMaxSize(),
-            testTag = "pull_to_refresh_favorite_locations",
-        ) {
-            if (files.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    LText("Mėgstamų vietų dar nėra")
-                }
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) {
-                    items(files, key = File::getAbsolutePath) { file ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("favorite_location_${file.absolutePath.hashCode()}")
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                if (file.isDirectory) Icons.Rounded.Folder else Icons.AutoMirrored.Rounded.InsertDriveFile,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                            Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
-                                Text(file.name.ifBlank { file.absolutePath }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(file.absolutePath, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            TextButton(onClick = { onOpen(file.absolutePath) }) { LText("Atidaryti") }
-                        }
-                        HorizontalDivider()
-                    }
-                }
-            }
-        }
-    }
-}
-
-
 @Composable
 internal fun FilesHome(
     roots: List<StorageRoot>,
@@ -553,8 +223,6 @@ internal fun FilesHome(
     storageDisplaySettings: DirectoryDisplaySettings,
     quickLocationsDisplaySettings: DirectoryDisplaySettings,
     customization: HomeCustomization,
-    favorites: List<String>,
-    tagSnapshot: FileTagSnapshot,
     trashCount: Int,
     rootStorageAvailable: Boolean,
     onOpen: (QuickLocation) -> Unit,
@@ -567,8 +235,6 @@ internal fun FilesHome(
     onRevealRecent: (FileEntry) -> Unit,
     onCopyRecent: (List<FileEntry>, Boolean) -> Unit,
     onOpenTrash: () -> Unit,
-    onOpenFavoritesPage: () -> Unit,
-    onOpenTagsPage: () -> Unit,
     onOpenCleanup: () -> Unit,
     onRefreshRecent: () -> Unit,
     onToggleLayout: (HomeDisplayArea) -> Unit,
@@ -677,15 +343,11 @@ internal fun FilesHome(
                     )
                     HomeSection.TOOLS -> HomeToolsSection(
                         trashCount = trashCount,
-                        favoritesCount = favorites.count { File(it).exists() },
-                        tagsCount = tagSnapshot.definitions.size,
                         cloudCount = safLocations.size + cloudProfiles.size,
                         bookmarkCount = bookmarks.size,
                         customization = customization,
                         shortcuts = toolShortcuts,
                         onOpenTrash = onOpenTrash,
-                        onOpenFavorites = onOpenFavoritesPage,
-                        onOpenTags = onOpenTagsPage,
                         // Always open the provider list: even with one saved location the user
                         // still needs a visible route for adding a second cloud/provider account.
                         onOpenCloud = { showCloudLocations = true },
@@ -1319,15 +981,11 @@ private fun QuickLocationsHomeSection(
 @Composable
 private fun HomeToolsSection(
     trashCount: Int,
-    favoritesCount: Int,
-    tagsCount: Int,
     cloudCount: Int,
     bookmarkCount: Int,
     customization: HomeCustomization,
     shortcuts: List<QuickLocation>,
     onOpenTrash: () -> Unit,
-    onOpenFavorites: () -> Unit,
-    onOpenTags: () -> Unit,
     onOpenCloud: () -> Unit,
     onOpenBookmarks: () -> Unit,
     onOpenShortcut: (QuickLocation) -> Unit,
@@ -1335,16 +993,12 @@ private fun HomeToolsSection(
     LText("Įrankiai ir saugumas", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
     val builtInTools = listOf(
         HomeToolLocation("trash", "Šiukšlinė", itemCountLabel(trashCount), Icons.Rounded.Delete, onOpenTrash),
-        HomeToolLocation("favorites", "Mėgstami", itemCountLabel(favoritesCount), Icons.Rounded.Star, onOpenFavorites),
-        HomeToolLocation("tags", "Žymos", itemCountLabel(tagsCount), Icons.AutoMirrored.Rounded.Label, onOpenTags),
         HomeToolLocation("cloud", "Debesija", itemCountLabel(cloudCount), Icons.Rounded.Cloud, onOpenCloud),
         HomeToolLocation("bookmarks", "Žymelės", itemCountLabel(bookmarkCount), Icons.Rounded.Bookmark, onOpenBookmarks),
     ).associateBy(HomeToolLocation::id)
     val visibility = com.affilemanager.app.ui.components.LocalFeatureVisibility.current
     val tools = HomeCustomizationRules.orderedToolIds(customization).filter { id ->
         val feature = when (id) {
-            "favorites" -> OptionalFeature.FAVORITES
-            "tags" -> OptionalFeature.TAGS
             "cloud" -> OptionalFeature.CLOUD
             else -> null
         }
@@ -1626,8 +1280,6 @@ private fun HomeOrderRow(
 private fun homeToolTitle(id: String): String = when (id) {
     "trash" -> "Šiukšlinė"
     "plans" -> "AF planai"
-    "favorites" -> "Mėgstami"
-    "tags" -> "Žymos"
     "cloud" -> "Debesija"
     "bookmarks" -> "Žymelės"
     else -> id

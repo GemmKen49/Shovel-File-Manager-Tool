@@ -89,8 +89,6 @@ import com.affilemanager.app.operations.OperationStatus
 import com.affilemanager.app.ui.MainViewModel
 import com.affilemanager.app.ui.components.AfModalDialog
 import com.affilemanager.app.ui.components.ProviderAppVisual
-import com.affilemanager.app.ui.localization.AppLanguageManager
-import com.affilemanager.app.ui.localization.AppLanguageOption
 import com.affilemanager.app.ui.localization.LText
 import com.affilemanager.app.ui.localization.uiText
 import com.affilemanager.app.ui.theme.AppColorPalette
@@ -124,15 +122,6 @@ fun ToolsScreen(
     val active = viewModel.activePanelState()
     val selectedEntry = active.entries.singleOrNull { it.absolutePath in active.selectedPaths }
     val context = LocalContext.current
-    val configuration = LocalConfiguration.current
-    val displayLocale = configuration.locales[0]
-    val interfaceLanguage = AppLanguageManager.normalizeLanguageTag(displayLocale.language)
-    val languageOptions = remember(displayLocale) { AppLanguageManager.languageOptions(displayLocale) }
-    val currentLanguage = remember(interfaceLanguage, languageOptions) {
-        languageOptions.firstOrNull { it.tag == interfaceLanguage }
-            ?: languageOptions.first { it.tag == AppLanguageManager.ENGLISH }
-    }
-    var showLanguagePicker by remember { mutableStateOf(false) }
     var editSaf by remember { mutableStateOf<com.affilemanager.app.data.SafLocation?>(null) }
     var removeSaf by remember { mutableStateOf<com.affilemanager.app.data.SafLocation?>(null) }
 
@@ -148,45 +137,6 @@ fun ToolsScreen(
         ) {
         item { SettingsSectionHeader("Išvaizda", "appearance", "appearance" in expandedSections) { toggleSection("appearance") } }
         if ("appearance" in expandedSections) {
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        itemVerticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Language, contentDescription = null)
-                            Column(modifier = Modifier.padding(horizontal = 10.dp)) {
-                                LText("Kalba", fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("language_setting_title"))
-                                Text(
-                                    text = currentLanguage.nativeName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.testTag("language_setting_current"),
-                                )
-                            }
-                        }
-                        FilledTonalButton(
-                            onClick = { showLanguagePicker = true },
-                            modifier = Modifier.testTag("change_language"),
-                        ) { LText("Keisti kalbą") }
-                    }
-                    LText(
-                        "Visi 59 kalbų paketai įtraukti į programą ir veikia neprisijungus.",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-        }
-
         item {
             AppearanceSettingsCard(
                 settings = appearanceSettings,
@@ -402,18 +352,6 @@ fun ToolsScreen(
         }
     }
 
-    if (showLanguagePicker) {
-        LanguagePickerDialog(
-            selectedLanguage = interfaceLanguage,
-            languages = languageOptions,
-            onSelect = { language ->
-                showLanguagePicker = false
-                AppLanguageManager.setLanguage(context, language.tag)
-            },
-            onDismiss = { showLanguagePicker = false },
-        )
-    }
-
     editSaf?.let { location ->
         SafLocationEditDialog(
             location = location,
@@ -467,88 +405,6 @@ internal fun FeatureVisibilitySettings(
                 }
             }
             TextButton(onClick = onReset, modifier = Modifier.testTag("feature_visibility_reset")) { LText("Atkurti numatytąsias") }
-        }
-    }
-}
-
-@Composable
-private fun LanguagePickerDialog(
-    selectedLanguage: String,
-    languages: List<AppLanguageOption>,
-    onSelect: (AppLanguageOption) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var query by remember { mutableStateOf("") }
-    val filteredLanguages = remember(query, languages) {
-        val needle = query.trim().lowercase(Locale.ROOT)
-        if (needle.isEmpty()) {
-            languages
-        } else {
-            languages.filter { language ->
-                language.tag.contains(needle, ignoreCase = true) ||
-                    language.nativeName.lowercase(Locale.ROOT).contains(needle) ||
-                    language.displayName.lowercase(Locale.ROOT).contains(needle) ||
-                    language.englishName.lowercase(Locale.ROOT).contains(needle)
-            }
-        }
-    }
-
-    AfModalDialog(
-        title = "Pasirinkti kalbą",
-        subtitle = "59 kalbos",
-        icon = Icons.Rounded.Language,
-        onDismissRequest = onDismiss,
-        expandedContent = true,
-        modifier = Modifier.testTag("language_picker"),
-        actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
-        },
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth().testTag("language_search"),
-                    singleLine = true,
-                    label = { LText("Kalbos paieška") },
-                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                )
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    items(filteredLanguages, key = AppLanguageOption::tag) { language ->
-                        FilledTonalButton(
-                            onClick = { onSelect(language) },
-                            modifier = Modifier.fillMaxWidth().testTag("language_option_${language.tag}"),
-                        ) {
-                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                                Text(language.nativeName, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                if (!language.nativeName.equals(language.displayName, ignoreCase = true)) {
-                                    Text(
-                                        language.displayName,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            }
-                            if (language.tag == selectedLanguage) {
-                                Icon(Icons.Rounded.CheckCircle, contentDescription = null)
-                            }
-                        }
-                    }
-                }
-                if (filteredLanguages.isEmpty()) {
-                    LText("Kalbų nerasta", modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                }
-                LText(
-                    "Anglų ir lietuvių vertimai peržiūrėti. Kitų kalbų pataisymai laukiami.",
-                    style = MaterialTheme.typography.labelSmall,
-                )
         }
     }
 }

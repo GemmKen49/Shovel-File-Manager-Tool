@@ -19,7 +19,6 @@ data class SearchDraftPreferences(
     val maximumMiB: String = "",
     val newerThanDays: Int? = null,
     val olderThanDays: Int? = null,
-    val tags: Set<String> = emptySet(),
     val advancedExpanded: Boolean = false,
 )
 
@@ -48,7 +47,6 @@ class UiPreferenceRepository(context: Context) {
                 maximumMiB = json.optString("maximumMiB"),
                 newerThanDays = json.optionalInt("newerThanDays"),
                 olderThanDays = json.optionalInt("olderThanDays"),
-                tags = json.stringSet("tags"),
                 advancedExpanded = json.optBoolean("advancedExpanded"),
             ),
         )
@@ -68,7 +66,6 @@ class UiPreferenceRepository(context: Context) {
             .put("maximumMiB", normalized.maximumMiB)
             .put("newerThanDays", normalized.newerThanDays ?: JSONObject.NULL)
             .put("olderThanDays", normalized.olderThanDays ?: JSONObject.NULL)
-            .put("tags", normalized.tags.toJsonArray())
             .put("advancedExpanded", normalized.advancedExpanded)
         check(preferences.edit().putString(KEY_SEARCH, json.toString()).commit()) {
             "Nustatymų įrašyti nepavyko"
@@ -142,8 +139,6 @@ internal object UiPreferenceRules {
     private const val MAX_USERNAME_LENGTH = 128
     private const val MAX_RECEIVER_NAME_LENGTH = 80
     private const val MAX_SELECTED_ROOTS = 32
-    private const val MAX_TAGS = 40
-    private const val MAX_TAG_LENGTH = 120
     private val supportedDayChoices = setOf(7, 30, 365)
 
     fun normalizeSearch(value: SearchDraftPreferences): SearchDraftPreferences = value.copy(
@@ -157,12 +152,6 @@ internal object UiPreferenceRules {
         maximumMiB = decimal(value.maximumMiB),
         newerThanDays = value.newerThanDays?.takeIf(supportedDayChoices::contains),
         olderThanDays = value.olderThanDays?.takeIf(supportedDayChoices::contains),
-        tags = value.tags.asSequence()
-            .map { cleanSingleLine(it, MAX_TAG_LENGTH) }
-            .filter(String::isNotBlank)
-            .distinct()
-            .take(MAX_TAGS)
-            .toCollection(linkedSetOf()),
     )
 
     private fun decimal(value: String): String {

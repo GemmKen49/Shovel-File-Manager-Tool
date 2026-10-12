@@ -108,7 +108,6 @@ data class SearchFilters(
     val kinds: Set<EntryKind> = emptySet(),
     val includeHidden: Boolean = false,
     val useRegex: Boolean = false,
-    val tags: Set<String> = emptySet(),
 )
 
 data class FileSearchResult(

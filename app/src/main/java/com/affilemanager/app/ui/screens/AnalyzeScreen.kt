@@ -122,7 +122,6 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
     val leftPanel by viewModel.leftPanel.collectAsStateWithLifecycle()
     val rightPanel by viewModel.rightPanel.collectAsStateWithLifecycle()
     val renameUndo by viewModel.renameUndo.collectAsStateWithLifecycle()
-    val tagSnapshot by viewModel.tagSnapshot.collectAsStateWithLifecycle()
     val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val cleanupRequested by viewModel.cleanupRequested.collectAsStateWithLifecycle()
     val deviceCleanup by viewModel.deviceCleanup.collectAsStateWithLifecycle()
@@ -148,7 +147,6 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
     var olderThanDays by remember {
         mutableStateOf(if (hasActiveSearch) daysFrom(searchState.filters.modifiedBefore) else searchDraft.olderThanDays)
     }
-    var tags by remember { mutableStateOf(if (hasActiveSearch) searchState.filters.tags else searchDraft.tags) }
     var advancedExpanded by remember {
         mutableStateOf(if (hasActiveSearch) searchState.filters.hasAdvancedFilters() else searchDraft.advancedExpanded)
     }
@@ -185,7 +183,6 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             maximumMiB = bytesToMiBText(searchState.filters.maxBytes)
             newerThanDays = daysFrom(searchState.filters.modifiedAfter)
             olderThanDays = daysFrom(searchState.filters.modifiedBefore)
-            tags = searchState.filters.tags
             if (searchState.filters.hasAdvancedFilters()) advancedExpanded = true
             scopedRoots = searchState.roots
             val allStoragePaths = storageRoots.map(StorageRoot::path).toSet()
@@ -218,12 +215,11 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
     val olderDaysValue = olderThanDays
     val dateInputValid = newerDaysValue == null || olderDaysValue == null || newerDaysValue >= olderDaysValue
     val hasCondition = query.isNotBlank() || minBytes != null || maxBytes != null ||
-        newerThanDays != null || olderThanDays != null || kinds.isNotEmpty() || tags.isNotEmpty()
+        newerThanDays != null || olderThanDays != null || kinds.isNotEmpty()
     val advancedFilterCount = listOf(
         kinds.isNotEmpty(),
         minBytes != null || maxBytes != null,
         newerThanDays != null || olderThanDays != null,
-        tags.isNotEmpty(),
     ).count { it }
     val selectedRoots = when (scope) {
         SearchScope.CURRENT_FOLDER -> scopedRoots.takeIf { it.size == 1 } ?: listOf(activePath)
@@ -241,7 +237,6 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
         kinds = kinds,
         includeHidden = includeHidden,
         useRegex = regex,
-        tags = tags,
     )
     val overviewPath = analysisState.rootPaths.firstOrNull() ?: analysisState.rootPath ?: activePath
     val overviewRoot = storageRoots
@@ -413,21 +408,6 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                                 )
                             }
                         }
-                        if (tagSnapshot.definitions.isNotEmpty()) {
-                            LText("Žymos (turi atitikti visas)", style = MaterialTheme.typography.labelLarge)
-                            Row(
-                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                            ) {
-                                tagSnapshot.definitions.take(40).forEach { definition ->
-                                    FilterChip(
-                                        selected = definition.name in tags,
-                                        onClick = { tags = if (definition.name in tags) tags - definition.name else tags + definition.name },
-                                        label = { Text(definition.name) },
-                                    )
-                                }
-                            }
-                        }
                         LText("Dydis (MiB)", style = MaterialTheme.typography.labelLarge)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
@@ -508,7 +488,6 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                                 maximumMiB = ""
                                 newerThanDays = null
                                 olderThanDays = null
-                                tags = emptySet()
                             },
                             enabled = hasCondition || includeHidden || regex,
                         ) { LText("Išvalyti filtrus") }
@@ -774,7 +753,6 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
         maximumMiB,
         newerThanDays,
         olderThanDays,
-        tags,
         advancedExpanded,
     ) {
         viewModel.updateSearchDraftPreferences(
@@ -790,7 +768,6 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                 maximumMiB = maximumMiB,
                 newerThanDays = newerThanDays,
                 olderThanDays = olderThanDays,
-                tags = tags,
                 advancedExpanded = advancedExpanded,
             ),
         )
@@ -1329,7 +1306,7 @@ private fun daysFrom(modifiedAfter: Long?): Int? {
 }
 
 private fun SearchFilters.hasAdvancedFilters(): Boolean =
-    minBytes != null || maxBytes != null || modifiedAfter != null || modifiedBefore != null || kinds.isNotEmpty() || tags.isNotEmpty()
+    minBytes != null || maxBytes != null || modifiedAfter != null || modifiedBefore != null || kinds.isNotEmpty()
 
 @Composable
 private fun DirectoryUsageRow(usage: DirectoryUsage, maximumBytes: Long, onOpen: () -> Unit, modifier: Modifier = Modifier) {

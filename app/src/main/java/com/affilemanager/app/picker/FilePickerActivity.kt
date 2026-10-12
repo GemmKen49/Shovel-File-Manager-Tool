@@ -49,7 +49,6 @@ import com.affilemanager.app.model.SortMode
 import com.affilemanager.app.ui.AppLockOverlay
 import com.affilemanager.app.ui.components.LocalFeatureVisibility
 import com.affilemanager.app.ui.authenticate
-import com.affilemanager.app.ui.localization.AppLanguageManager
 import com.affilemanager.app.ui.localization.LText
 import com.affilemanager.app.ui.localization.UiTranslator
 import com.affilemanager.app.ui.screens.LocalUploadDialog
@@ -79,7 +78,6 @@ class FilePickerActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        AppLanguageManager.ensureEnglishDefault(this)
         super.onCreate(savedInstanceState)
         setResult(RESULT_CANCELED)
         val request = parseRequest(intent) ?: run { finish(); return }

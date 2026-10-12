@@ -22,7 +22,6 @@ import com.affilemanager.app.ui.AppSection
 import com.affilemanager.app.ui.MainViewModel
 import com.affilemanager.app.ui.PanelId
 import com.affilemanager.app.ui.theme.AFFileManagerTheme
-import com.affilemanager.app.ui.localization.AppLanguageManager
 import com.affilemanager.app.ui.components.LocalStorageRoots
 import kotlinx.coroutines.delay
 import java.io.File
@@ -46,7 +45,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        AppLanguageManager.ensureEnglishDefault(this)
         super.onCreate(savedInstanceState)
         pendingViewRequest.value = intent.toIncomingViewRequest()
         pendingBenchmarkRequest.value = intent.toBenchmarkRequest()

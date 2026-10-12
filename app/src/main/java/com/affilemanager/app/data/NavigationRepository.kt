@@ -30,7 +30,6 @@ data class SavedSearch(
     val kinds: Set<EntryKind>,
     val includeHidden: Boolean,
     val useRegex: Boolean,
-    val tags: Set<String>,
 ) {
     val rootPath: String get() = rootPaths.firstOrNull().orEmpty()
 
@@ -45,7 +44,6 @@ data class SavedSearch(
         kinds = kinds,
         includeHidden = includeHidden,
         useRegex = useRegex,
-        tags = tags,
     )
 }
 
@@ -63,7 +61,6 @@ data class DirectorySortSettings(
 class NavigationRepository(context: Context) {
     companion object {
         private const val PREFS = "navigation_v1"
-        private const val KEY_FAVORITES = "favorites"
         private const val KEY_RECENTS = "recents"
         private const val KEY_SEARCHES = "saved_searches"
         private const val KEY_THUMBNAIL_DIRECTORIES = "thumbnail_directories"
@@ -71,7 +68,6 @@ class NavigationRepository(context: Context) {
         private const val KEY_DIRECTORY_DISPLAY_PREFIX = "directory_display_"
         private const val KEY_DIRECTORY_DISPLAY_DEFAULTS = "directory_display_defaults"
         private const val KEY_HOME_CUSTOMIZATION = "home_customization"
-        private const val MAX_FAVORITES = 100
         private const val MAX_RECENTS = 100
         private const val MAX_SEARCHES = 50
         private const val MAX_SEARCH_ROOTS = 32
@@ -94,7 +90,7 @@ class NavigationRepository(context: Context) {
                 when (val stored = array.getString(index)) {
                     // v0.28 and older stored these as three separate home sections.
                     // They now share one AF tools section, while retaining the first saved position.
-                    "TRASH", "FAVORITES", "TAGS" -> HomeSection.TOOLS
+                    "TRASH" -> HomeSection.TOOLS
                     else -> runCatching { HomeSection.valueOf(stored) }.getOrNull()
                 }
             }
@@ -177,26 +173,6 @@ class NavigationRepository(context: Context) {
             "Home customization could not be saved"
         }
         return normalized
-    }
-
-    fun favorites(): List<String> = readStringArray(KEY_FAVORITES, MAX_FAVORITES)
-
-    fun toggleFavorite(path: String): List<String> {
-        val canonical = File(path).canonicalPath
-        val updated = favorites().toMutableList().apply {
-            if (!remove(canonical)) add(canonical)
-        }
-        require(updated.size <= MAX_FAVORITES) { "Žymų riba viršyta" }
-        writeStringArray(KEY_FAVORITES, updated)
-        return updated
-    }
-
-    fun addFavorites(paths: Collection<String>): List<String> {
-        val existing = favorites()
-        val updated = LinkedHashSet(existing)
-        paths.forEach { path -> updated += File(path).canonicalPath }
-        require(updated.size <= MAX_FAVORITES) { "Nustatymų elementų riba viršyta" }
-        return updated.toList().also { writeStringArray(KEY_FAVORITES, it) }
     }
 
     fun recents(): List<RecentItem> {
@@ -373,9 +349,6 @@ class NavigationRepository(context: Context) {
                 }.orEmpty(),
                 includeHidden = item.optBoolean("hidden", false),
                 useRegex = item.optBoolean("regex", false),
-                tags = item.optJSONArray("tags")?.let { tagsArray ->
-                    (0 until tagsArray.length()).map(tagsArray::getString).toSet()
-                }.orEmpty(),
             )
         }
     }
@@ -384,8 +357,7 @@ class NavigationRepository(context: Context) {
         require(name.isNotBlank()) { "Įveskite paieškos pavadinimą" }
         require(
             filters.query.isNotBlank() || filters.minBytes != null || filters.maxBytes != null ||
-                filters.modifiedAfter != null || filters.modifiedBefore != null || filters.kinds.isNotEmpty() ||
-                filters.tags.isNotEmpty(),
+                filters.modifiedAfter != null || filters.modifiedBefore != null || filters.kinds.isNotEmpty(),
         ) { "Pasirinkite bent vieną paieškos sąlygą" }
         require(rootPaths.isNotEmpty()) { "Nepasirinkta paieškos vieta" }
         require(rootPaths.size <= MAX_SEARCH_ROOTS) { "Vienai paieškai galima išsaugoti iki $MAX_SEARCH_ROOTS vietų" }
@@ -405,7 +377,6 @@ class NavigationRepository(context: Context) {
             kinds = filters.kinds,
             includeHidden = filters.includeHidden,
             useRegex = filters.useRegex,
-            tags = filters.tags,
         )
         writeSearches(updated)
         return updated
@@ -422,7 +393,6 @@ class NavigationRepository(context: Context) {
         searches.forEach { search ->
             val roots = JSONArray().apply { search.rootPaths.forEach(::put) }
             val kinds = JSONArray().apply { search.kinds.sortedBy(Enum<*>::name).forEach { put(it.name) } }
-            val tags = JSONArray().apply { search.tags.sorted().forEach(::put) }
             array.put(
                 JSONObject()
                     .put("id", search.id)
@@ -438,8 +408,7 @@ class NavigationRepository(context: Context) {
                     .put("modifiedBefore", search.modifiedBefore ?: JSONObject.NULL)
                     .put("kinds", kinds)
                     .put("hidden", search.includeHidden)
-                    .put("regex", search.useRegex)
-                    .put("tags", tags),
+                    .put("regex", search.useRegex),
             )
         }
         commit(KEY_SEARCHES, array)

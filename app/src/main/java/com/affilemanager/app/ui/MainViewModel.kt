@@ -39,7 +39,6 @@ import com.affilemanager.app.data.WorkspaceSession
 import com.affilemanager.app.data.WorkspaceTab
 import com.affilemanager.app.data.WorkspaceSessionRepository
 import com.affilemanager.app.cleanup.DeviceCleanupSnapshot
-import com.affilemanager.app.data.FileTagSnapshot
 import com.affilemanager.app.data.FileCategory
 import com.affilemanager.app.data.CategoryStorageScope
 import com.affilemanager.app.data.CategoryViewMode
@@ -481,11 +480,6 @@ data class UiMessage(
     val action: UiMessageAction? = null,
 )
 
-enum class HomeToolPage {
-    FAVORITES,
-    TAGS,
-}
-
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val graph = (application as AFFileManagerApplication).graph
     private val nextcloudLoginClient = NextcloudLoginClient()
@@ -569,20 +563,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _filesHomeVisible = MutableStateFlow(true)
     val filesHomeVisible: StateFlow<Boolean> = _filesHomeVisible.asStateFlow()
 
-    private val _homeToolPage = MutableStateFlow<HomeToolPage?>(null)
-    val homeToolPage: StateFlow<HomeToolPage?> = _homeToolPage.asStateFlow()
-
     private val _filesHomeDisplaySettings = MutableStateFlow(initialHomeDisplaySettings(HomeDisplayArea.QUICK_LOCATIONS))
     val filesHomeDisplaySettings: StateFlow<DirectoryDisplaySettings> = _filesHomeDisplaySettings.asStateFlow()
 
     private val _storageHomeDisplaySettings = MutableStateFlow(initialHomeDisplaySettings(HomeDisplayArea.STORAGE))
     val storageHomeDisplaySettings: StateFlow<DirectoryDisplaySettings> = _storageHomeDisplaySettings.asStateFlow()
-
-    private val _favoritesHomeDisplaySettings = MutableStateFlow(initialHomeDisplaySettings(HomeDisplayArea.FAVORITES))
-    val favoritesHomeDisplaySettings: StateFlow<DirectoryDisplaySettings> = _favoritesHomeDisplaySettings.asStateFlow()
-
-    private val _tagsHomeDisplaySettings = MutableStateFlow(initialHomeDisplaySettings(HomeDisplayArea.TAGS))
-    val tagsHomeDisplaySettings: StateFlow<DirectoryDisplaySettings> = _tagsHomeDisplaySettings.asStateFlow()
 
     private val _homeCustomization = MutableStateFlow(
         runCatching { graph.navigation.homeCustomization(homeBuiltInShortcuts) }
@@ -690,17 +675,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _safBrowser = MutableStateFlow(SafBrowserUiState())
     val safBrowser: StateFlow<SafBrowserUiState> = _safBrowser.asStateFlow()
 
-    private val _favorites = MutableStateFlow<List<String>>(emptyList())
-    val favorites: StateFlow<List<String>> = _favorites.asStateFlow()
-
     private val _recents = MutableStateFlow<List<RecentItem>>(emptyList())
     val recents: StateFlow<List<RecentItem>> = _recents.asStateFlow()
 
     private val _savedSearches = MutableStateFlow<List<SavedSearch>>(emptyList())
     val savedSearches: StateFlow<List<SavedSearch>> = _savedSearches.asStateFlow()
-
-    private val _tagSnapshot = MutableStateFlow(FileTagSnapshot())
-    val tagSnapshot: StateFlow<FileTagSnapshot> = _tagSnapshot.asStateFlow()
 
     val appLockEnabled = graph.appLock.enabled
 
@@ -761,7 +740,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshSafLocations()
         refreshNavigationState()
         refreshRecentFiles()
-        refreshTags()
         viewModelScope.launch {
             operations.collectLatest { snapshots ->
                 snapshots.filter {
@@ -786,12 +764,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _section.value = section
         if (section == AppSection.FILES) {
             if (filesDestinationReselected) {
-                _homeToolPage.value = null
                 _filesHomeVisible.value = true
             }
             refreshRecentFiles()
-        } else {
-            _homeToolPage.value = null
         }
         if (section == AppSection.TOOLS) {
             graph.advancedAccess.refreshCapabilities()
@@ -832,20 +807,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun showFilesHome() {
         if (_fileCategory.value.open) closeFileCategory()
         _section.value = AppSection.FILES
-        _homeToolPage.value = null
         _filesHomeVisible.value = true
         refreshRecentFiles()
-    }
-
-    fun openHomeToolPage(page: HomeToolPage) {
-        if (_fileCategory.value.open) closeFileCategory()
-        _section.value = AppSection.FILES
-        _filesHomeVisible.value = true
-        _homeToolPage.value = page
-    }
-
-    fun closeHomeToolPage() {
-        _homeToolPage.value = null
     }
 
     fun openAdvancedBrowser(preferredPath: String? = null) {
@@ -1262,8 +1225,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun homeDisplayFlow(area: HomeDisplayArea): MutableStateFlow<DirectoryDisplaySettings> = when (area) {
         HomeDisplayArea.STORAGE -> _storageHomeDisplaySettings
         HomeDisplayArea.QUICK_LOCATIONS -> _filesHomeDisplaySettings
-        HomeDisplayArea.FAVORITES -> _favoritesHomeDisplaySettings
-        HomeDisplayArea.TAGS -> _tagsHomeDisplaySettings
     }
 
     fun toggleFilesHomeLayout() {
@@ -1968,56 +1929,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         panelFlow(panel).update { it.copy(selectedPaths = emptySet()) }
     }
 
-    fun applyTags(paths: List<String>, tags: Set<String>, rating: Int?, newTagColorArgb: Int = 0xff1976d2.toInt()) {
-        viewModelScope.launch {
-            runCatching { withContext(Dispatchers.IO) { graph.fileTags.apply(paths, tags, rating, newTagColorArgb) } }
-                .onSuccess {
-                    _tagSnapshot.value = it
-                    message("Žymos išsaugotos ${paths.distinct().size} elementui(-ams)")
-                }
-                .onFailure { message(it.message ?: "Žymų išsaugoti nepavyko", true) }
-        }
-    }
-
-    fun clearTags(paths: List<String>) {
-        viewModelScope.launch {
-            runCatching { withContext(Dispatchers.IO) { graph.fileTags.clear(paths) } }
-                .onSuccess {
-                    _tagSnapshot.value = it
-                    message("Žymos pašalintos")
-                }
-                .onFailure { message(it.message ?: "Žymų pašalinti nepavyko", true) }
-        }
-    }
-
-    fun exportTags(panel: PanelId) {
-        val directory = File(panelFlow(panel).value.path)
-        viewModelScope.launch {
-            runCatching { withContext(Dispatchers.IO) { graph.fileTags.exportTo(directory) } }
-                .onSuccess { message("Žymos eksportuotos: ${it.name}") }
-                .onFailure { message(it.message ?: "Žymų eksportuoti nepavyko", true) }
-        }
-    }
-
-    fun importTags(path: String) {
-        viewModelScope.launch {
-            runCatching { withContext(Dispatchers.IO) { graph.fileTags.importFrom(File(path)) } }
-                .onSuccess {
-                    _tagSnapshot.value = it
-                    message("Žymos importuotos")
-                }
-                .onFailure { message(it.message ?: "Žymų importuoti nepavyko", true) }
-        }
-    }
-
-    fun refreshTags() {
-        viewModelScope.launch {
-            runCatching { withContext(Dispatchers.IO) { graph.fileTags.snapshot() } }
-                .onSuccess { _tagSnapshot.value = it }
-                .onFailure { message(it.message ?: "Žymų perskaityti nepavyko", true) }
-        }
-    }
-
     fun copySelection(panel: PanelId, move: Boolean) {
         val selected = panelFlow(panel).value.selectedPaths.toList()
         if (selected.isEmpty()) return
@@ -2489,12 +2400,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun applicationActionError(text: String) {
         if (_deviceCleanup.value.open) _deviceCleanup.update { it.copy(error = text) }
         else message(text, true)
-    }
-
-    fun openTagFromHome(tag: String) {
-        _section.value = AppSection.ANALYZE
-        val searchRoots = _roots.value.map(StorageRoot::path).distinct().ifEmpty { listOf(initialPrimaryPath) }
-        search(SearchFilters(tags = setOf(tag)), searchRoots)
     }
 
     fun toggleFileCategorySelection(path: String) {
@@ -3796,10 +3701,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         searchJob = viewModelScope.launch {
             _searchState.value = SearchUiState(filters = filters, roots = roots, running = true)
             try {
-                val taggedPaths = if (filters.tags.isEmpty()) null else graph.fileTags.pathsWithAll(filters.tags)
-                val pathPredicate: (FileEntry) -> Boolean = { entry ->
-                    taggedPaths == null || entry.absolutePath in taggedPaths
-                }
+                val pathPredicate: (FileEntry) -> Boolean = { true }
                 val result = graph.fileCategories.searchIndexed(roots, filters, pathPredicate)
                     ?: graph.search.search(roots, filters, pathPredicate)
                 _searchState.value = SearchUiState(
@@ -4388,28 +4290,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshNavigationState() {
         runCatching {
-            _favorites.value = graph.navigation.favorites()
             _recents.value = graph.navigation.recents()
             _savedSearches.value = graph.navigation.savedSearches()
             _homeCustomization.value = graph.navigation.homeCustomization(homeBuiltInShortcuts)
         }.onFailure { message(it.message ?: "Naršymo nustatymų perskaityti nepavyko", true) }
-    }
-
-    fun toggleFavorite(path: String) {
-        runCatching { _favorites.value = graph.navigation.toggleFavorite(path) }
-            .onFailure { message(it.message ?: "Žymos pakeisti nepavyko", true) }
-    }
-
-    fun addSelectionToFavorites(panel: PanelId) {
-        val selected = panelFlow(panel).value.selectedPaths
-        if (selected.isEmpty()) return
-        runCatching { graph.navigation.addFavorites(selected) }
-            .onSuccess { updated ->
-                _favorites.value = updated
-                clearSelection(panel)
-                message("Pridėta ${selected.size} · iš viso ${updated.size}")
-            }
-            .onFailure { message(it.message ?: "Vietos įrašyti nepavyko", true) }
     }
 
     fun setTrashRetentionPeriod(period: TrashRetentionPeriod) {
@@ -4697,7 +4581,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         when {
             file.isDirectory -> openLocalDirectoryFromHome(panel, path)
             file.isFile -> {
-                _homeToolPage.value = null
                 open(graph.localFiles.toEntry(file))
             }
             else -> message("Vieta nebeegzistuoja", true)
@@ -4710,7 +4593,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         val category = HomeShortcutNavigationRules.categoryFor(shortcutId)
-        _homeToolPage.value = null
         if (category != null) openFileCategory(category) else openQuickPathFromHome(path, panel)
     }
 
@@ -4741,7 +4623,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         _section.value = AppSection.FILES
-        _homeToolPage.value = null
         _filesHomeVisible.value = false
         val displaySettings = savedDirectoryDisplaySettings(target)
         val sortSettings = savedDirectorySortSettings(target)

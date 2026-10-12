@@ -156,12 +156,9 @@ import com.affilemanager.app.data.PanelWorkspace
 import com.affilemanager.app.data.DirectoryDisplaySettings
 import com.affilemanager.app.data.DirectoryGridStyle
 import com.affilemanager.app.data.DirectoryLayoutMode
-import com.affilemanager.app.data.FileTagDefinition
 import com.affilemanager.app.data.FileSelectionSummary
-import com.affilemanager.app.data.FileTagSnapshot
 import com.affilemanager.app.data.RecentItem
 import com.affilemanager.app.data.RecentFileItem
-import com.affilemanager.app.data.TaggedFileRecord
 import com.affilemanager.app.data.HomeCustomization
 import com.affilemanager.app.data.OptionalFeature
 import com.affilemanager.app.ui.components.featureVisible
@@ -173,7 +170,6 @@ import com.affilemanager.app.data.SafLocation
 import com.affilemanager.app.advanced.AdvancedAccessBackend
 import com.affilemanager.app.ui.MainViewModel
 import com.affilemanager.app.ui.AppSection
-import com.affilemanager.app.ui.HomeToolPage
 import com.affilemanager.app.ui.FileScrollKey
 import com.affilemanager.app.ui.PanelId
 import com.affilemanager.app.ui.PanelUiState
@@ -258,18 +254,13 @@ fun FilesScreen(
     val recentFiles by viewModel.recentFiles.collectAsStateWithLifecycle()
     val filesHomeDisplaySettings by viewModel.filesHomeDisplaySettings.collectAsStateWithLifecycle()
     val storageHomeDisplaySettings by viewModel.storageHomeDisplaySettings.collectAsStateWithLifecycle()
-    val favoritesHomeDisplaySettings by viewModel.favoritesHomeDisplaySettings.collectAsStateWithLifecycle()
-    val tagsHomeDisplaySettings by viewModel.tagsHomeDisplaySettings.collectAsStateWithLifecycle()
     val homeCustomization by viewModel.homeCustomization.collectAsStateWithLifecycle()
     val filesHomeVisible by viewModel.filesHomeVisible.collectAsStateWithLifecycle()
-    val homeToolPage by viewModel.homeToolPage.collectAsStateWithLifecycle()
     val activePanel by viewModel.activePanel.collectAsStateWithLifecycle()
     val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val remoteClipboard by viewModel.remoteClipboard.collectAsStateWithLifecycle()
     val renameUndo by viewModel.renameUndo.collectAsStateWithLifecycle()
-    val tagSnapshot by viewModel.tagSnapshot.collectAsStateWithLifecycle()
     val panelComparison by viewModel.panelComparison.collectAsStateWithLifecycle()
-    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val trashItems by viewModel.trashItems.collectAsStateWithLifecycle()
     val advancedAccess by viewModel.advancedAccess.collectAsStateWithLifecycle()
     val fileCategory by viewModel.fileCategory.collectAsStateWithLifecycle()
@@ -282,7 +273,6 @@ fun FilesScreen(
     var permanentDeletePanel by remember { mutableStateOf<PanelId?>(null) }
     var archiveRequest by remember { mutableStateOf<ArchiveRequest?>(null) }
     var pastePanel by remember { mutableStateOf<PanelId?>(null) }
-    var tagPanel by remember { mutableStateOf<PanelId?>(null) }
     var displayPanel by remember { mutableStateOf<PanelId?>(null) }
     var homeDisplayArea by remember { mutableStateOf<HomeDisplayArea?>(null) }
     var showHomeCustomization by remember { mutableStateOf(false) }
@@ -375,32 +365,7 @@ fun FilesScreen(
             if (!hasAllFilesAccess) {
                 PermissionBanner(onRequestAllFilesAccess)
             }
-            if (homeToolPage != null) {
-                val toolDisplayArea = if (homeToolPage == HomeToolPage.FAVORITES) {
-                    HomeDisplayArea.FAVORITES
-                } else {
-                    HomeDisplayArea.TAGS
-                }
-                HomeToolsBrowser(
-                    page = requireNotNull(homeToolPage),
-                    favorites = favorites,
-                    tagSnapshot = tagSnapshot,
-                    displaySettings = if (toolDisplayArea == HomeDisplayArea.FAVORITES) {
-                        favoritesHomeDisplaySettings
-                    } else {
-                        tagsHomeDisplaySettings
-                    },
-                    onBack = viewModel::closeHomeToolPage,
-                    onOpenFavorite = { path -> viewModel.openQuickPathFromHome(path, activePanel) },
-                    onOpenTag = { tag -> viewModel.closeHomeToolPage(); viewModel.openTagFromHome(tag) },
-                    onToggleLayout = { viewModel.toggleHomeDisplayLayout(toolDisplayArea) },
-                    onOpenDisplaySettings = { homeDisplayArea = toolDisplayArea },
-                    onRefresh = {
-                        viewModel.refreshNavigationState()
-                        viewModel.refreshTags()
-                    },
-                )
-            } else if (fileCategory.open) {
+            if (fileCategory.open) {
                 PanelTabsBar(
                     panel = activePanel,
                     workspace = if (activePanel == PanelId.LEFT) leftTabs else rightTabs,
@@ -424,8 +389,6 @@ fun FilesScreen(
                     storageDisplaySettings = storageHomeDisplaySettings,
                     quickLocationsDisplaySettings = filesHomeDisplaySettings,
                     customization = homeCustomization,
-                    favorites = favorites,
-                    tagSnapshot = tagSnapshot,
                     trashCount = trashItems.size,
                     rootStorageAvailable = advancedAccess.activeBackend in setOf(
                         AdvancedAccessBackend.ROOT,
@@ -441,8 +404,6 @@ fun FilesScreen(
                     onRevealRecent = { entry -> viewModel.revealLocalEntry(activePanel, entry.absolutePath) },
                     onCopyRecent = { entries, move -> viewModel.copyEntries(entries.map(FileEntry::absolutePath), move) },
                     onOpenTrash = viewModel::openTrashFromHome,
-                    onOpenFavoritesPage = { viewModel.openHomeToolPage(HomeToolPage.FAVORITES) },
-                    onOpenTagsPage = { viewModel.openHomeToolPage(HomeToolPage.TAGS) },
                     onOpenCleanup = viewModel::openCleanupFromHome,
                     onRefreshRecent = viewModel::refreshRecentFiles,
                     onToggleLayout = viewModel::toggleHomeDisplayLayout,
@@ -480,11 +441,6 @@ fun FilesScreen(
                             archiveRequest = ArchiveRequest.fromSelection(PanelId.LEFT, left.selectedPaths)
                         },
                         onArchiveEntry = { entry -> archiveRequest = ArchiveRequest.fromEntry(PanelId.LEFT, entry) },
-                        onTag = { tagPanel = PanelId.LEFT },
-                        onTagEntry = { entry ->
-                            viewModel.selectOnly(PanelId.LEFT, entry.absolutePath)
-                            tagPanel = PanelId.LEFT
-                        },
                         onCopyToOther = { viewModel.copySelection(PanelId.LEFT, move = false); pastePanel = PanelId.RIGHT },
                         onPaste = { pastePanel = PanelId.LEFT },
                         onUndoBatchRename = viewModel::undoBatchRename,
@@ -510,11 +466,6 @@ fun FilesScreen(
                             archiveRequest = ArchiveRequest.fromSelection(PanelId.RIGHT, right.selectedPaths)
                         },
                         onArchiveEntry = { entry -> archiveRequest = ArchiveRequest.fromEntry(PanelId.RIGHT, entry) },
-                        onTag = { tagPanel = PanelId.RIGHT },
-                        onTagEntry = { entry ->
-                            viewModel.selectOnly(PanelId.RIGHT, entry.absolutePath)
-                            tagPanel = PanelId.RIGHT
-                        },
                         onCopyToOther = { viewModel.copySelection(PanelId.RIGHT, move = false); pastePanel = PanelId.LEFT },
                         onPaste = { pastePanel = PanelId.RIGHT },
                         onUndoBatchRename = viewModel::undoBatchRename,
@@ -542,11 +493,6 @@ fun FilesScreen(
                         archiveRequest = ArchiveRequest.fromSelection(activePanel, panelState.selectedPaths)
                     },
                     onArchiveEntry = { entry -> archiveRequest = ArchiveRequest.fromEntry(activePanel, entry) },
-                    onTag = { tagPanel = activePanel },
-                    onTagEntry = { entry ->
-                        viewModel.selectOnly(activePanel, entry.absolutePath)
-                        tagPanel = activePanel
-                    },
                     onCopyToOther = {
                         viewModel.copySelection(activePanel, move = false)
                         pastePanel = if (activePanel == PanelId.LEFT) PanelId.RIGHT else PanelId.LEFT
@@ -666,27 +612,6 @@ fun FilesScreen(
             )
         }
     }
-    tagPanel?.let { panel ->
-        val selectedPaths = if (panel == PanelId.LEFT) left.selectedPaths.toList() else right.selectedPaths.toList()
-        TagDialog(
-            paths = selectedPaths,
-            definitions = tagSnapshot.definitions,
-            records = tagSnapshot.records,
-            onDismiss = { tagPanel = null },
-            onApply = { tags, rating, color ->
-                viewModel.applyTags(selectedPaths, tags, rating, color)
-                tagPanel = null
-            },
-            onClear = {
-                viewModel.clearTags(selectedPaths)
-                tagPanel = null
-            },
-            onExport = { viewModel.exportTags(panel) },
-            onImport = selectedPaths.singleOrNull()?.takeIf { it.endsWith(".json", ignoreCase = true) }?.let { path ->
-                { viewModel.importTags(path); tagPanel = null }
-            },
-        )
-    }
     displayPanel?.let { panel ->
         val state = if (panel == PanelId.LEFT) left else right
         DirectoryDisplaySettingsDialog(
@@ -710,8 +635,6 @@ fun FilesScreen(
         val settings = when (area) {
             HomeDisplayArea.STORAGE -> storageHomeDisplaySettings
             HomeDisplayArea.QUICK_LOCATIONS -> filesHomeDisplaySettings
-            HomeDisplayArea.FAVORITES -> favoritesHomeDisplaySettings
-            HomeDisplayArea.TAGS -> tagsHomeDisplaySettings
         }
         DirectoryDisplaySettingsDialog(
             initialSettings = settings,
@@ -869,8 +792,6 @@ private fun FilePanel(
     onInfo: (List<FileEntry>) -> Unit,
     onArchive: () -> Unit,
     onArchiveEntry: (FileEntry) -> Unit,
-    onTag: () -> Unit,
-    onTagEntry: (FileEntry) -> Unit,
     onCopyToOther: () -> Unit,
     onPaste: () -> Unit,
     onUndoBatchRename: () -> Unit,
@@ -878,17 +799,12 @@ private fun FilePanel(
 ) {
     var compactMenu by remember { mutableStateOf(false) }
     var showViewingHistory by remember { mutableStateOf(false) }
-    var showFavoriteLocations by remember { mutableStateOf(false) }
     var searchVisible by remember(panelId) { mutableStateOf(false) }
     var searchQuery by remember(panelId) { mutableStateOf("") }
     var entryFilters by remember(tabs.activeTabId, state.path) { mutableStateOf<Set<DirectoryEntryFilter>>(emptySet()) }
     var showEntryFilter by remember(tabs.activeTabId, state.path) { mutableStateOf(false) }
-    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
-    val favoritePaths = remember(favorites) { favorites.toSet() }
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val localClipboard by viewModel.clipboard.collectAsStateWithLifecycle()
-    val tagSnapshot by viewModel.tagSnapshot.collectAsStateWithLifecycle()
-    val tagsByPath = remember(tagSnapshot.records) { tagSnapshot.records.associateBy(TaggedFileRecord::path) }
     LaunchedEffect(state.path) {
         searchVisible = false
         searchQuery = ""
@@ -941,14 +857,12 @@ private fun FilePanel(
                     onExpandedChange = { compactMenu = it },
                     panelId = panelId,
                     state = state,
-                    favorites = favorites,
                     clipboardAvailable = clipboardAvailable,
                     batchRenameUndoAvailable = batchRenameUndoAvailable,
                     viewModel = viewModel,
                     onPaste = onPaste,
                     onUndoBatchRename = onUndoBatchRename,
                     onDisplaySettings = onDisplaySettings,
-                    onShowFavorites = { showFavoriteLocations = true },
                     onShowViewingHistory = { showViewingHistory = true },
                     filterActive = entryFilters.isNotEmpty(),
                     onOpenFilter = { showEntryFilter = true },
@@ -1005,8 +919,8 @@ private fun FilePanel(
                 state.loading && state.entries.isEmpty() -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 state.entries.isEmpty() -> EmptyPanel("Aplankas tuščias", "Čia dar nėra failų")
                 displayedEntries.isEmpty() -> EmptyPanel("Atitikmenų nerasta", "Pabandykite kitą pavadinimą")
-                state.grid -> FileGrid(panelId, displayedState, tagsByPath, favoritePaths, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry, onTagEntry)
-                else -> FileList(panelId, displayedState, tagsByPath, favoritePaths, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry, onTagEntry)
+                state.grid -> FileGrid(panelId, displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
+                else -> FileList(panelId, displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
             }
             if (state.selectedPaths.isNotEmpty()) {
                 SelectionActionDock(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
@@ -1020,12 +934,6 @@ private fun FilePanel(
                         ) {
                             Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = uiText("Kopijuoti daugiau"))
                         }
-                    }
-                    if (featureVisible(OptionalFeature.FAVORITES)) IconButton(
-                        onClick = { viewModel.addSelectionToFavorites(panelId) },
-                        modifier = Modifier.testTag("selection_favorite_local"),
-                    ) {
-                        Icon(Icons.Rounded.Star, contentDescription = uiText("Pridėti prie mėgstamų"))
                     }
                     IconButton(
                         onClick = { viewModel.bookmarkSelection(panelId) },
@@ -1072,7 +980,6 @@ private fun FilePanel(
                     ) {
                         Icon(Icons.Rounded.Analytics, contentDescription = uiText("Analizuoti pasirinktus"))
                     }
-                    if (featureVisible(OptionalFeature.TAGS)) IconButton(onClick = onTag) { Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = uiText("Žymos ir įvertinimas")) }
                     IconButton(onClick = onTrash) {
                         Icon(Icons.Rounded.Delete, contentDescription = uiText("Į šiukšlinę"), tint = MaterialTheme.colorScheme.error)
                     }
@@ -1105,17 +1012,6 @@ private fun FilePanel(
             onClear = viewModel::clearRecents,
         )
     }
-    if (showFavoriteLocations) {
-        FavoriteLocationsDialog(
-            favorites = favorites,
-            onDismiss = { showFavoriteLocations = false },
-            onOpen = { path ->
-                showFavoriteLocations = false
-                viewModel.openQuickPath(path, panelId)
-            },
-            onRefresh = viewModel::refreshNavigationState,
-        )
-    }
     if (showEntryFilter) {
         DirectoryEntryFilterDialog(
             selected = entryFilters,
@@ -1131,14 +1027,12 @@ private fun CompactPanelActions(
     onExpandedChange: (Boolean) -> Unit,
     panelId: PanelId,
     state: PanelUiState,
-    favorites: List<String>,
     clipboardAvailable: Boolean,
     batchRenameUndoAvailable: Boolean,
     viewModel: MainViewModel,
     onPaste: () -> Unit,
     onUndoBatchRename: () -> Unit,
     onDisplaySettings: () -> Unit,
-    onShowFavorites: () -> Unit,
     onShowViewingHistory: () -> Unit,
     filterActive: Boolean,
     onOpenFilter: () -> Unit,
@@ -1162,28 +1056,6 @@ private fun CompactPanelActions(
                     onClick = { onExpandedChange(false); onUndoBatchRename() },
                 )
             }
-            if (featureVisible(OptionalFeature.FAVORITES)) DropdownMenuItem(
-                text = { LText(if (state.path in favorites) "Pašalinti iš mėgstamų" else "Pridėti prie mėgstamų") },
-                leadingIcon = {
-                    Icon(if (state.path in favorites) Icons.Rounded.Star else Icons.Rounded.StarBorder, contentDescription = null)
-                },
-                onClick = { viewModel.toggleFavorite(state.path); onExpandedChange(false) },
-            )
-            if (featureVisible(OptionalFeature.FAVORITES)) DropdownMenuItem(
-                text = {
-                    Column {
-                        LText("Mėgstami")
-                        LText(
-                            itemCountLabel(favorites.count { File(it).exists() }),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                leadingIcon = { Icon(Icons.Rounded.Star, contentDescription = null) },
-                modifier = Modifier.testTag("open_favorites_$panelId"),
-                onClick = { onExpandedChange(false); onShowFavorites() },
-            )
             if (featureVisible(OptionalFeature.RECENT)) DropdownMenuItem(
                 text = { LText("Peržiūrų istorija") },
                 leadingIcon = { Icon(Icons.Rounded.History, contentDescription = null) },
@@ -1371,15 +1243,12 @@ private fun Breadcrumbs(path: String, onNavigate: (String) -> Unit) {
 internal fun FileList(
     panel: PanelId,
     state: PanelUiState,
-    tagsByPath: Map<String, TaggedFileRecord>,
-    favoritePaths: Set<String>,
     scrollKey: FileScrollKey,
     viewModel: MainViewModel,
     onRename: (FileEntry) -> Unit,
     onInfo: (FileEntry) -> Unit,
     onTrash: (FileEntry) -> Unit,
     onArchive: (FileEntry) -> Unit,
-    onTag: (FileEntry) -> Unit,
 ) {
     val context = LocalContext.current
     val interfaceLanguage = LocalConfiguration.current.locales[0].language
@@ -1481,15 +1350,12 @@ internal fun FileList(
             contentPadding = PaddingValues(bottom = 88.dp),
         ) {
             items(state.entries, key = FileEntry::absolutePath, contentType = FileEntry::kind) { entry ->
-                val tagRecord = tagsByPath[entry.absolutePath]
                 val metadata = remember(entry, state.sortMode) {
                     entryMeta(entry, dateFormat, showDirectorySize = state.sortMode == SortMode.SIZE)
                 }
-                val tagText = remember(entry, tagRecord) { tagSummary(entry, tagRecord) }
                 FileRow(
                     entry = entry,
                     metadata = metadata,
-                    tagText = tagText,
                     selected = entry.absolutePath in state.selectedPaths,
                     showThumbnails = state.showThumbnails,
                     iconScalePercent = state.iconScalePercent,
@@ -1514,11 +1380,8 @@ internal fun FileList(
                     onTrash = { onTrash(entry) },
                     onArchive = { onArchive(entry) },
                     onAnalyze = { viewModel.analyzeEntries(listOf(entry.absolutePath)) },
-                    onTag = { onTag(entry) },
-                    favorite = entry.absolutePath in favoritePaths,
                     onCopy = { viewModel.copyEntry(panel, entry.absolutePath, move = false) },
                     onMove = { viewModel.copyEntry(panel, entry.absolutePath, move = true) },
-                    onToggleFavorite = { viewModel.toggleFavorite(entry.absolutePath) },
                     onBookmark = { viewModel.bookmarkPath(entry.absolutePath) },
                     onShare = { viewModel.shareEntry(entry.absolutePath) },
                 )
@@ -1534,15 +1397,12 @@ internal fun FileList(
 internal fun FileGrid(
     panel: PanelId,
     state: PanelUiState,
-    tagsByPath: Map<String, TaggedFileRecord>,
-    favoritePaths: Set<String>,
     scrollKey: FileScrollKey,
     viewModel: MainViewModel,
     onRename: (FileEntry) -> Unit,
     onInfo: (FileEntry) -> Unit,
     onTrash: (FileEntry) -> Unit,
     onArchive: (FileEntry) -> Unit,
-    onTag: (FileEntry) -> Unit,
 ) {
     val context = LocalContext.current
     val interfaceLanguage = LocalConfiguration.current.locales[0].language
@@ -1552,9 +1412,6 @@ internal fun FileGrid(
             ?.asSequence()
             ?.filter(FileEntry::metadataComplete)
             ?.maxOfOrNull(FileEntry::sizeBytes)
-    }
-    val reserveTagSpace = remember(state.entries, tagsByPath) {
-        state.entries.any { entry -> tagSummary(entry, tagsByPath[entry.absolutePath]) != null }
     }
     val initialPosition = remember(scrollKey) { viewModel.fileScrollPosition(scrollKey) }
     var restoringPosition by remember(scrollKey) {
@@ -1648,18 +1505,14 @@ internal fun FileGrid(
             verticalArrangement = Arrangement.spacedBy((5f * state.spacingScalePercent / 100f).dp),
         ) {
             items(state.entries, key = FileEntry::absolutePath, contentType = FileEntry::kind) { entry ->
-                val tagRecord = tagsByPath[entry.absolutePath]
-                val tagText = remember(entry, tagRecord) { tagSummary(entry, tagRecord) }
                 FileTile(
                     entry = entry,
-                    tagText = tagText,
                     selected = entry.absolutePath in state.selectedPaths,
                     showThumbnails = state.showThumbnails,
                     iconScalePercent = state.iconScalePercent,
                     spacingScalePercent = state.spacingScalePercent,
                     gridStyle = state.gridStyle,
                     largestSizeBytes = largestSizeBytes,
-                    reserveTagSpace = reserveTagSpace,
                     onClick = { handleEntryClick(panel, state, entry, viewModel) },
                     onLongClick = { viewModel.toggleSelection(panel, entry.absolutePath) },
                     onPreview = { viewModel.activatePanel(panel); viewModel.open(entry) },
@@ -1679,11 +1532,8 @@ internal fun FileGrid(
                     onTrash = { onTrash(entry) },
                     onArchive = { onArchive(entry) },
                     onAnalyze = { viewModel.analyzeEntries(listOf(entry.absolutePath)) },
-                    onTag = { onTag(entry) },
-                    favorite = entry.absolutePath in favoritePaths,
                     onCopy = { viewModel.copyEntry(panel, entry.absolutePath, move = false) },
                     onMove = { viewModel.copyEntry(panel, entry.absolutePath, move = true) },
-                    onToggleFavorite = { viewModel.toggleFavorite(entry.absolutePath) },
                     onBookmark = { viewModel.bookmarkPath(entry.absolutePath) },
                     onShare = { viewModel.shareEntry(entry.absolutePath) },
                 )
@@ -1705,7 +1555,6 @@ private fun handleEntryClick(panel: PanelId, state: PanelUiState, entry: FileEnt
 private fun FileRow(
     entry: FileEntry,
     metadata: String,
-    tagText: String?,
     selected: Boolean,
     showThumbnails: Boolean,
     iconScalePercent: Int,
@@ -1721,11 +1570,8 @@ private fun FileRow(
     onTrash: () -> Unit,
     onArchive: () -> Unit,
     onAnalyze: () -> Unit,
-    onTag: () -> Unit,
-    favorite: Boolean,
     onCopy: () -> Unit,
     onMove: () -> Unit,
-    onToggleFavorite: () -> Unit,
     onBookmark: () -> Unit,
     onShare: () -> Unit,
 ) {
@@ -1773,12 +1619,9 @@ private fun FileRow(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-            tagText?.let { summary ->
-                Text(summary, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
         }
         if (!entry.isReadable) LText("Neprieinama", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-        EntryActionsButton(entry, onPreview, onOpenWith, onSelect, onRename, onInfo, onTrash, onArchive, onAnalyze, onTag, favorite, onCopy, onMove, onToggleFavorite, onBookmark, onShare)
+        EntryActionsButton(entry, onPreview, onOpenWith, onSelect, onRename, onInfo, onTrash, onArchive, onAnalyze, onCopy, onMove, onBookmark, onShare)
     }
     }
     HorizontalDivider(
@@ -1791,14 +1634,12 @@ private fun FileRow(
 @Composable
 private fun FileTile(
     entry: FileEntry,
-    tagText: String?,
     selected: Boolean,
     showThumbnails: Boolean,
     iconScalePercent: Int,
     spacingScalePercent: Int,
     gridStyle: DirectoryGridStyle,
     largestSizeBytes: Long?,
-    reserveTagSpace: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onPreview: () -> Unit,
@@ -1809,11 +1650,8 @@ private fun FileTile(
     onTrash: () -> Unit,
     onArchive: () -> Unit,
     onAnalyze: () -> Unit,
-    onTag: () -> Unit,
-    favorite: Boolean,
     onCopy: () -> Unit,
     onMove: () -> Unit,
-    onToggleFavorite: () -> Unit,
     onBookmark: () -> Unit,
     onShare: () -> Unit,
 ) {
@@ -1821,8 +1659,7 @@ private fun FileTile(
     val visualHeight = (76f * iconScalePercent / 100f).dp
     val innerPadding = (9f * spacingScalePercent / 100f).dp
     val sizeBarSlotHeight = if (largestSizeBytes != null) 10.dp else 0.dp
-    val tagSlotHeight = if (reserveTagSpace) 18.dp else 0.dp
-    val extraContentHeight = sizeBarSlotHeight + tagSlotHeight
+    val extraContentHeight = sizeBarSlotHeight
     val metadata = if (!entry.isDirectory || largestSizeBytes != null && entry.metadataComplete) {
         FileSystemRules.humanBytes(entry.sizeBytes)
     } else {
@@ -1861,7 +1698,7 @@ private fun FileTile(
                 )
             },
             actions = {
-                EntryActionsButton(entry, onPreview, onOpenWith, onSelect, onRename, onInfo, onTrash, onArchive, onAnalyze, onTag, favorite, onCopy, onMove, onToggleFavorite, onBookmark, onShare)
+                EntryActionsButton(entry, onPreview, onOpenWith, onSelect, onRename, onInfo, onTrash, onArchive, onAnalyze, onCopy, onMove, onBookmark, onShare)
             },
             extraContent = {
                 if (largestSizeBytes != null && entry.metadataComplete) {
@@ -1876,126 +1713,8 @@ private fun FileTile(
                 } else if (sizeBarSlotHeight > 0.dp) {
                     Spacer(Modifier.height(sizeBarSlotHeight))
                 }
-                if (reserveTagSpace) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(tagSlotHeight),
-                        contentAlignment = Alignment.TopStart,
-                    ) {
-                        tagText?.let { summary ->
-                            Text(
-                                summary,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
             },
         )
-    }
-}
-
-private fun tagSummary(entry: FileEntry, record: TaggedFileRecord?): String? {
-    record ?: return null
-    val current = entry.isDirectory || (entry.sizeBytes == record.sizeBytes && entry.modifiedAtMillis == record.modifiedAtMillis)
-    val parts = buildList {
-        if (record.rating > 0) add("★".repeat(record.rating))
-        if (record.tags.isNotEmpty()) add(record.tags.sorted().joinToString(" · "))
-        if (!current) add("pasenęs įrašas")
-    }
-    return parts.takeIf { it.isNotEmpty() }?.joinToString("  ")
-}
-
-@Composable
-private fun TagDialog(
-    paths: List<String>,
-    definitions: List<FileTagDefinition>,
-    records: List<TaggedFileRecord>,
-    onDismiss: () -> Unit,
-    onApply: (Set<String>, Int?, Int) -> Unit,
-    onClear: () -> Unit,
-    onExport: () -> Unit,
-    onImport: (() -> Unit)?,
-) {
-    val currentRecords = remember(paths, records) { records.filter { it.path in paths.toSet() } }
-    val currentTags = remember(currentRecords) { currentRecords.flatMap(TaggedFileRecord::tags).toSortedSet() }
-    var selectedTags by remember(paths) { mutableStateOf(emptySet<String>()) }
-    var typedTags by remember(paths) { mutableStateOf("") }
-    var rating by remember(paths) { mutableStateOf<Int?>(null) }
-    val colors = remember { listOf(0xff1976d2, 0xff2e7d32, 0xffed6c02, 0xff9c27b0, 0xffc62828).map(Long::toInt) }
-    var selectedColor by remember(paths) { mutableStateOf(colors.first()) }
-    val parsedTags = remember(typedTags, selectedTags) {
-        selectedTags + typedTags.split(',', '\n').map(String::trim).filter(String::isNotEmpty)
-    }
-    AfModalDialog(
-        title = "Žymos ir įvertinimas",
-        icon = Icons.AutoMirrored.Rounded.Label,
-        modifier = Modifier.testTag("tag_dialog"),
-        onDismissRequest = onDismiss,
-        actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
-            Button(onClick = { onApply(parsedTags, rating, selectedColor) }, enabled = parsedTags.isNotEmpty() || rating != null) {
-                LText("Taikyti")
-            }
-        },
-    ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                LText("Pasirinkta: ${paths.size}. Naujos žymos pridedamos prie esamų; viską pašalina atskiras mygtukas.", style = MaterialTheme.typography.bodySmall)
-                if (currentTags.isNotEmpty()) {
-                    LText("Dabartinės: ${currentTags.joinToString(" · ")}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-                if (definitions.isNotEmpty()) {
-                    LText("Esamos žymos", style = MaterialTheme.typography.labelLarge)
-                    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        definitions.take(40).forEach { definition ->
-                            FilterChip(
-                                selected = definition.name in selectedTags,
-                                onClick = {
-                                    selectedTags = if (definition.name in selectedTags) selectedTags - definition.name else selectedTags + definition.name
-                                },
-                                label = { Text(definition.name) },
-                            )
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = typedTags,
-                    onValueChange = { typedTags = it.take(500) },
-                    label = { LText("Naujos žymos, atskirtos kableliais") },
-                    supportingText = { LText("Hierarchija: Projektas/Dokumentai") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                LText("Naujų žymų spalva", style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    colors.forEachIndexed { index, color ->
-                        FilterChip(
-                            selected = color == selectedColor,
-                            onClick = { selectedColor = color },
-                            label = { LText("●", color = Color(color)) },
-                        )
-                    }
-                }
-                LText("Įvertinimas (nepasirinkus nekeičiamas)", style = MaterialTheme.typography.labelLarge)
-                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    listOf<Int?>(null, 1, 2, 3, 4, 5).forEach { value ->
-                        FilterChip(
-                            selected = rating == value,
-                            onClick = { rating = value },
-                            label = { Text(value?.let { "★".repeat(it) } ?: uiText("Nekeisti")) },
-                        )
-                    }
-                }
-                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(onClick = onClear, enabled = currentRecords.isNotEmpty()) { LText("Pašalinti visas") }
-                    OutlinedButton(onClick = onExport) { LText("Eksportuoti") }
-                    onImport?.let { importAction -> OutlinedButton(onClick = importAction) { LText("Importuoti JSON") } }
-                }
-            }
     }
 }
 
@@ -2010,11 +1729,8 @@ private fun EntryActionsButton(
     onTrash: () -> Unit,
     onArchive: () -> Unit,
     onAnalyze: () -> Unit,
-    onTag: () -> Unit,
-    favorite: Boolean,
     onCopy: () -> Unit,
     onMove: () -> Unit,
-    onToggleFavorite: () -> Unit,
     onBookmark: () -> Unit,
     onShare: () -> Unit,
 ) {
@@ -2100,20 +1816,6 @@ private fun EntryActionsButton(
                 text = { LText("Informacija") },
                 leadingIcon = { Icon(Icons.Rounded.Info, contentDescription = null) },
                 onClick = { expanded = false; onInfo() },
-            )
-            if (featureVisible(OptionalFeature.TAGS)) DropdownMenuItem(
-                text = { LText("Žymos ir įvertinimas") },
-                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null) },
-                onClick = { expanded = false; onTag() },
-                modifier = Modifier.testTag("tag_entry_action"),
-            )
-            if (featureVisible(OptionalFeature.FAVORITES)) DropdownMenuItem(
-                text = { LText(if (favorite) "Pašalinti iš mėgstamų" else "Pridėti prie mėgstamų") },
-                leadingIcon = {
-                    Icon(if (favorite) Icons.Rounded.Star else Icons.Rounded.StarBorder, contentDescription = null)
-                },
-                onClick = { expanded = false; onToggleFavorite() },
-                modifier = Modifier.testTag("favorite_entry_action"),
             )
             DropdownMenuItem(
                 text = { LText("Pridėti žymelę") },
