@@ -108,7 +108,6 @@ import com.affilemanager.app.operations.TransferVerification
 import com.affilemanager.app.pdfsigning.PdfSignaturePlacement
 import com.affilemanager.app.pdfsigning.SavedSignature
 import com.affilemanager.app.pdfsigning.SignatureDrawing
-import com.affilemanager.app.security.VaultHeader
 import com.affilemanager.app.workflow.AfAutomationRule
 import com.affilemanager.app.workflow.AfAutomationSchedule
 import com.affilemanager.app.workflow.AfDestinationRef
@@ -117,12 +116,10 @@ import com.affilemanager.app.workflow.AfLocationRef
 import com.affilemanager.app.workflow.AfOperationReceipt
 import com.affilemanager.app.workflow.AfPlanDefinition
 import com.affilemanager.app.workflow.AfPreflightSummary
-import com.affilemanager.app.workflow.AfPreflightFingerprint
 import com.affilemanager.app.workflow.AfSourceRef
 import com.affilemanager.app.workflow.AfSourceKind
 import com.affilemanager.app.workflow.AfUndoPreview
 import com.affilemanager.app.workflow.AfWorkflowLimits
-import com.affilemanager.app.workflow.AfWorkflowSnapshot
 import com.affilemanager.app.workflow.identityKey
 import com.affilemanager.app.ui.preview.RemotePreviewCache
 import com.affilemanager.app.ui.preview.MediaNavigationRules
@@ -367,28 +364,6 @@ data class AfClipboardState(
     val moveAfterVerifiedCopies: Boolean = false,
 )
 
-enum class AfWorkflowTab { PLANS, TIMELINE, AUTOMATION }
-
-data class AfWorkflowUiState(
-    val open: Boolean = false,
-    val tab: AfWorkflowTab = AfWorkflowTab.PLANS,
-    val editingPlanId: String? = null,
-    val name: String = "",
-    val sources: List<AfSourceRef> = emptyList(),
-    val destinations: List<AfDestinationRef> = emptyList(),
-    val conflictPolicy: ConflictPolicy = ConflictPolicy.KEEP_BOTH,
-    val verification: TransferVerification = TransferVerification.SIZE,
-    val failurePolicy: TransferFailurePolicy = TransferFailurePolicy.STOP,
-    val deleteSourcesAfterVerifiedCopies: Boolean = false,
-    val preview: AfPreflightSummary? = null,
-    val automationPreview: AfPreflightSummary? = null,
-    val undoPreview: AfUndoPreview? = null,
-    val selectedReceiptId: String? = null,
-    val timelineQuery: String = "",
-    val working: Boolean = false,
-    val error: String? = null,
-)
-
 data class SafBrowserUiState(
     val location: SafLocation? = null,
     val currentUri: String? = null,
@@ -479,7 +454,6 @@ sealed interface PreviewTarget {
         val entries: List<ArchiveEntryInfo>,
     ) : PreviewTarget
     data class ArchiveEntry(val file: FileEntry) : PreviewTarget
-    data class Vault(val file: FileEntry, val header: VaultHeader) : PreviewTarget
 }
 
 data class SignatureLibraryUiState(
@@ -658,9 +632,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _afClipboard = MutableStateFlow<AfClipboardState?>(null)
     val afClipboard: StateFlow<AfClipboardState?> = _afClipboard.asStateFlow()
 
-    val afWorkflowSnapshot: StateFlow<AfWorkflowSnapshot> = graph.workflows.snapshot
-    private val _afWorkflowUi = MutableStateFlow(AfWorkflowUiState())
-    val afWorkflowUi: StateFlow<AfWorkflowUiState> = _afWorkflowUi.asStateFlow()
 
     private val _searchState = MutableStateFlow(SearchUiState())
     val searchState: StateFlow<SearchUiState> = _searchState.asStateFlow()
@@ -2808,12 +2779,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .onFailure { message(it.message ?: "Naujausių failų įrašo išsaugoti nepavyko", true) }
         }
         viewModelScope.launch {
-            if (entry.extension == "afvault") {
-                runCatching { graph.fileVault.inspect(entry.file) }
-                    .onSuccess { _preview.value = PreviewTarget.Vault(entry, it) }
-                    .onFailure { message(it.message ?: "Saugyklos perskaityti nepavyko", true) }
-                return@launch
-            }
             when (entry.kind) {
                 com.affilemanager.app.model.EntryKind.ARCHIVE -> runCatching { graph.archives.list(entry.file) }
                     .onSuccess { _preview.value = PreviewTarget.Archive(entry, it) }
@@ -2904,8 +2869,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (
             target is PreviewTarget.Archive ||
             target is PreviewTarget.RemoteArchive ||
-            target is PreviewTarget.ArchiveEntry ||
-            target is PreviewTarget.Vault
+            target is PreviewTarget.ArchiveEntry
         ) return
         val source = target.previewSource()
         val existing = _fileEditState.value
@@ -2942,7 +2906,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     is PreviewTarget.ArchiveEntry,
                     is PreviewTarget.Archive,
                     is PreviewTarget.RemoteArchive,
-                    is PreviewTarget.Vault,
                     -> error("Šio peržiūros tipo tiesiogiai redaguoti negalima")
                 }
                 prepared = withContext(Dispatchers.IO) {
@@ -3613,314 +3576,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun openAfWorkflowCenter(tab: AfWorkflowTab = AfWorkflowTab.PLANS) {
-        _afWorkflowUi.update { it.copy(open = true, tab = tab, error = null) }
-        viewModelScope.launch(Dispatchers.IO) { runCatching { graph.workflows.refresh() } }
-    }
-
-    fun closeAfWorkflowCenter() {
-        _afWorkflowUi.value = AfWorkflowUiState()
-    }
-
-    fun startAfPlanFromClipboard(destinationPanel: PanelId? = null, remoteDestination: Boolean = false) {
-        val clipboard = _afClipboard.value
-        if (clipboard == null || clipboard.sources.isEmpty()) {
-            message("Pirmiausia nukopijuokite failus, tada atverkite „Įklijuoti į kelias vietas“", true)
-            return
-        }
-        val destinations = buildList {
-            destinationPanel?.let { panel ->
-                add(AfDestinationRef(AfLocationRef.local(panelFlow(panel).value.path)))
-            }
-            if (remoteDestination) {
-                val profile = _networkState.value.connectedProfile
-                if (profile != null) {
-                    add(AfDestinationRef(AfLocationRef.remote(profile.id, profile.name, _networkState.value.path)))
-                }
-            }
-        }
-        _afWorkflowUi.value = AfWorkflowUiState(
-            open = true,
-            tab = AfWorkflowTab.PLANS,
-            name = "AF Plan ${System.currentTimeMillis()}",
-            sources = clipboard.sources,
-            destinations = destinations,
-            deleteSourcesAfterVerifiedCopies = clipboard.moveAfterVerifiedCopies,
-        )
-    }
-
-    fun editAfPlan(plan: AfPlanDefinition) {
-        _afWorkflowUi.value = AfWorkflowUiState(
-            open = true,
-            tab = AfWorkflowTab.PLANS,
-            editingPlanId = plan.id,
-            name = plan.name,
-            sources = plan.sources,
-            destinations = plan.destinations,
-            conflictPolicy = plan.conflictPolicy,
-            verification = plan.verification,
-            failurePolicy = plan.failurePolicy,
-            deleteSourcesAfterVerifiedCopies = plan.deleteSourcesAfterVerifiedCopies,
-        )
-    }
-
-    fun newAfPlanDraft() {
-        val sources = _afClipboard.value?.sources.orEmpty()
-        _afWorkflowUi.update {
-            AfWorkflowUiState(
-                open = true,
-                tab = AfWorkflowTab.PLANS,
-                name = if (sources.isEmpty()) "" else "AF Plan ${System.currentTimeMillis()}",
-                sources = sources,
-                deleteSourcesAfterVerifiedCopies = _afClipboard.value?.moveAfterVerifiedCopies == true,
-            )
-        }
-    }
-
-    fun setAfWorkflowTab(tab: AfWorkflowTab) {
-        _afWorkflowUi.update { it.copy(tab = tab, error = null, undoPreview = null) }
-    }
-
-    fun setAfPlanName(name: String) = _afWorkflowUi.update {
-        it.copy(name = name.take(AfWorkflowLimits.MAX_NAME_LENGTH), preview = null, error = null)
-    }
-
-    fun setAfPlanConflictPolicy(policy: ConflictPolicy) = _afWorkflowUi.update {
-        it.copy(
-            conflictPolicy = policy,
-            failurePolicy = if (policy == ConflictPolicy.REPLACE) TransferFailurePolicy.STOP else it.failurePolicy,
-            preview = null,
-            error = null,
-        )
-    }
-
-    fun setAfPlanVerification(verification: TransferVerification) = _afWorkflowUi.update {
-        it.copy(verification = verification, preview = null, error = null)
-    }
-
-    fun setAfPlanFailurePolicy(policy: TransferFailurePolicy) = _afWorkflowUi.update {
-        it.copy(
-            failurePolicy = if (it.conflictPolicy == ConflictPolicy.REPLACE) TransferFailurePolicy.STOP else policy,
-            preview = null,
-            error = null,
-        )
-    }
-
-    fun setAfPlanDeleteSources(enabled: Boolean) = _afWorkflowUi.update {
-        it.copy(
-            deleteSourcesAfterVerifiedCopies = enabled,
-            failurePolicy = if (enabled) TransferFailurePolicy.STOP else it.failurePolicy,
-            preview = null,
-            error = null,
-        )
-    }
-
-    fun addActiveLocalAfDestination() {
-        addAfDestination(AfDestinationRef(AfLocationRef.local(activePanelState().path)))
-    }
-
-    fun addCurrentRemoteAfDestination() {
-        val profile = _networkState.value.connectedProfile
-        if (profile == null) {
-            message("Prieš pridėdami dabartinį serverio aplanką prisijunkite prie serverio", true)
-            return
-        }
-        addAfDestination(AfDestinationRef(AfLocationRef.remote(profile.id, profile.name, _networkState.value.path)))
-    }
-
-    fun removeAfDestination(index: Int) = _afWorkflowUi.update { state ->
-        if (index !in state.destinations.indices) state
-        else state.copy(destinations = state.destinations.filterIndexed { itemIndex, _ -> itemIndex != index }, preview = null)
-    }
-
-    fun removeAfSource(index: Int) = _afWorkflowUi.update { state ->
-        if (index !in state.sources.indices) state
-        else state.copy(sources = state.sources.filterIndexed { itemIndex, _ -> itemIndex != index }, preview = null)
-    }
-
-    fun toggleAfDestinationRequired(index: Int) = _afWorkflowUi.update { state ->
-        if (index !in state.destinations.indices) state else state.copy(
-            destinations = state.destinations.mapIndexed { itemIndex, destination ->
-                if (itemIndex == index) destination.copy(required = !destination.required) else destination
-            },
-            preview = null,
-        )
-    }
-
-    fun previewAfPlan() {
-        val snapshot = _afWorkflowUi.value
-        if (snapshot.working) return
-        val plan = runCatching { snapshot.toPlanDefinition() }.getOrElse { error ->
-            _afWorkflowUi.update { it.copy(error = error.message ?: "AF planas neužbaigtas") }
-            return
-        }
-        _afWorkflowUi.update { it.copy(working = true, preview = null, error = null) }
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.workflows.preview(plan) }
-                .onSuccess { preview -> _afWorkflowUi.update { it.copy(working = false, preview = preview, error = null) } }
-                .onFailure { error -> _afWorkflowUi.update { it.copy(working = false, error = error.message ?: "AF plano peržiūra nepavyko") } }
-        }
-    }
-
-    fun saveAfPlan() {
-        val snapshot = _afWorkflowUi.value
-        if (snapshot.working) return
-        val plan = runCatching { snapshot.toPlanDefinition() }.getOrElse { error ->
-            _afWorkflowUi.update { it.copy(error = error.message ?: "AF planas neužbaigtas") }
-            return
-        }
-        _afWorkflowUi.update { it.copy(working = true, error = null) }
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.workflows.savePlan(plan) }
-                .onSuccess { saved ->
-                    _afWorkflowUi.update { it.copy(working = false, editingPlanId = saved.id, error = null) }
-                    message("AF planas išsaugotas")
-                }
-                .onFailure { error -> _afWorkflowUi.update { it.copy(working = false, error = error.message ?: "AF plano išsaugoti nepavyko") } }
-        }
-    }
-
-    fun runAfPlan() {
-        val snapshot = _afWorkflowUi.value
-        val preview = snapshot.preview ?: run {
-            _afWorkflowUi.update { it.copy(error = "Prieš vykdydami peržiūrėkite AF planą") }
-            return
-        }
-        if (!preview.canRun || snapshot.working) return
-        _afWorkflowUi.update { it.copy(working = true, error = null) }
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                val saved = graph.workflows.savePlan(preview.plan)
-                val fresh = graph.workflows.preview(saved)
-                require(AfPreflightFingerprint.create(fresh) == AfPreflightFingerprint.create(preview)) {
-                    "Po peržiūros failai pasikeitė; peržiūrėkite atnaujintą planą"
-                }
-                graph.workflows.submit(fresh)
-            }.onSuccess {
-                _afWorkflowUi.update { it.copy(working = false, editingPlanId = preview.plan.id, error = null) }
-                message("AF planas įtrauktas į operacijų eilę")
-            }.onFailure { error ->
-                _afWorkflowUi.update { it.copy(working = false, error = error.message ?: "AF plano paleisti nepavyko") }
-            }
-        }
-    }
-
-    fun removeAfPlan(id: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.workflows.removePlan(id) }
-                .onFailure { message(it.message ?: "AF plano pašalinti nepavyko", true) }
-        }
-    }
-
-    fun setAfTimelineQuery(query: String) = _afWorkflowUi.update { it.copy(timelineQuery = query.take(240)) }
-
-    fun selectAfReceipt(id: String?) = _afWorkflowUi.update {
-        it.copy(selectedReceiptId = id, undoPreview = null, error = null)
-    }
-
-    fun previewAfUndo(receiptId: String) {
-        _afWorkflowUi.update { it.copy(working = true, undoPreview = null, error = null) }
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.workflows.previewUndo(receiptId) }
-                .onSuccess { preview -> _afWorkflowUi.update { it.copy(working = false, undoPreview = preview) } }
-                .onFailure { error -> _afWorkflowUi.update { it.copy(working = false, error = error.message ?: "Atšaukimo peržiūra nepavyko") } }
-        }
-    }
-
-    fun runAfUndo() {
-        val state = _afWorkflowUi.value
-        val receiptId = state.selectedReceiptId ?: return
-        val preview = state.undoPreview ?: return
-        graph.workflows.submitUndo(receiptId, preview)
-            .onSuccess {
-                _afWorkflowUi.update { it.copy(undoPreview = null, selectedReceiptId = null) }
-                message("Saugus atšaukimas įtrauktas į operacijų eilę")
-            }
-            .onFailure { error -> _afWorkflowUi.update { it.copy(error = error.message ?: "Atšaukimo paleisti nepavyko") } }
-    }
-
-    fun createAfAutomation(
-        plan: AfPlanDefinition,
-        name: String,
-        schedule: AfAutomationSchedule,
-        unmeteredOnly: Boolean,
-        chargingOnly: Boolean,
-    ) {
-        require(schedule != AfAutomationSchedule.MANUAL_ONLY) { "Pasirinkite automatinį tvarkaraštį" }
-        val approved = _afWorkflowUi.value.automationPreview
-        if (approved == null || approved.plan.id != plan.id || !approved.canRun) {
-            _afWorkflowUi.update { it.copy(error = "Pirmiausia peržiūrėkite automatikos planą") }
-            return
-        }
-        _afWorkflowUi.update { it.copy(working = true, error = null) }
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                val preview = graph.workflows.preview(plan.copy(verification = TransferVerification.SHA256))
-                require(com.affilemanager.app.workflow.AfAutomationPolicy.blocker(preview) == null) {
-                    com.affilemanager.app.workflow.AfAutomationPolicy.blocker(preview)
-                        ?: "AF plano peržiūroje yra kliūčių"
-                }
-                require(AfPreflightFingerprint.create(preview) == AfPreflightFingerprint.create(approved)) {
-                    "Failai pasikeitė po peržiūros; peržiūrėkite automatikos planą iš naujo"
-                }
-                val rule = graph.workflows.saveAutomation(
-                    AfAutomationRule(
-                        name = name,
-                        planId = plan.id,
-                        enabled = true,
-                        schedule = schedule,
-                        unmeteredOnly = unmeteredOnly,
-                        chargingOnly = chargingOnly,
-                    ),
-                )
-                graph.workflows.approveAutomationPreview(rule.id, preview)
-            }.onSuccess {
-                _afWorkflowUi.update { it.copy(working = false, automationPreview = null, error = null) }
-                message("Automatika išsaugota su dabartine peržiūra")
-            }.onFailure { error -> _afWorkflowUi.update { it.copy(working = false, error = error.message ?: "Automatikos išsaugoti nepavyko") } }
-        }
-    }
-
-    fun previewAfAutomation(plan: AfPlanDefinition) {
-        if (_afWorkflowUi.value.working) return
-        _afWorkflowUi.update { it.copy(working = true, automationPreview = null, error = null) }
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.workflows.preview(plan.copy(verification = TransferVerification.SHA256)) }
-                .onSuccess { preview ->
-                    val blocker = com.affilemanager.app.workflow.AfAutomationPolicy.blocker(preview)
-                    val reviewed = if (blocker == null || blocker in preview.blockers) preview
-                    else preview.copy(blockers = (preview.blockers + blocker).distinct())
-                    _afWorkflowUi.update { it.copy(working = false, automationPreview = reviewed, error = null) }
-                }
-                .onFailure { error ->
-                    _afWorkflowUi.update {
-                        it.copy(working = false, error = error.message ?: "Automatikos plano peržiūra nepavyko")
-                    }
-                }
-        }
-    }
-
-    fun clearAfAutomationPreview() = _afWorkflowUi.update {
-        it.copy(automationPreview = null, error = null)
-    }
-
-    fun setAfAutomationEnabled(rule: AfAutomationRule, enabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.workflows.saveAutomation(rule.copy(enabled = enabled)) }
-                .onFailure { message(it.message ?: "Automatikos atnaujinti nepavyko", true) }
-        }
-    }
-
-    fun removeAfAutomation(id: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.workflows.removeAutomation(id) }
-                .onFailure { message(it.message ?: "Automatikos pašalinti nepavyko", true) }
-        }
-    }
-
-    fun afReceiptJson(receiptId: String): String = graph.workflows.exportReceiptJson(receiptId)
-    fun afReceiptText(receiptId: String): String = graph.workflows.exportReceiptText(receiptId)
-
     fun clearAfClipboard() {
         _afClipboard.value = null
         _clipboard.value = null
@@ -3961,29 +3616,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _remoteClipboard.value = null
         message(if (merged.addedCount > 0) "Archyvo įrašas pridėtas prie kopijavimo rinkinio" else "Archyvo įrašas jau yra kopijavimo rinkinyje")
     }
-
-    private fun addAfDestination(destination: AfDestinationRef) {
-        _afWorkflowUi.update { state ->
-            if (state.destinations.any { it.location.identityKey() == destination.location.identityKey() }) {
-                state.copy(error = "Ši paskirtis jau yra AF plane")
-            } else if (state.destinations.size >= AfWorkflowLimits.MAX_DESTINATIONS) {
-                state.copy(error = "Pasiekta AF plano paskirčių riba")
-            } else {
-                state.copy(destinations = state.destinations + destination, preview = null, error = null)
-            }
-        }
-    }
-
-    private fun AfWorkflowUiState.toPlanDefinition(): AfPlanDefinition = AfPlanDefinition(
-        id = editingPlanId ?: UUID.randomUUID().toString(),
-        name = name,
-        sources = sources,
-        destinations = destinations,
-        conflictPolicy = conflictPolicy,
-        verification = verification,
-        failurePolicy = if (deleteSourcesAfterVerifiedCopies) TransferFailurePolicy.STOP else failurePolicy,
-        deleteSourcesAfterVerifiedCopies = deleteSourcesAfterVerifiedCopies,
-    ).normalized()
 
     fun closePreview() {
         if (_fileEditState.value.modifyingPdf) {
@@ -4157,28 +3789,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun loadFileSelectionInfo(paths: Collection<String>): Result<FileSelectionSummary> = runCatching {
         graph.fileSelectionInfo.scan(paths)
-    }
-
-    fun encryptFile(file: FileEntry, passphrase: CharArray) {
-        val destination = File(file.file.parentFile, "${file.name}.afvault")
-        graph.operationManager.submit("Šifruojamas ${file.name}") {
-            graph.fileVault.encrypt(file.file, destination, passphrase, this)
-        }.onFailure { message(it.message ?: "Šifravimo pradėti nepavyko", true) }
-    }
-
-    fun inspectVault(file: FileEntry) {
-        viewModelScope.launch {
-            runCatching { graph.fileVault.inspect(file.file) }
-                .onSuccess { _preview.value = PreviewTarget.Vault(file, it) }
-                .onFailure { message(it.message ?: "Saugyklos perskaityti nepavyko", true) }
-        }
-    }
-
-    fun decryptVault(file: FileEntry, passphrase: CharArray) {
-        graph.operationManager.submit("Iššifruojamas ${file.name}") {
-            graph.fileVault.decrypt(file.file, file.file.parentFile ?: return@submit, passphrase, this)
-        }.onSuccess { closePreview() }
-            .onFailure { message(it.message ?: "Iššifravimo pradėti nepavyko", true) }
     }
 
     fun search(filters: SearchFilters, roots: List<String> = listOf(activePanelState().path)) {
@@ -4409,7 +4019,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val title = when (target) {
             is PreviewTarget.LocalFile -> "Keliama į šiukšlinę"
             is PreviewTarget.Archive -> "Keliama į šiukšlinę"
-            is PreviewTarget.Vault -> "Keliama į šiukšlinę"
             is PreviewTarget.TrashFile -> "Šalinama iš šiukšliadėžės"
             is PreviewTarget.ContentFile -> "Šalinamas Android dokumentas"
             is PreviewTarget.RemoteFile -> "Šalinama iš serverio"
@@ -4421,7 +4030,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             when (target) {
                 is PreviewTarget.LocalFile -> graph.trash.moveToTrash(listOf(target.entry.absolutePath), this)
                 is PreviewTarget.Archive -> graph.trash.moveToTrash(listOf(target.file.absolutePath), this)
-                is PreviewTarget.Vault -> graph.trash.moveToTrash(listOf(target.file.absolutePath), this)
                 is PreviewTarget.TrashFile -> graph.trash.deleteForever(target.itemId, this).getOrThrow()
                 is PreviewTarget.ContentFile -> {
                     setTotals(1, target.entry.sizeBytes)
@@ -6238,11 +5846,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun pauseOperation(id: String) = graph.operationManager.pause(id)
     fun resumeOperation(id: String) = graph.operationManager.resume(id)
     fun retryOperation(id: String) {
-        graph.durableTransfers.retry(id).onFailure {
-            viewModelScope.launch(Dispatchers.IO) {
-                runCatching { graph.workflows.retryExecution(id) }
-                    .onFailure { error -> message(error.message ?: "Operacijos pakartoti nepavyko", true) }
-            }
+        graph.durableTransfers.retry(id).onFailure { error ->
+            message(error.message ?: "Operacijos pakartoti nepavyko", true)
         }
     }
     fun dismissFinishedOperations() = graph.operationManager.dismissFinished()

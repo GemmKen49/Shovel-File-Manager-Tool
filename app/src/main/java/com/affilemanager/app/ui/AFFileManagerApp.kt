@@ -93,7 +93,6 @@ import com.affilemanager.app.ui.localization.LText
 import com.affilemanager.app.ui.localization.UiTranslator
 import com.affilemanager.app.ui.screens.AnalyzeScreen
 import com.affilemanager.app.ui.screens.AdvancedStorageBrowserDialog
-import com.affilemanager.app.ui.screens.AfWorkflowDialog
 import com.affilemanager.app.ui.screens.ConnectionsScreen
 import com.affilemanager.app.ui.screens.FilesScreen
 import com.affilemanager.app.ui.screens.ToolsScreen
@@ -458,13 +457,10 @@ fun AFFileManagerApp(
             backgroundPlaylist = viewModel.backgroundMediaPlaylist(target),
             onPreviousMedia = { viewModel.navigatePreviewMedia(-1) },
             onNextMedia = { viewModel.navigatePreviewMedia(1) },
-            onDecrypt = { file, password -> viewModel.decryptVault(file, password) },
         )
     }
 
     BatchRenameDialog(viewModel)
-
-    AfWorkflowDialog(viewModel)
 
     visibleOperation?.let { operation ->
         OperationProgressDialog(
