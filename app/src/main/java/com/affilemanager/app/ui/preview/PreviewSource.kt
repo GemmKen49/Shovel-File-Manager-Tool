@@ -189,5 +189,4 @@ internal fun PreviewTarget.previewSource(): PreviewSource = when (this) {
     is PreviewTarget.Archive -> PreviewSource.Local(file)
     is PreviewTarget.RemoteArchive -> PreviewSource.Remote(remote, file.file, profileId, connectionName)
     is PreviewTarget.ArchiveEntry -> PreviewSource.Local(file)
-    is PreviewTarget.Vault -> PreviewSource.Local(file)
 }

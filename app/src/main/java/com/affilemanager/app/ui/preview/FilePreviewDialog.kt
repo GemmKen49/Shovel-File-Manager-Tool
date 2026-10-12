@@ -337,7 +337,6 @@ fun FilePreviewDialog(
     onRefreshArchive: () -> Unit,
     loadArchiveThumbnail: suspend (String) -> Result<File>,
     onExtract: (FileEntry, String, CharArray?) -> Unit,
-    onDecrypt: (FileEntry, CharArray) -> Unit,
     canNavigateMedia: Boolean,
     onPreviousMedia: () -> Unit,
     onNextMedia: () -> Unit,
@@ -568,7 +567,6 @@ fun FilePreviewDialog(
                         initialDisplayDefaults = archiveDisplayDefaults,
                         onApplyDisplayToAll = onApplyArchiveDisplayToAll,
                     )
-                    is PreviewTarget.Vault -> VaultPreview(target, onDecrypt)
                     is PreviewTarget.LocalFile,
                     is PreviewTarget.TrashFile,
                     is PreviewTarget.ContentFile,
@@ -760,7 +758,6 @@ private fun FileContentPreview(
         ?.let { PreviewSource.Working(source, it) }
         ?: source
     when {
-        source.extension == "afvault" -> PropertiesPreview(source, "Šifruotas AF File Manager failas. Jį galima iššifruoti tik atidarius iš vietinės saugyklos.")
         source.kind == EntryKind.IMAGE -> ImagePreview(displayedSource, canNavigateMedia, onPreviousMedia, onNextMedia)
         source.extension == "pdf" || source.mimeType(context) == "application/pdf" -> PdfPreview(displayedSource)
         source.kind == EntryKind.VIDEO || source.kind == EntryKind.AUDIO -> MediaPreview(
@@ -3165,36 +3162,6 @@ private fun orderArchiveEntries(
     val comparator = if (direction == SortDirection.ASCENDING) ascending else ascending.reversed()
     val (directories, files) = entries.partition(ArchiveBrowserItem::directory)
     return directories.sortedWith(comparator) + files.sortedWith(comparator)
-}
-
-@Composable
-private fun VaultPreview(target: PreviewTarget.Vault, onDecrypt: (FileEntry, CharArray) -> Unit) {
-    var askPassword by remember { mutableStateOf(false) }
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
-    ) {
-        Icon(Icons.Rounded.LockOpen, contentDescription = null, modifier = Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
-        Text(target.header.originalName, style = MaterialTheme.typography.titleLarge)
-        Text(FileSystemRules.humanBytes(target.header.originalSize))
-        LText("AES-256-GCM · PBKDF2-HMAC-SHA256", style = MaterialTheme.typography.bodySmall)
-        Button(onClick = { askPassword = true }) { LText("Iššifruoti šalia originalo") }
-    }
-    if (askPassword) {
-        var password by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { askPassword = false },
-            title = { LText("Įveskite slaptafrazę") },
-            text = { OutlinedTextField(value = password, onValueChange = { password = it }, visualTransformation = PasswordVisualTransformation(), singleLine = true) },
-            confirmButton = {
-                Button(onClick = { onDecrypt(target.file, password.toCharArray()); password = ""; askPassword = false }, enabled = password.isNotEmpty()) {
-                    LText("Iššifruoti")
-                }
-            },
-            dismissButton = { TextButton(onClick = { askPassword = false }) { LText("Atšaukti") } },
-        )
-    }
 }
 
 @Composable
