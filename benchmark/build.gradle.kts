@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.affilemanager.benchmark"
+    namespace = "com.shovel.filemanager.benchmark"
     compileSdk = 36
     targetProjectPath = ":app"
 

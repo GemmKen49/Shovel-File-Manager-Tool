@@ -1,0 +1,250 @@
+package com.shovel.filemanager.transfer
+
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
+import java.net.URI
+import java.net.Socket
+import java.nio.charset.StandardCharsets
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.io.PrintWriter
+import java.util.Base64
+import java.util.UUID
+import com.shovel.filemanager.network.NetworkProfile
+import com.shovel.filemanager.network.NetworkProfileRules
+import com.shovel.filemanager.network.NetworkProtocol
+import com.shovel.filemanager.network.WebDavRemoteClient
+
+@RunWith(AndroidJUnit4::class)
+class LanTransferServiceTest {
+    @Test
+    fun foregroundServiceStartsAuthenticatesAndStopsOnPrivateEmulatorNetwork() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val root = File(context.cacheDir, "lan-service-${UUID.randomUUID()}").apply { mkdirs() }
+        File(root, "visible.txt").writeText("hello")
+        try {
+            LanTransferController.start(context, root.absolutePath, 1)
+            val running = awaitState { it.status == LanTransferStatus.RUNNING || it.status == LanTransferStatus.ERROR }
+            check(running.status == LanTransferStatus.RUNNING) { running.message ?: "LAN paslauga nepasileido" }
+            val uri = URI(running.url!!)
+
+            val anonymous = request(uri.host, uri.port, "GET / HTTP/1.1\r\nHost: ${uri.host}\r\n\r\n")
+            assertTrue(anonymous.startsWith("HTTP/1.1 401"))
+            assertFalse(anonymous.contains("visible.txt"))
+
+            val body = "code=${running.code}"
+            val login = request(
+                uri.host,
+                uri.port,
+                "POST /login HTTP/1.1\r\nHost: ${uri.host}\r\nContent-Length: ${body.length}\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\n$body",
+            )
+            assertTrue(login.startsWith("HTTP/1.1 200"))
+            val cookie = login.lineSequence().first { it.startsWith("Set-Cookie:") }
+                .substringAfter("Set-Cookie:").substringBefore(';').trim()
+            val listing = request(uri.host, uri.port, "GET / HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $cookie\r\n\r\n")
+            assertTrue(listing.startsWith("HTTP/1.1 200"))
+            assertTrue(listing.contains("visible.txt"))
+            assertFalse(listing.contains(root.canonicalPath))
+        } finally {
+            LanTransferController.stop(context)
+            awaitState { it.status == LanTransferStatus.STOPPED }
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun groupSessionListsMembersAndAllowsReusableInviteLogin() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val root = File(context.cacheDir, "lan-group-${UUID.randomUUID()}").apply { mkdirs() }
+        try {
+            LanTransferController.start(
+                context = context,
+                rootPath = root.absolutePath,
+                durationMinutes = 1,
+                groupMode = true,
+                receiverName = "Organizer",
+                groupName = "Test group",
+            )
+            val running = awaitState { it.status == LanTransferStatus.RUNNING || it.status == LanTransferStatus.ERROR }
+            check(running.status == LanTransferStatus.RUNNING) { running.message ?: "Grupės paslauga nepasileido" }
+            assertTrue(running.groupMode)
+            val uri = URI(requireNotNull(running.url))
+
+            fun login(): String {
+                val body = "code=${running.code}"
+                val response = request(
+                    uri.host,
+                    uri.port,
+                    "POST /login HTTP/1.1\r\nHost: ${uri.host}\r\nContent-Length: ${body.length}\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\n$body",
+                )
+                assertTrue(response.startsWith("HTTP/1.1 200"))
+                return response.lineSequence().first { it.startsWith("Set-Cookie:") }
+                    .substringAfter("Set-Cookie:").substringBefore(';').trim()
+            }
+
+            val firstCookie = login()
+            val secondCookie = login()
+            assertFalse("Group devices need independent authenticated sessions", firstCookie == secondCookie)
+            val first = NearbyPairing.create(uri.host, 30_101, "11111111", "Phone one")
+            val second = NearbyPairing.create(uri.host, 30_102, "22222222", "Phone two")
+            listOf(firstCookie to first, secondCookie to second).forEach { (cookie, peer) ->
+                val body = peer.encoded()
+                val joined = request(
+                    uri.host,
+                    uri.port,
+                    "POST /nearby/group/join HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $cookie\r\nContent-Length: ${body.toByteArray().size}\r\n\r\n$body",
+                )
+                assertTrue(joined.startsWith("HTTP/1.1 200"))
+            }
+            val list = request(
+                uri.host,
+                uri.port,
+                "GET /nearby/group/members HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $firstCookie\r\n\r\n",
+            )
+            assertTrue(list.startsWith("HTTP/1.1 200"))
+            val members = NearbyGroupCodec.decode(list.substringAfter("\r\n\r\n").toByteArray())
+            assertEquals(3, members.size)
+            assertTrue(members.single { it.organizer }.pairing.receiverName == "Organizer")
+
+            LanTransferController.setGroupMessagesBlocked(context, first, true)
+            kotlinx.coroutines.withTimeout(5_000) {
+                while (NearbyGroupController.state.value.members.none { it.pairing == first && it.messagesBlocked }) delay(25)
+            }
+            fun message(cookie: String, text: String) = request(uri.host, uri.port,
+                "POST /nearby/message HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $cookie\r\nContent-Length: ${text.toByteArray().size}\r\n\r\n$text")
+            val blocked = message(firstCookie, "blocked fixture")
+            assertTrue(blocked.startsWith("HTTP/1.1 403"))
+            assertTrue(blocked.contains("X-AF-Message-Blocked: 1"))
+            // Both fixtures share an IP, but only the selected device is blocked.
+            assertTrue(message(secondCookie, "second fixture").startsWith("HTTP/1.1 200"))
+            assertTrue(NearbyChatController.state.value.messages.any { it.body == "second fixture" && it.senderName == second.receiverName })
+            assertTrue(request(uri.host, uri.port, "GET / HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $firstCookie\r\n\r\n").startsWith("HTTP/1.1 200"))
+            LanTransferController.setGroupMessagesBlocked(context, first, false)
+            kotlinx.coroutines.withTimeout(5_000) {
+                while (NearbyGroupController.state.value.members.any { it.pairing == first && it.messagesBlocked }) delay(25)
+            }
+            assertTrue(message(firstCookie, "first fixture").startsWith("HTTP/1.1 200"))
+            assertTrue(NearbyChatController.state.value.messages.any { it.body == "first fixture" && it.senderName == first.receiverName })
+
+            LanTransferController.removeGroupMember(context, first)
+            repeat(30) {
+                if (NearbyGroupController.state.value.members.none { it.pairing == first }) return@repeat
+                delay(100)
+            }
+            val afterRemoval = request(
+                uri.host, uri.port,
+                "GET /nearby/group/members HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $secondCookie\r\n\r\n",
+            )
+            assertTrue(afterRemoval.startsWith("HTTP/1.1 200"))
+            assertEquals(2, NearbyGroupCodec.decode(afterRemoval.substringAfter("\r\n\r\n").toByteArray()).size)
+            val removed = request(uri.host, uri.port,
+                "GET /nearby/group/members HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $firstCookie\r\n\r\n")
+            assertTrue(removed.startsWith("HTTP/1.1 403"))
+            assertTrue(removed.contains("X-AF-Group-State: removed"))
+            val body = first.encoded()
+            val rejoin = request(
+                uri.host, uri.port,
+                "POST /nearby/group/join HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $firstCookie\r\nContent-Length: ${body.toByteArray().size}\r\n\r\n$body",
+            )
+            assertFalse(rejoin.startsWith("HTTP/1.1 200"))
+        } finally {
+            LanTransferController.stop(context)
+            awaitState { it.status == LanTransferStatus.STOPPED }
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun foregroundServiceRunsFtpWithTemporaryCredentials() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val root = File(context.cacheDir, "ftp-service-${UUID.randomUUID()}").apply { mkdirs() }
+        try {
+            LanTransferController.start(context, root.absolutePath, 1, LanTransferProtocol.FTP)
+            val running = awaitState { it.status == LanTransferStatus.RUNNING || it.status == LanTransferStatus.ERROR }
+            check(running.status == LanTransferStatus.RUNNING) { running.message ?: "FTP paslauga nepasileido" }
+            assertTrue(running.url.orEmpty().startsWith("ftp://"))
+            val uri = URI(running.url!!)
+            Socket(uri.host, uri.port).use { socket ->
+                socket.soTimeout = 5_000
+                val reader = BufferedReader(InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))
+                val writer = PrintWriter(OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true)
+                assertTrue(reader.readLine().startsWith("220"))
+                writer.print("USER ${running.username}\r\n"); writer.flush()
+                assertTrue(reader.readLine().startsWith("331"))
+                writer.print("PASS ${running.code}\r\n"); writer.flush()
+                assertTrue(reader.readLine().startsWith("230"))
+            }
+        } finally {
+            LanTransferController.stop(context)
+            awaitState { it.status == LanTransferStatus.STOPPED }
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun foregroundServiceRunsWebDavWithTemporaryCredentials() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val root = File(context.cacheDir, "dav-service-${UUID.randomUUID()}").apply { mkdirs() }
+        File(root, "visible.txt").writeText("hello")
+        try {
+            LanTransferController.start(context, root.absolutePath, 1, LanTransferProtocol.WEBDAV)
+            val running = awaitState { it.status == LanTransferStatus.RUNNING || it.status == LanTransferStatus.ERROR }
+            check(running.status == LanTransferStatus.RUNNING) { running.message ?: "WebDAV paslauga nepasileido" }
+            val uri = URI(running.url!!)
+            val token = Base64.getEncoder().encodeToString("${running.username}:${running.code}".toByteArray(StandardCharsets.UTF_8))
+            val response = request(
+                uri.host,
+                uri.port,
+                "OPTIONS / HTTP/1.1\r\nHost: ${uri.host}\r\nAuthorization: Basic $token\r\n\r\n",
+            )
+            assertTrue(response.startsWith("HTTP/1.1 200"))
+            assertTrue(response.contains("DAV: 1, 2"))
+
+            val endpoint = requireNotNull(NetworkProfileRules.parseWebDavEndpoint(uri.toString()))
+            val profile = NetworkProfile(
+                id = "local-af-webdav",
+                name = "Local AF WebDAV",
+                protocol = NetworkProtocol.WEBDAV,
+                host = endpoint.host,
+                port = endpoint.port,
+                username = running.username.orEmpty(),
+                basePath = endpoint.basePath,
+                webDavUseTls = endpoint.useTls,
+            )
+            val client = WebDavRemoteClient.connect(profile, running.code.orEmpty().toCharArray())
+            try {
+                assertTrue(client.list(profile.basePath).any { it.name == "visible.txt" })
+            } finally {
+                client.close()
+            }
+        } finally {
+            LanTransferController.stop(context)
+            awaitState { it.status == LanTransferStatus.STOPPED }
+            root.deleteRecursively()
+        }
+    }
+
+    private suspend fun awaitState(predicate: (LanTransferState) -> Boolean): LanTransferState {
+        repeat(100) {
+            LanTransferController.state.value.let { state -> if (predicate(state)) return state }
+            delay(50)
+        }
+        error("LAN paslaugos būsena nepasikeitė laiku: ${LanTransferController.state.value}")
+    }
+
+    private fun request(host: String, port: Int, request: String): String = Socket(host, port).use { socket ->
+        socket.soTimeout = 5_000
+        socket.getOutputStream().write(request.toByteArray(StandardCharsets.UTF_8))
+        socket.getOutputStream().flush()
+        socket.getInputStream().readBytes().toString(StandardCharsets.UTF_8)
+    }
+}

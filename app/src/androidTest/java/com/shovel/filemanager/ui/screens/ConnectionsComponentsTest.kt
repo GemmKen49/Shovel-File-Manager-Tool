@@ -1,0 +1,741 @@
+package com.shovel.filemanager.ui.screens
+
+import android.view.View
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.geometry.Offset
+import com.shovel.filemanager.model.EntryKind
+import com.shovel.filemanager.model.FileEntry
+import com.shovel.filemanager.network.NetworkProfile
+import com.shovel.filemanager.network.NetworkProtocol
+import com.shovel.filemanager.network.RemoteEntry
+import com.shovel.filemanager.network.RemoteErrorPresenter
+import com.shovel.filemanager.network.RemoteOperation
+import com.shovel.filemanager.ui.NetworkUiState
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import java.net.UnknownHostException
+import java.util.concurrent.atomic.AtomicInteger
+
+class ConnectionsComponentsTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    @Test
+    fun localPickerSearchKeepsSelectionAndFolderNavigation() {
+        val folder = localEntry("folder", EntryKind.DIRECTORY)
+        val first = localEntry("first.txt", EntryKind.DOCUMENT)
+        val later = localEntry("folder/second.txt", EntryKind.DOCUMENT)
+        var copied = emptyList<String>()
+        compose.setContent { MaterialTheme {
+            LocalUploadDialog("/local", "", emptyList(), emptySet(),
+                { path -> Result.success(if (path == folder.absolutePath) listOf(later) else listOf(folder, first)) }, {}, { copied = it })
+        } }
+        compose.onNodeWithTag("local_upload_search_toggle").performClick()
+        compose.onNodeWithTag("local_upload_search").performTextInput("first")
+        compose.onNodeWithText("first.txt").performScrollTo().performClick()
+        compose.onAllNodesWithText("folder").assertCountEquals(0)
+        compose.onNodeWithTag("local_upload_search").performTextClearance()
+        compose.onNodeWithTag("local_upload_list").performScrollToNode(hasTestTag("local_upload_open_${folder.absolutePath}"))
+        compose.onNodeWithTag("local_upload_open_${folder.absolutePath}").performScrollTo().performClick()
+        compose.onNodeWithText("second.txt").performScrollTo().performClick()
+        compose.onNodeWithText("Copy (2)").performClick()
+        compose.runOnIdle { assertEquals(listOf(first.absolutePath, later.absolutePath), copied) }
+    }
+
+    @Test
+    fun connectedBrowserExposesCopyActionsInBothDirectionsIncludingFolders() {
+        val folder = RemoteEntry("remote-folder", "/remote-folder", true, 0, null)
+        val file = RemoteEntry("remote.txt", "/remote.txt", false, 12, null)
+        val pasteRequests = AtomicInteger()
+        val openRequests = AtomicInteger()
+        val downloadRequests = AtomicInteger()
+        compose.setContent {
+            com.shovel.filemanager.ui.theme.AFFileManagerTheme(com.shovel.filemanager.ui.theme.AppearanceSettings(
+                colorPalette = com.shovel.filemanager.ui.theme.AppColorPalette.CUSTOM,
+                customColors = com.shovel.filemanager.ui.theme.CustomThemeColors(background = 0xff181820.toInt(),
+                    surface = 0xffeeeecc.toInt(), popup = 0xffff5aaf.toInt(), controls = 0xff55edbb.toInt()),
+            )) {
+                com.shovel.filemanager.ui.theme.AppearancePage(Modifier.fillMaxSize()) {
+                Column {
+                    RemoteBrowser(
+                        state = NetworkUiState(
+                            connectedProfile = profile(),
+                            path = "/remote",
+                            entries = listOf(folder, file),
+                        ),
+                        localDirectory = "/local/target",
+                        onBack = {},
+                        onForward = {},
+                        onUp = {},
+                        onRefresh = {},
+                        onOpen = { openRequests.incrementAndGet() },
+                        onDownload = { downloadRequests.incrementAndGet() },
+                        onToggleSelection = {},
+                        onClearSelection = {},
+                        onSelectAll = {},
+                        onDownloadSelected = {},
+                        onCopySelected = {},
+                        localClipboardCount = 2,
+                        onPasteLocalClipboard = { pasteRequests.incrementAndGet() },
+                        onChooseUpload = {},
+                        onCreateFolder = {},
+                        onRename = {},
+                        onDelete = {},
+                        onSync = {},
+                        onToggleHidden = {},
+                        onToggleGrid = {},
+                        onSort = {},
+                        onDisconnect = {},
+                    )
+                }
+            }
+        }
+        }
+
+        compose.onNodeWithTag("directory_toolbar_remote").assertIsDisplayed()
+        compose.onNodeWithTag("directory_search_remote").assertIsDisplayed()
+        compose.onNodeWithTag("directory_layout_remote").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Folder actions").performClick()
+        compose.onNodeWithTag("remote_upload_choose").assertIsDisplayed()
+        compose.waitForIdle()
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.waitForIdle(100, 2_000)
+        val popup = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        try {
+            var matching = 0
+            for (y in 0 until popup.height step 8) for (x in 0 until popup.width step 8) {
+                if (popup.getPixel(x, y) == 0xffff5aaf.toInt()) matching++
+            }
+            val app = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+            val folder = java.io.File(app.getExternalFilesDir("validation"), "issues-164-167").apply { mkdirs() }
+            java.io.File(folder, "remote-custom-popup.png").outputStream().use { popup.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            org.junit.Assert.assertTrue("Remote menus must use the chosen popup color ($matching matching pixels)", matching > 30)
+        } finally { popup.recycle() }
+        compose.onNodeWithTag("remote_upload_choose").assertIsEnabled().assertHasClickAction()
+        compose.onNodeWithTag("remote_paste_local").assertIsEnabled().assertHasClickAction()
+        compose.onNodeWithText("Paste (2)").performClick()
+        compose.waitUntil(timeoutMillis = 5_000) { pasteRequests.get() == 1 }
+        compose.onNodeWithTag("remote_entry_/remote.txt").performClick()
+        compose.runOnIdle {
+            assertEquals(1, openRequests.get())
+            assertEquals(0, downloadRequests.get())
+        }
+        compose.onNodeWithContentDescription("File actions: remote.txt").performClick()
+        compose.onNodeWithText("Preview here").assertHasClickAction()
+        compose.onNodeWithText("Copy to phone").assertHasClickAction().performClick()
+        compose.runOnIdle {
+            assertEquals(1, openRequests.get())
+            assertEquals(1, downloadRequests.get())
+        }
+        compose.onNodeWithContentDescription("File actions: remote.txt").performClick()
+        compose.onNodeWithText("Rename").assertHasClickAction()
+        compose.onNodeWithText("Info").assertHasClickAction()
+        compose.onNodeWithText("Delete").assertHasClickAction()
+    }
+
+    @Test
+    fun remoteCreateUsesTheSameFolderAndFileDialogAsLocalStorage() {
+        val created = mutableListOf<String>()
+        compose.setContent {
+            MaterialTheme {
+                var showCreate by remember { mutableStateOf(false) }
+                RemoteBrowser(
+                    state = NetworkUiState(connectedProfile = profile(), path = "/remote"),
+                    localDirectory = "/local/target",
+                    onBack = {}, onForward = {}, onUp = {}, onRefresh = {}, onOpen = {}, onDownload = {},
+                    onToggleSelection = {}, onClearSelection = {}, onSelectAll = {}, onDownloadSelected = {},
+                    onCopySelected = {}, localClipboardCount = 0, onPasteLocalClipboard = {}, onChooseUpload = {},
+                    onCreateFolder = { showCreate = true }, onRename = {}, onDelete = {}, onSync = {},
+                    onToggleHidden = {}, onToggleGrid = {}, onSort = {}, onDisconnect = {},
+                )
+                if (showCreate) {
+                    CreateItemDialog(
+                        onDismiss = { showCreate = false },
+                        onCreateFolder = { created += "folder:$it"; showCreate = false },
+                        onCreateFile = { created += "file:$it"; showCreate = false },
+                    )
+                }
+            }
+        }
+
+        compose.onNodeWithTag("remote_create_item").performClick()
+        compose.onNodeWithTag("create_item_dialog").assertIsDisplayed()
+        compose.onNodeWithTag("create_type_folder").assertIsDisplayed()
+        compose.onNodeWithTag("create_type_file").assertIsDisplayed().performClick()
+        compose.onAllNodesWithText("Archive").assertCountEquals(0)
+        compose.onNodeWithTag("create_item_name").performTextInput("notes.txt")
+        compose.onNodeWithText("Create").performClick()
+
+        compose.runOnIdle { assertEquals(listOf("file:notes.txt"), created) }
+    }
+
+    @Test
+    fun remoteQuickSearchFiltersOnlyTheCurrentFolder() {
+        compose.setContent {
+            MaterialTheme {
+                RemoteBrowser(
+                    state = NetworkUiState(
+                        connectedProfile = profile(),
+                        path = "/remote",
+                        entries = listOf(
+                            RemoteEntry("alpha.txt", "/remote/alpha.txt", false, 12, null),
+                            RemoteEntry("beta.txt", "/remote/beta.txt", false, 12, null),
+                        ),
+                    ),
+                    localDirectory = "/local/target",
+                    onBack = {},
+                    onForward = {},
+                    onUp = {},
+                    onRefresh = {},
+                    onOpen = {},
+                    onDownload = {},
+                    onToggleSelection = {},
+                    onClearSelection = {},
+                    onSelectAll = {},
+                    onDownloadSelected = {},
+                    onCopySelected = {},
+                    localClipboardCount = 0,
+                    onPasteLocalClipboard = {},
+                    onChooseUpload = {},
+                    onCreateFolder = {},
+                    onRename = {},
+                    onDelete = {},
+                    onSync = {},
+                    onToggleHidden = {},
+                    onToggleGrid = {},
+                    onSort = {},
+                    onDisconnect = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("directory_search_remote").performClick()
+        compose.onNodeWithTag("directory_search_field_remote").performTextInput("alpha")
+        compose.onNodeWithText("alpha.txt").assertIsDisplayed()
+        assertEquals(0, compose.onAllNodesWithText("beta.txt").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun remoteSelectionUsesLongPressSelectAllToggleAndOneGroupCopy() {
+        val folder = RemoteEntry("remote-folder", "/remote-folder", true, 0, null)
+        val file = RemoteEntry("remote.txt", "/remote.txt", false, 12, null)
+        var copied = emptyList<String>()
+        var observedSelection = emptySet<String>()
+        compose.setContent {
+            MaterialTheme {
+                var state by remember {
+                    mutableStateOf(
+                        NetworkUiState(
+                            connectedProfile = profile(),
+                            path = "/remote",
+                            entries = listOf(folder, file),
+                        ),
+                    )
+                }
+                Column {
+                    RemoteBrowser(
+                        state = state,
+                        localDirectory = "/local/target",
+                        onBack = {},
+                        onForward = {},
+                        onUp = {},
+                        onRefresh = {},
+                        onOpen = {},
+                        onDownload = {},
+                        onToggleSelection = { path ->
+                            state = state.copy(
+                                selectedPaths = state.selectedPaths.toMutableSet().apply {
+                                    if (!add(path)) remove(path)
+                                },
+                            )
+                            observedSelection = state.selectedPaths
+                        },
+                        onSetSelection = { paths, selected ->
+                            state = state.copy(
+                                selectedPaths = state.selectedPaths.toMutableSet().apply {
+                                    if (selected) addAll(paths) else removeAll(paths.toSet())
+                                },
+                            )
+                            observedSelection = state.selectedPaths
+                        },
+                        onClearSelection = {
+                            state = state.copy(selectedPaths = emptySet())
+                            observedSelection = state.selectedPaths
+                        },
+                        onSelectAll = {
+                            state = state.copy(selectedPaths = state.entries.map(RemoteEntry::path).toSet())
+                            observedSelection = state.selectedPaths
+                        },
+                        onDownloadSelected = {
+                            copied = state.entries.filter { it.path in state.selectedPaths }.map(RemoteEntry::path)
+                        },
+                        onCopySelected = {
+                            copied = state.entries.filter { it.path in state.selectedPaths }.map(RemoteEntry::path)
+                            state = state.copy(selectedPaths = emptySet())
+                            observedSelection = state.selectedPaths
+                        },
+                        localClipboardCount = 0,
+                        onPasteLocalClipboard = {},
+                        onChooseUpload = {},
+                        onCreateFolder = {},
+                        onRename = {},
+                        onDelete = {},
+                        onSync = {},
+                        onToggleHidden = {},
+                        onToggleGrid = {},
+                        onSort = {},
+                        onDisconnect = {},
+                    )
+                }
+            }
+        }
+
+        compose.onNodeWithTag("remote_entry_/remote-folder").performTouchInput { longClick() }
+        compose.onNodeWithText("Selected: 1").fetchSemanticsNode()
+        compose.runOnIdle {
+            assertEquals(setOf(folder.path), observedSelection)
+        }
+        compose.onNodeWithContentDescription("Select all").performClick()
+        compose.runOnIdle {
+            assertEquals(setOf(folder.path, file.path), observedSelection)
+        }
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithText("Selected: 2").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithContentDescription("Deselect all").performClick()
+        compose.onAllNodesWithText("Selected:", substring = true).assertCountEquals(0)
+
+        compose.onNodeWithTag("remote_entry_/remote-folder").performTouchInput { longClick() }
+        compose.onNodeWithContentDescription("Select all").performClick()
+        compose.onNodeWithContentDescription("Copy").performClick()
+        compose.runOnIdle {
+            assertEquals(listOf(folder.path, file.path), copied)
+            assertEquals(emptySet<String>(), observedSelection)
+        }
+        compose.onAllNodesWithText("Selected:", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun remoteLongPressDragSelectsEveryCrossedEntry() {
+        val entries = (0..4).map { index ->
+            RemoteEntry("file-$index.txt", "/remote/file-$index.txt", false, index.toLong(), null)
+        }
+        var observedSelection = emptySet<String>()
+        compose.setContent {
+            MaterialTheme {
+                var state by remember {
+                    mutableStateOf(
+                        NetworkUiState(
+                            connectedProfile = profile(),
+                            path = "/remote",
+                            entries = entries,
+                        ),
+                    )
+                }
+                RemoteBrowser(
+                    state = state,
+                    localDirectory = "/local/target",
+                    onBack = {},
+                    onForward = {},
+                    onUp = {},
+                    onRefresh = {},
+                    onOpen = {},
+                    onDownload = {},
+                    onToggleSelection = {},
+                    onSetSelection = { paths, selected ->
+                        state = state.copy(
+                            selectedPaths = state.selectedPaths.toMutableSet().apply {
+                                if (selected) addAll(paths) else removeAll(paths.toSet())
+                            },
+                        )
+                        observedSelection = state.selectedPaths
+                    },
+                    onClearSelection = {},
+                    onSelectAll = {},
+                    onDownloadSelected = {},
+                    onCopySelected = {},
+                    localClipboardCount = 0,
+                    onPasteLocalClipboard = {},
+                    onChooseUpload = {},
+                    onCreateFolder = {},
+                    onRename = {},
+                    onDelete = {},
+                    onSync = {},
+                    onToggleHidden = {},
+                    onToggleGrid = {},
+                    onSort = {},
+                    onDisconnect = {},
+                )
+            }
+        }
+
+        val listBounds = compose.onNodeWithTag("remote_list").fetchSemanticsNode().boundsInRoot
+        val firstBounds = compose.onNodeWithTag("remote_entry_${entries[0].path}").fetchSemanticsNode().boundsInRoot
+        val thirdBounds = compose.onNodeWithTag("remote_entry_${entries[2].path}").fetchSemanticsNode().boundsInRoot
+        val start = Offset(firstBounds.center.x - listBounds.left, firstBounds.center.y - listBounds.top)
+        val end = Offset(thirdBounds.center.x - listBounds.left, thirdBounds.center.y - listBounds.top)
+
+        compose.onNodeWithTag("remote_list").performTouchInput {
+            down(start)
+            advanceEventTime(650)
+            moveTo(end)
+            advanceEventTime(100)
+            up()
+        }
+
+        compose.waitUntil(timeoutMillis = 5_000) {
+            observedSelection == entries.take(3).map(RemoteEntry::path).toSet()
+        }
+    }
+
+    @Test
+    fun remoteSelectionOffersCopyMoreForTheExistingServerCopySet() {
+        val file = RemoteEntry("missed.txt", "/remote/missed.txt", false, 12, null)
+        val addRequests = AtomicInteger()
+        compose.setContent {
+            MaterialTheme {
+                RemoteBrowser(
+                    state = NetworkUiState(
+                        connectedProfile = profile(),
+                        path = "/remote",
+                        entries = listOf(file),
+                        selectedPaths = setOf(file.path),
+                    ),
+                    localDirectory = "/local/target",
+                    onBack = {},
+                    onForward = {},
+                    onUp = {},
+                    onRefresh = {},
+                    onOpen = {},
+                    onDownload = {},
+                    onToggleSelection = {},
+                    onClearSelection = {},
+                    onSelectAll = {},
+                    onDownloadSelected = {},
+                    onCopySelected = {},
+                    canAddToRemoteClipboard = true,
+                    onAddToRemoteClipboard = { addRequests.incrementAndGet() },
+                    localClipboardCount = 0,
+                    onPasteLocalClipboard = {},
+                    onChooseUpload = {},
+                    onCreateFolder = {},
+                    onRename = {},
+                    onDelete = {},
+                    onSync = {},
+                    onToggleHidden = {},
+                    onToggleGrid = {},
+                    onSort = {},
+                    onDisconnect = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("copy-more-remote").assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(1, addRequests.get()) }
+    }
+
+    @Test
+    fun remoteFolderUsesTheSameNavigationAndDisplayMenuPatternAsLocalStorage() {
+        val back = AtomicInteger()
+        val forward = AtomicInteger()
+        val up = AtomicInteger()
+        val hidden = AtomicInteger()
+        val grid = AtomicInteger()
+        val displaySettings = AtomicInteger()
+        val sort = AtomicInteger()
+        val refresh = AtomicInteger()
+        val disconnect = AtomicInteger()
+        compose.setContent {
+            MaterialTheme {
+                RemoteBrowser(
+                    state = NetworkUiState(
+                        connectedProfile = profile(),
+                        path = "/remote",
+                        entries = listOf(RemoteEntry("file.txt", "/remote/file.txt", false, 12, null)),
+                        backHistory = listOf("/"),
+                        forwardHistory = listOf("/future"),
+                    ),
+                    localDirectory = "/local/target",
+                    onBack = { back.incrementAndGet() },
+                    onForward = { forward.incrementAndGet() },
+                    onUp = { up.incrementAndGet() },
+                    onRefresh = { refresh.incrementAndGet() },
+                    onOpen = {},
+                    onDownload = {},
+                    onToggleSelection = {},
+                    onClearSelection = {},
+                    onSelectAll = {},
+                    onDownloadSelected = {},
+                    onCopySelected = {},
+                    localClipboardCount = 0,
+                    onPasteLocalClipboard = {},
+                    onChooseUpload = {},
+                    onCreateFolder = {},
+                    onRename = {},
+                    onDelete = {},
+                    onSync = {},
+                    onToggleHidden = { hidden.incrementAndGet() },
+                    onToggleGrid = { grid.incrementAndGet() },
+                    onDisplaySettings = { displaySettings.incrementAndGet() },
+                    onSort = { sort.incrementAndGet() },
+                    onDisconnect = { disconnect.incrementAndGet() },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithContentDescription("Forward").performClick()
+        compose.onNodeWithContentDescription("Up").performClick()
+        compose.onNodeWithTag("directory_layout_remote").performClick()
+        compose.onNodeWithTag("directory_layout_remote").performTouchInput { longClick() }
+        clickFolderMenuItem("Show hidden files")
+        compose.onNodeWithContentDescription("Folder actions").performClick()
+        compose.onNodeWithText("Show grid").assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription("Folder actions").performClick()
+        compose.onAllNodesWithText("By size").assertCountEquals(0)
+        compose.onNodeWithText("Display settings").performScrollTo().assertIsDisplayed().performClick()
+        clickFolderMenuItem("Refresh")
+        clickFolderMenuItem("Disconnect")
+
+        compose.runOnIdle {
+            assertEquals(1, back.get())
+            assertEquals(1, forward.get())
+            assertEquals(1, up.get())
+            assertEquals(1, hidden.get())
+            assertEquals(2, grid.get())
+            assertEquals(2, displaySettings.get())
+            assertEquals(0, sort.get())
+            assertEquals(1, refresh.get())
+            assertEquals(1, disconnect.get())
+        }
+    }
+
+    @Test
+    fun localPickerBrowsesIntoFoldersAndReturnsNestedSelection() {
+        var copied = emptyList<String>()
+        val folder = localEntry("folder", EntryKind.DIRECTORY)
+        val file = localEntry("file.txt", EntryKind.DOCUMENT)
+        val nested = localEntry("folder/nested.txt", EntryKind.DOCUMENT)
+        compose.setContent {
+            MaterialTheme {
+                LocalUploadDialog(
+                    initialDirectoryPath = "/local",
+                    remotePath = "/remote",
+                    initialEntries = listOf(folder, file),
+                    initiallySelected = emptySet(),
+                    loadDirectory = { path ->
+                        Result.success(if (path == folder.absolutePath) listOf(nested) else listOf(folder, file))
+                    },
+                    onDismiss = {},
+                    onCopy = { copied = it },
+                )
+            }
+        }
+
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithText("folder").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("folder").performClick()
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithText("nested.txt").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("nested.txt").performClick()
+        compose.onNodeWithText("Copy (1)").performClick()
+
+        compose.runOnIdle { assertEquals(listOf(nested.absolutePath), copied) }
+    }
+
+    @Test
+    fun localPickerLongPressSelectsTheWholeFolderWithoutOpeningIt() {
+        val folder = localEntry("folder", EntryKind.DIRECTORY)
+        var copied = emptyList<String>()
+        compose.setContent {
+            MaterialTheme {
+                LocalUploadDialog(
+                    initialDirectoryPath = "/local",
+                    remotePath = "/remote",
+                    initialEntries = listOf(folder),
+                    initiallySelected = emptySet(),
+                    loadDirectory = { Result.success(listOf(folder)) },
+                    onDismiss = {},
+                    onCopy = { copied = it },
+                )
+            }
+        }
+
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithText("folder").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("local_upload_entry_${folder.absolutePath}").performTouchInput { longClick() }
+        compose.onNodeWithText("Copy (1)").performClick()
+
+        compose.runOnIdle { assertEquals(listOf(folder.absolutePath), copied) }
+    }
+
+    @Test
+    fun localPickerSelectAllActionAlsoClearsEverySelection() {
+        val entries = listOf(
+            localEntry("folder", EntryKind.DIRECTORY),
+            localEntry("file.txt", EntryKind.DOCUMENT),
+        )
+        compose.setContent {
+            MaterialTheme {
+                LocalUploadDialog(
+                    initialDirectoryPath = "/local",
+                    remotePath = "/remote",
+                    initialEntries = entries,
+                    initiallySelected = setOf(entries.first().absolutePath),
+                    loadDirectory = { Result.success(entries) },
+                    onDismiss = {},
+                    onCopy = {},
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Select all").performClick()
+        compose.onNodeWithText("Copy (2)").fetchSemanticsNode()
+        compose.onNodeWithContentDescription("Deselect all").performClick()
+        compose.onAllNodesWithText("Selected:", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun corruptedLegacyProfileNeverRendersPastedCredentialLines() {
+        val marker = "TOP_SECRET_MARKER"
+        val corrupted = profile().copy(
+            name = "Office\naccount\n$marker",
+            host = "192.0.2.10\naccount\n$marker",
+        )
+        compose.setContent {
+            MaterialTheme {
+                ProfileCard(corrupted, loading = false, onConnect = {}, onEdit = {}, onDelete = {})
+            }
+        }
+
+        compose.onAllNodesWithText(marker, substring = true).assertCountEquals(0)
+        compose.onNodeWithText("Invalid connection data", substring = true).fetchSemanticsNode()
+    }
+
+    @Test
+    fun corruptedProfileEditorKeepsOnlySafeFirstLines() {
+        val marker = "TOP_SECRET_MARKER"
+        val corrupted = profile().copy(
+            name = "Office\naccount\n$marker",
+            host = "192.0.2.10\naccount\n$marker",
+        )
+        compose.setContent {
+            MaterialTheme {
+                NetworkProfileDialog(corrupted, onDismiss = {}, onSave = { _, _, _ -> })
+            }
+        }
+
+        compose.onAllNodesWithText(marker, substring = true).assertCountEquals(0)
+        compose.onNodeWithText("Save").assertIsEnabled()
+    }
+
+    @Test
+    fun networkProfileEditorRemovesServerAddressSpacesBeforeSaving() {
+        var savedProfile: NetworkProfile? = null
+        compose.setContent {
+            MaterialTheme {
+                NetworkProfileDialog(
+                    existingProfile = profile(),
+                    onDismiss = {},
+                    onSave = { saved, _, _ -> savedProfile = saved },
+                )
+            }
+        }
+
+        val hostField = compose.onNodeWithTag("network_host")
+        hostField.performTextClearance()
+        hostField.performTextInput(" 203 . 0 . 113 . 190 ")
+        compose.onNodeWithText("Save").assertIsEnabled().performClick()
+
+        compose.runOnIdle { assertEquals("203.0.113.190", savedProfile?.host) }
+    }
+
+    @Test
+    fun networkProfileEditorExcludesAndroidAutofill() {
+        var dialogView: View? = null
+        compose.setContent {
+            MaterialTheme {
+                NetworkProfileDialog(
+                    existingProfile = null,
+                    onDismiss = {},
+                    onSave = { _, _, _ -> },
+                    onAutofillViewReady = { dialogView = it },
+                )
+            }
+        }
+
+        compose.runOnIdle {
+            assertEquals(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS, dialogView?.importantForAutofill)
+        }
+    }
+
+    @Test
+    fun structuredNetworkErrorIsClearAndDoesNotEchoExceptionText() {
+        val marker = "TOP_SECRET_MARKER"
+        val error = RemoteErrorPresenter.present(
+            NetworkProtocol.FTP,
+            RemoteOperation.CONNECT,
+            UnknownHostException("192.0.2.10\naccount\n$marker"),
+        )
+        compose.setContent { MaterialTheme { NetworkError(error) } }
+
+        compose.onNodeWithText("Invalid server address").fetchSemanticsNode()
+        compose.onNodeWithText("Diagnostic code: NET-DNS").fetchSemanticsNode()
+        compose.onAllNodesWithText(marker, substring = true).assertCountEquals(0)
+    }
+
+    private fun clickFolderMenuItem(text: String) {
+        compose.onNodeWithContentDescription("Folder actions").performClick()
+        compose.onNodeWithText(text).performScrollTo().assertIsDisplayed().performClick()
+    }
+
+    private fun profile() = NetworkProfile(
+        id = "profile",
+        name = "Test server",
+        protocol = NetworkProtocol.FTP,
+        host = "127.0.0.1",
+        port = 2121,
+        username = "tester",
+        basePath = "/",
+    )
+
+    private fun localEntry(name: String, kind: EntryKind) = FileEntry(
+        absolutePath = "/local/$name",
+        name = name.substringAfterLast('/'),
+        kind = kind,
+        sizeBytes = 12,
+        modifiedAtMillis = 1,
+        isHidden = false,
+        isReadable = true,
+        isWritable = true,
+    )
+}

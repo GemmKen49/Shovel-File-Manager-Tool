@@ -17,7 +17,7 @@ val targetAbi = providers.gradleProperty("afTargetAbi").orNull
 val supportedAbis = setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
 
 android {
-    namespace = "com.affilemanager.app"
+    namespace = "com.shovel.filemanager"
     compileSdk = 36
     ndkVersion = "27.3.13750724"
 
@@ -32,7 +32,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.affilemanager.app"
+        applicationId = "com.shovel.filemanager"
         minSdk = 26
         targetSdk = 36
         versionCode = 70
@@ -41,9 +41,9 @@ android {
         buildConfigField("String", "UPDATE_REPOSITORY", "\"sinegard/AF-File-Manager\"")
 
         testInstrumentationRunner = if (testOptimizedRelease || testIsolatedBenchmark) {
-            "com.affilemanager.app.network.OptimizedSftpInstrumentation"
+            "com.shovel.filemanager.network.OptimizedSftpInstrumentation"
         } else {
-            "com.affilemanager.app.SelfContainedTestRunner"
+            "com.shovel.filemanager.SelfContainedTestRunner"
         }
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
         testProguardFiles("test-proguard-rules.pro")
@@ -221,12 +221,12 @@ tasks.register("verifyReleaseDynamicRuntimeClasses") {
         }
 
         val requiredDescriptors = listOf(
-            "Lcom/affilemanager/app/network/SftpRuntimeVerifier;",
-            "Lcom/affilemanager/app/network/WebDavRuntimeVerifier;",
-            "Lcom/affilemanager/app/terminal/PrivilegedTerminalRuntimeVerifier;",
-            "Lcom/affilemanager/app/terminal/LocalPtyNative;",
-            "Lcom/affilemanager/app/advanced/ShizukuFileService;",
-            "Lcom/affilemanager/app/advanced/RootFileService;",
+            "Lcom/shovel/filemanager/network/SftpRuntimeVerifier;",
+            "Lcom/shovel/filemanager/network/WebDavRuntimeVerifier;",
+            "Lcom/shovel/filemanager/terminal/PrivilegedTerminalRuntimeVerifier;",
+            "Lcom/shovel/filemanager/terminal/LocalPtyNative;",
+            "Lcom/shovel/filemanager/advanced/ShizukuFileService;",
+            "Lcom/shovel/filemanager/advanced/RootFileService;",
             "Lcom/jcraft/jsch/JSchException;",
             "Lcom/jcraft/jsch/UserAuthPassword;",
             "Lcom/jcraft/jsch/DH25519;",

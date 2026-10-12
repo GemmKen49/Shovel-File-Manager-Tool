@@ -1,0 +1,1326 @@
+package com.shovel.filemanager.ui.screens
+
+import com.shovel.filemanager.ui.localization.LText
+import com.shovel.filemanager.ui.localization.uiText
+import com.shovel.filemanager.data.OptionalFeature
+import com.shovel.filemanager.ui.components.featureVisible
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.Analytics
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.ContentCut
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.FolderOff
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SdStorage
+import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Usb
+import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.AfCard as Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shovel.filemanager.core.FileSystemRules
+import com.shovel.filemanager.data.SearchDraftPreferences
+import com.shovel.filemanager.data.SearchScopePreference
+import com.shovel.filemanager.model.EntryKind
+import com.shovel.filemanager.model.ClipboardMode
+import com.shovel.filemanager.model.DirectoryUsage
+import com.shovel.filemanager.model.DuplicateGroup
+import com.shovel.filemanager.model.FileEntry
+import com.shovel.filemanager.model.SearchFilters
+import com.shovel.filemanager.model.StorageAnalysis
+import com.shovel.filemanager.model.StorageRoot
+import com.shovel.filemanager.model.StorageRootKind
+import com.shovel.filemanager.ui.MainViewModel
+import com.shovel.filemanager.ui.PanelId
+import com.shovel.filemanager.ui.components.LocalFileVisual
+import com.shovel.filemanager.ui.components.DeleteConfirmationDialog
+import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.SelectionActionBar
+import com.shovel.filemanager.search.AnalysisProgress
+import com.shovel.filemanager.search.AnalysisScanPhase
+import java.io.File
+import java.util.Locale
+
+private const val MEBIBYTE = 1_024L * 1_024L
+private const val DAY_MILLIS = 24L * 60L * 60L * 1_000L
+
+private enum class SearchScope { CURRENT_FOLDER, ALL_STORAGE, SELECTED_STORAGE }
+
+private fun SearchScopePreference.toSearchScope(): SearchScope = when (this) {
+    SearchScopePreference.CURRENT_FOLDER -> SearchScope.CURRENT_FOLDER
+    SearchScopePreference.ALL_STORAGE -> SearchScope.ALL_STORAGE
+    SearchScopePreference.SELECTED_STORAGE -> SearchScope.SELECTED_STORAGE
+}
+
+private fun SearchScope.toPreference(): SearchScopePreference = when (this) {
+    SearchScope.CURRENT_FOLDER -> SearchScopePreference.CURRENT_FOLDER
+    SearchScope.ALL_STORAGE -> SearchScopePreference.ALL_STORAGE
+    SearchScope.SELECTED_STORAGE -> SearchScopePreference.SELECTED_STORAGE
+}
+
+@Composable
+fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
+    val searchState by viewModel.searchState.collectAsStateWithLifecycle()
+    val analysisState by viewModel.analysisState.collectAsStateWithLifecycle()
+    val savedSearches by viewModel.savedSearches.collectAsStateWithLifecycle()
+    val storageRoots by viewModel.roots.collectAsStateWithLifecycle()
+    val activePanel by viewModel.activePanel.collectAsStateWithLifecycle()
+    val leftPanel by viewModel.leftPanel.collectAsStateWithLifecycle()
+    val rightPanel by viewModel.rightPanel.collectAsStateWithLifecycle()
+    val renameUndo by viewModel.renameUndo.collectAsStateWithLifecycle()
+    val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
+    val cleanupRequested by viewModel.cleanupRequested.collectAsStateWithLifecycle()
+    val deviceCleanup by viewModel.deviceCleanup.collectAsStateWithLifecycle()
+    val searchDraft by viewModel.searchDraftPreferences.collectAsStateWithLifecycle()
+    val activePath = if (activePanel == PanelId.LEFT) leftPanel.path else rightPanel.path
+    val hasActiveSearch = searchState.roots.isNotEmpty()
+
+    var query by remember { mutableStateOf(searchState.filters.query) }
+    var includeHidden by remember { mutableStateOf(if (hasActiveSearch) searchState.filters.includeHidden else searchDraft.includeHidden) }
+    var regex by remember { mutableStateOf(if (hasActiveSearch) searchState.filters.useRegex else searchDraft.useRegex) }
+    var matchExtension by remember { mutableStateOf(if (hasActiveSearch) searchState.filters.matchExtension else searchDraft.matchExtension) }
+    var searchContents by remember { mutableStateOf(if (hasActiveSearch) searchState.filters.searchContents else searchDraft.searchContents) }
+    var kinds by remember { mutableStateOf(if (hasActiveSearch) searchState.filters.kinds else searchDraft.kinds) }
+    var minimumMiB by remember {
+        mutableStateOf(if (hasActiveSearch) bytesToMiBText(searchState.filters.minBytes) else searchDraft.minimumMiB)
+    }
+    var maximumMiB by remember {
+        mutableStateOf(if (hasActiveSearch) bytesToMiBText(searchState.filters.maxBytes) else searchDraft.maximumMiB)
+    }
+    var newerThanDays by remember {
+        mutableStateOf(if (hasActiveSearch) daysFrom(searchState.filters.modifiedAfter) else searchDraft.newerThanDays)
+    }
+    var olderThanDays by remember {
+        mutableStateOf(if (hasActiveSearch) daysFrom(searchState.filters.modifiedBefore) else searchDraft.olderThanDays)
+    }
+    var advancedExpanded by remember {
+        mutableStateOf(if (hasActiveSearch) searchState.filters.hasAdvancedFilters() else searchDraft.advancedExpanded)
+    }
+    var scope by remember { mutableStateOf(searchDraft.scope.toSearchScope()) }
+    var scopedRoots by remember { mutableStateOf(listOf(activePath)) }
+    var selectedStoragePaths by remember { mutableStateOf(searchDraft.selectedStoragePaths) }
+    var storagePickerDraft by remember { mutableStateOf(emptySet<String>()) }
+    var showStoragePicker by remember { mutableStateOf(false) }
+    var showSave by remember { mutableStateOf(false) }
+    var confirmTrash by remember { mutableStateOf(false) }
+    var duplicateGroup by remember { mutableStateOf<DuplicateGroup?>(null) }
+    var showCleanupReview by remember { mutableStateOf(false) }
+    var cleanupCategory by remember { mutableStateOf(CleanupCategory.LARGE) }
+
+    LaunchedEffect(cleanupRequested, analysisState.analysis, analysisState.running, analysisState.error) {
+        if (cleanupRequested && analysisState.analysis != null && !analysisState.running) {
+            cleanupCategory = CleanupCategory.LARGE
+            showCleanupReview = true
+            viewModel.consumeCleanupRequest()
+        } else if (cleanupRequested && analysisState.error != null && !analysisState.running) {
+            viewModel.consumeCleanupRequest()
+        }
+    }
+
+    LaunchedEffect(searchState.filters, searchState.roots) {
+        if (searchState.roots.isNotEmpty()) {
+            query = searchState.filters.query
+            includeHidden = searchState.filters.includeHidden
+            regex = searchState.filters.useRegex
+            matchExtension = searchState.filters.matchExtension
+            searchContents = searchState.filters.searchContents
+            kinds = searchState.filters.kinds
+            minimumMiB = bytesToMiBText(searchState.filters.minBytes)
+            maximumMiB = bytesToMiBText(searchState.filters.maxBytes)
+            newerThanDays = daysFrom(searchState.filters.modifiedAfter)
+            olderThanDays = daysFrom(searchState.filters.modifiedBefore)
+            if (searchState.filters.hasAdvancedFilters()) advancedExpanded = true
+            scopedRoots = searchState.roots
+            val allStoragePaths = storageRoots.map(StorageRoot::path).toSet()
+            scope = when {
+                searchState.roots == listOf(activePath) -> SearchScope.CURRENT_FOLDER
+                allStoragePaths.isNotEmpty() && searchState.roots.toSet() == allStoragePaths -> SearchScope.ALL_STORAGE
+                searchState.roots.all(allStoragePaths::contains) -> SearchScope.SELECTED_STORAGE
+                else -> SearchScope.CURRENT_FOLDER
+            }
+            selectedStoragePaths = searchState.roots.filter(allStoragePaths::contains).toSet()
+        }
+    }
+
+    LaunchedEffect(storageRoots) {
+        if (storageRoots.isEmpty()) return@LaunchedEffect
+        val mounted = storageRoots.map(StorageRoot::path).toSet()
+        selectedStoragePaths = selectedStoragePaths.intersect(mounted)
+        storagePickerDraft = storagePickerDraft.intersect(mounted)
+        if (scope == SearchScope.SELECTED_STORAGE && selectedStoragePaths.isEmpty()) {
+            scope = SearchScope.ALL_STORAGE
+        }
+    }
+
+    val minBytes = miBTextToBytes(minimumMiB)
+    val maxBytes = miBTextToBytes(maximumMiB)
+    val sizeInputValid = (minimumMiB.isBlank() || minBytes != null) &&
+        (maximumMiB.isBlank() || maxBytes != null) &&
+        (minBytes == null || maxBytes == null || minBytes <= maxBytes)
+    val newerDaysValue = newerThanDays
+    val olderDaysValue = olderThanDays
+    val dateInputValid = newerDaysValue == null || olderDaysValue == null || newerDaysValue >= olderDaysValue
+    val hasCondition = query.isNotBlank() || minBytes != null || maxBytes != null ||
+        newerThanDays != null || olderThanDays != null || kinds.isNotEmpty()
+    val advancedFilterCount = listOf(
+        kinds.isNotEmpty(),
+        minBytes != null || maxBytes != null,
+        newerThanDays != null || olderThanDays != null,
+    ).count { it }
+    val selectedRoots = when (scope) {
+        SearchScope.CURRENT_FOLDER -> scopedRoots.takeIf { it.size == 1 } ?: listOf(activePath)
+        SearchScope.ALL_STORAGE -> storageRoots.map { it.path }.distinct()
+        SearchScope.SELECTED_STORAGE -> storageRoots.map(StorageRoot::path).filter(selectedStoragePaths::contains)
+    }
+    val currentFilters = SearchFilters(
+        query = query,
+        matchExtension = matchExtension,
+        searchContents = searchContents,
+        minBytes = minBytes,
+        maxBytes = maxBytes,
+        modifiedAfter = newerThanDays?.let { System.currentTimeMillis() - it * DAY_MILLIS },
+        modifiedBefore = olderThanDays?.let { System.currentTimeMillis() - it * DAY_MILLIS },
+        kinds = kinds,
+        includeHidden = includeHidden,
+        useRegex = regex,
+    )
+    val overviewPath = analysisState.rootPaths.firstOrNull() ?: analysisState.rootPath ?: activePath
+    val overviewRoot = storageRoots
+        .filter { root -> overviewPath == root.path || overviewPath.startsWith(root.path.trimEnd('/') + "/") }
+        .maxByOrNull { it.path.length }
+        ?: storageRoots.firstOrNull()
+
+    Column(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                LText("Paieška ir vietos analizė", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                LText(
+                    when (scope) {
+                        SearchScope.ALL_STORAGE -> "Visos Android matomos saugyklos"
+                        SearchScope.SELECTED_STORAGE -> "Pasirinkta saugyklų: ${selectedRoots.size}"
+                        SearchScope.CURRENT_FOLDER -> selectedRoots.firstOrNull().orEmpty()
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (renameUndo != null) {
+                IconButton(onClick = viewModel::undoBatchRename) {
+                    Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = uiText("Atšaukti paskutinį masinį pervadinimą"))
+                }
+            }
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().weight(1f).testTag("analyze_list"),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+        item {
+            Card(
+                onClick = viewModel::openDeviceCleanup,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("open_device_cleanup"),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(Icons.Rounded.CleaningServices, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Column(modifier = Modifier.weight(1f)) {
+                        LText("Įrenginio valymas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        LText(
+                            "Nenaudojamos programos, programų talpyklos ir seni medijos failai — viską peržiūrėkite prieš sistemos veiksmą",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        if (overviewRoot != null) {
+            item {
+                StorageOverviewCard(
+                    root = overviewRoot,
+                    roots = storageRoots,
+                    analysis = analysisState.analysis,
+                    analysisRootPaths = analysisState.rootPaths.ifEmpty { listOfNotNull(analysisState.rootPath) },
+                    analysisAllStorage = analysisState.allStorage,
+                    running = analysisState.running,
+                    progress = analysisState.progress,
+                    onAnalyzeRoot = viewModel::analyze,
+                    onAnalyzeFolder = { viewModel.analyze(activePath) },
+                    onAnalyzeAllStorage = viewModel::analyzeAllStorage,
+                    onCancel = viewModel::cancelAnalysis,
+                    onCleanup = { cleanupCategory = CleanupCategory.LARGE; showCleanupReview = true },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LText("Kur ieškoti", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            selected = scope == SearchScope.CURRENT_FOLDER,
+                            onClick = { scope = SearchScope.CURRENT_FOLDER; scopedRoots = listOf(activePath) },
+                            label = { LText("Šiame aplanke") },
+                        )
+                        FilterChip(
+                            selected = scope == SearchScope.ALL_STORAGE,
+                            onClick = { scope = SearchScope.ALL_STORAGE },
+                            enabled = storageRoots.isNotEmpty(),
+                            label = { LText("Visose saugyklose") },
+                            modifier = Modifier.testTag("search_scope_all"),
+                        )
+                        FilterChip(
+                            selected = scope == SearchScope.SELECTED_STORAGE,
+                            onClick = {
+                                storagePickerDraft = selectedStoragePaths.takeIf { it.isNotEmpty() }
+                                    ?: storageRoots.mapTo(linkedSetOf(), StorageRoot::path)
+                                showStoragePicker = true
+                            },
+                            enabled = storageRoots.isNotEmpty(),
+                            label = { LText("Pasirinkti saugyklas") },
+                            modifier = Modifier.testTag("search_scope_selected"),
+                        )
+                    }
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier.fillMaxWidth().testTag("search_query"),
+                        label = { LText("Failo arba aplanko pavadinimas") },
+                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                        singleLine = true,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(selected = includeHidden, onClick = { includeHidden = !includeHidden }, label = { LText("Paslėpti") })
+                        FilterChip(
+                            selected = regex,
+                            onClick = { regex = !regex },
+                            enabled = query.isNotBlank(),
+                            label = { LText("Regex") },
+                        )
+                        FilterChip(
+                            selected = matchExtension,
+                            onClick = { matchExtension = !matchExtension },
+                            enabled = query.isNotBlank(),
+                            label = { LText("Pagal plėtinį") },
+                        )
+                        FilterChip(
+                            selected = searchContents,
+                            onClick = { searchContents = !searchContents },
+                            enabled = query.isNotBlank(),
+                            label = { LText("Failų turinyje") },
+                        )
+                    }
+                    FilterChip(
+                        selected = advancedExpanded,
+                        onClick = { advancedExpanded = !advancedExpanded },
+                        leadingIcon = { Icon(Icons.Rounded.Tune, contentDescription = null) },
+                        label = {
+                            LText(
+                                if (advancedFilterCount > 0) "Išplėstiniai filtrai · $advancedFilterCount" else "Išplėstiniai filtrai",
+                            )
+                        },
+                        modifier = Modifier.testTag("search_advanced_toggle"),
+                    )
+                    if (advancedExpanded) {
+                        LText("Failų tipai", style = MaterialTheme.typography.labelLarge)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        ) {
+                            EntryKind.entries.forEach { kind ->
+                                FilterChip(
+                                    selected = kind in kinds,
+                                    onClick = { kinds = if (kind in kinds) kinds - kind else kinds + kind },
+                                    label = { LText(kindLabel(kind)) },
+                                )
+                            }
+                        }
+                        LText("Dydis (MiB)", style = MaterialTheme.typography.labelLarge)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = minimumMiB,
+                                onValueChange = { minimumMiB = decimalInput(it) },
+                                modifier = Modifier.weight(1f),
+                                label = { LText("Nuo") },
+                                isError = !sizeInputValid,
+                                singleLine = true,
+                            )
+                            OutlinedTextField(
+                                value = maximumMiB,
+                                onValueChange = { maximumMiB = decimalInput(it) },
+                                modifier = Modifier.weight(1f),
+                                label = { LText("Iki") },
+                                isError = !sizeInputValid,
+                                singleLine = true,
+                            )
+                        }
+                        LText("Ne senesni nei", style = MaterialTheme.typography.labelLarge)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        ) {
+                            listOf<Int?>(null, 7, 30, 365).forEach { days ->
+                                FilterChip(
+                                    selected = newerThanDays == days,
+                                    onClick = { newerThanDays = days },
+                                    label = { LText(days?.let(::daysLabel) ?: "Bet kada") },
+                                )
+                            }
+                        }
+                        LText("Senesni nei", style = MaterialTheme.typography.labelLarge)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        ) {
+                            listOf<Int?>(null, 7, 30, 365).forEach { days ->
+                                FilterChip(
+                                    selected = olderThanDays == days,
+                                    onClick = { olderThanDays = days },
+                                    label = { LText(days?.let(::daysLabel) ?: "Neriboti") },
+                                )
+                            }
+                        }
+                        if (!sizeInputValid) {
+                            LText("Dydžio ribos netinkamos", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (!dateInputValid) {
+                            LText("Datos intervalas negalimas", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Button(
+                            onClick = { viewModel.search(currentFilters, selectedRoots) },
+                            enabled = hasCondition && sizeInputValid && dateInputValid && selectedRoots.isNotEmpty(),
+                            modifier = Modifier.testTag("search_execute"),
+                        ) { LText("Ieškoti") }
+                        OutlinedButton(
+                            onClick = { showSave = true },
+                            enabled = hasCondition && sizeInputValid && dateInputValid && selectedRoots.isNotEmpty(),
+                        ) {
+                            Icon(Icons.Rounded.BookmarkAdd, contentDescription = null)
+                            LText("Išsaugoti", modifier = Modifier.padding(start = 6.dp))
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                query = ""
+                                includeHidden = false
+                                regex = false
+                                matchExtension = false
+                                searchContents = false
+                                kinds = emptySet()
+                                minimumMiB = ""
+                                maximumMiB = ""
+                                newerThanDays = null
+                                olderThanDays = null
+                            },
+                            enabled = hasCondition || includeHidden || regex,
+                        ) { LText("Išvalyti filtrus") }
+                    }
+                }
+            }
+        }
+
+        if (savedSearches.isNotEmpty()) {
+            item { SectionTitle("Išsaugotos paieškos", savedSearches.size.toString(), Modifier.padding(horizontal = 16.dp)) }
+            items(savedSearches, key = { "saved:${it.id}" }) { saved ->
+                Card(onClick = { viewModel.runSavedSearch(saved) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(saved.name, fontWeight = FontWeight.SemiBold)
+                            LText(
+                                "${saved.query.ifBlank { "Keli filtrai" }} · ${if (saved.rootPaths.size > 1) "${saved.rootPaths.size} saugyklos" else saved.rootPath}",
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        IconButton(onClick = { viewModel.removeSavedSearch(saved.id) }) {
+                            Icon(Icons.Rounded.Delete, contentDescription = uiText("Pašalinti išsaugotą paiešką"))
+                        }
+                    }
+                }
+            }
+        }
+
+        if (searchState.running) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator()
+                    OutlinedButton(onClick = viewModel::cancelSearch, modifier = Modifier.testTag("search_cancel")) {
+                        LText("Sustabdyti paiešką")
+                    }
+                }
+            }
+        }
+        searchState.error?.let { error -> item { ErrorCard(error, Modifier.padding(horizontal = 16.dp)) } }
+        analysisState.error?.let { error -> item { ErrorCard(error, Modifier.padding(horizontal = 16.dp)) } }
+        if (analysisState.duplicateScanTruncated) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        LText("Dublikatų paieška dalinė", fontWeight = FontWeight.SemiBold)
+                        LText(
+                            "Patikrinta ${analysisState.duplicateCandidatesScanned} failų. Rastos grupės rodomos, tačiau likusioje saugyklos dalyje gali būti daugiau dublikatų.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+        }
+
+        if (searchState.results.isNotEmpty()) {
+            item {
+                Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SectionTitle("Paieškos virtualus aplankas", searchState.results.size.toString())
+                    LText(
+                        "Perskaityta ${searchState.scannedEntries} elementų · ${searchState.roots.size} vieta(-os)",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (searchState.truncated) {
+                        LText(
+                            "Rezultatai sutrumpinti pasiekus 5 000 rezultatų arba 200 000 skenuotų elementų ribą.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+            if (searchState.selectedPaths.isNotEmpty()) {
+                item {
+                    SearchSelectionToolbar(
+                        count = searchState.selectedPaths.size,
+                        onClose = viewModel::clearSearchSelection,
+                        onSelectAll = viewModel::selectAllSearchResults,
+                        onCopy = { viewModel.copySearchSelection(move = false) },
+                        canAddToClipboard = clipboard?.mode == ClipboardMode.COPY,
+                        onAddToClipboard = viewModel::addSearchSelectionToClipboard,
+                        onMove = { viewModel.copySearchSelection(move = true) },
+                        onBatchRename = viewModel::batchRenameSearchSelection,
+                        onTrash = { confirmTrash = true },
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+            items(searchState.results, key = FileEntry::absolutePath) { entry ->
+                ResultRow(
+                    entry = entry,
+                    selected = entry.absolutePath in searchState.selectedPaths,
+                    selectionActive = searchState.selectedPaths.isNotEmpty(),
+                    onOpen = { viewModel.open(entry) },
+                    onToggleSelection = { viewModel.toggleSearchSelection(entry.absolutePath) },
+                    onReveal = { viewModel.revealSearchResult(entry) },
+                    modifier = Modifier.padding(horizontal = 16.dp).testTag("search_result"),
+                )
+            }
+        }
+
+        analysisState.analysis?.let { analysis ->
+            val largestFolders = analysis.largestDirectories.filterNot { usage ->
+                analysisState.rootPaths.any { root -> sameAnalysisPath(usage.path, root) } ||
+                    sameAnalysisPath(usage.path, analysisState.rootPath)
+            }
+            item {
+                Card(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            LText("Rasta ${analysis.scannedFiles} failų", fontWeight = FontWeight.SemiBold)
+                            LText("${analysis.scannedDirectories} aplankų · ${FileSystemRules.humanBytes(analysis.totalBytes)}")
+                            if (analysis.truncated) LText("Rezultatas sutrumpintas pasiekus saugos ribą", color = MaterialTheme.colorScheme.error)
+                        }
+                        Icon(Icons.Rounded.Analytics, contentDescription = null, modifier = Modifier.size(42.dp))
+                    }
+                }
+            }
+            item {
+                OutlinedButton(
+                    onClick = { cleanupCategory = CleanupCategory.LARGE; showCleanupReview = true },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("open_cleanup_review"),
+                ) {
+                    Icon(Icons.Rounded.DeleteSweep, contentDescription = null)
+                    LText("Atidaryti saugaus valymo peržiūrą", modifier = Modifier.padding(start = 7.dp))
+                }
+            }
+            item {
+                AnalysisOverviewCard(
+                    title = "Failų tipų pasiskirstymas",
+                    testTag = "analysis_overview_types",
+                    count = analysis.typeUsage.size,
+                    icon = Icons.Rounded.Analytics,
+                    onViewAll = { cleanupCategory = CleanupCategory.TYPE_USAGE; showCleanupReview = true },
+                ) {
+                    val maximum = analysis.typeUsage.maxOfOrNull { it.sizeBytes }?.coerceAtLeast(1L) ?: 1L
+                    analysis.typeUsage.take(3).forEach { usage ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                LText(kindLabel(usage.kind), fontWeight = FontWeight.SemiBold)
+                                Text(FileSystemRules.humanBytes(usage.sizeBytes), style = MaterialTheme.typography.bodySmall)
+                            }
+                            LinearProgressIndicator(
+                                progress = { usage.sizeBytes.toFloat() / maximum.toFloat() },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                AnalysisOverviewCard(
+                    title = "Didžiausi aplankai",
+                    testTag = "analysis_overview_folders",
+                    count = largestFolders.size,
+                    icon = Icons.Rounded.FolderOpen,
+                    onViewAll = { cleanupCategory = CleanupCategory.LARGEST_FOLDERS; showCleanupReview = true },
+                ) {
+                    val maximum = largestFolders.firstOrNull()?.sizeBytes?.coerceAtLeast(1L) ?: 1L
+                    largestFolders.take(2).forEach { usage ->
+                        DirectoryUsageRow(usage, maximum, onOpen = { viewModel.openQuickPath(usage.path) })
+                    }
+                }
+            }
+            item {
+                AnalysisOverviewCard(
+                    title = "Didžiausi failai",
+                    testTag = "analysis_overview_files",
+                    count = analysis.largestFiles.size,
+                    icon = Icons.Rounded.DeleteSweep,
+                    onViewAll = { cleanupCategory = CleanupCategory.LARGE; showCleanupReview = true },
+                ) {
+                    analysis.largestFiles.take(2).forEach { entry ->
+                        ResultRow(entry, onOpen = { viewModel.open(entry) }, onReveal = { viewModel.revealSearchResult(entry) })
+                    }
+                }
+            }
+            item {
+                AnalysisOverviewCard(
+                    title = "Seniausiai keisti failai",
+                    testTag = "analysis_overview_oldest",
+                    count = analysis.oldestFiles.size,
+                    icon = Icons.Rounded.Analytics,
+                    onViewAll = { cleanupCategory = CleanupCategory.OLDEST; showCleanupReview = true },
+                ) {
+                    analysis.oldestFiles.take(2).forEach { entry ->
+                        ResultRow(entry, onOpen = { viewModel.open(entry) }, onReveal = { viewModel.revealSearchResult(entry) })
+                    }
+                }
+            }
+            item {
+                val oldMedia = analysis.oldMediaFiles
+                AnalysisOverviewCard(
+                    title = "Sena medija ir ekrano kopijos",
+                    testTag = "analysis_overview_old_media",
+                    count = oldMedia.size,
+                    icon = Icons.Rounded.CleaningServices,
+                    onViewAll = { cleanupCategory = CleanupCategory.OLD_MEDIA; showCleanupReview = true },
+                ) {
+                    oldMedia.take(2).forEach { entry ->
+                        ResultRow(entry, onOpen = { viewModel.open(entry) }, onReveal = { viewModel.revealSearchResult(entry) })
+                    }
+                }
+            }
+            item {
+                AnalysisOverviewCard(
+                    title = "Tušti aplankai",
+                    testTag = "analysis_overview_empty",
+                    count = analysis.emptyDirectories.size,
+                    icon = Icons.Rounded.FolderOff,
+                    onViewAll = { cleanupCategory = CleanupCategory.EMPTY_FOLDERS; showCleanupReview = true },
+                ) {
+                    analysis.emptyDirectories.take(2).forEach { pathValue ->
+                        Text(pathValue, modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        HorizontalDivider()
+                    }
+                }
+            }
+            item {
+                AnalysisOverviewCard(
+                    title = "Dublikatų grupės",
+                    testTag = "analysis_overview_duplicates",
+                    count = analysisState.duplicates.size,
+                    icon = Icons.Rounded.ContentCopy,
+                    onViewAll = { cleanupCategory = CleanupCategory.DUPLICATES; showCleanupReview = true },
+                ) {
+                    analysisState.duplicates.take(2).forEach { group ->
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            LText("${group.paths.size} vienodi failai · ${FileSystemRules.humanBytes(group.sizeBytes)} kiekvienas", fontWeight = FontWeight.SemiBold)
+                            Text(group.paths.firstOrNull().orEmpty(), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            OutlinedButton(onClick = { duplicateGroup = group }) { LText("Tvarkyti kopijas") }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(
+        scope,
+        selectedStoragePaths,
+        includeHidden,
+        regex,
+        matchExtension,
+        searchContents,
+        kinds,
+        minimumMiB,
+        maximumMiB,
+        newerThanDays,
+        olderThanDays,
+        advancedExpanded,
+    ) {
+        viewModel.updateSearchDraftPreferences(
+            SearchDraftPreferences(
+                scope = scope.toPreference(),
+                selectedStoragePaths = selectedStoragePaths,
+                includeHidden = includeHidden,
+                useRegex = regex,
+                matchExtension = matchExtension,
+                searchContents = searchContents,
+                kinds = kinds,
+                minimumMiB = minimumMiB,
+                maximumMiB = maximumMiB,
+                newerThanDays = newerThanDays,
+                olderThanDays = olderThanDays,
+                advancedExpanded = advancedExpanded,
+            ),
+        )
+    }
+    }
+
+    if (showStoragePicker) {
+        AfModalDialog(
+            title = "Pasirinkti saugyklas",
+            icon = Icons.Rounded.Storage,
+            onDismissRequest = { showStoragePicker = false },
+            modifier = Modifier.testTag("storage_picker_dialog"),
+            actions = {
+                TextButton(onClick = { showStoragePicker = false }) { LText("Atšaukti") }
+                Button(
+                    onClick = {
+                        selectedStoragePaths = storagePickerDraft
+                        scope = SearchScope.SELECTED_STORAGE
+                        showStoragePicker = false
+                    },
+                    enabled = storagePickerDraft.isNotEmpty(),
+                    modifier = Modifier.testTag("search_storage_apply"),
+                ) { LText("Taikyti") }
+            },
+        ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    LText(
+                        "Paieška bus vykdoma tik pažymėtose prijungtose saugyklose.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    storageRoots.forEach { root ->
+                        Card(
+                            onClick = {
+                                storagePickerDraft = if (root.path in storagePickerDraft) {
+                                    storagePickerDraft - root.path
+                                } else {
+                                    storagePickerDraft + root.path
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().testTag("search_storage_${root.id}"),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = root.path in storagePickerDraft,
+                                    onCheckedChange = null,
+                                )
+                                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                                    LText(storageRootLabel(root), fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        root.path,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    if (showSave) {
+        val defaultSearchName = uiText("Mano paieška")
+        var name by remember(query, defaultSearchName) {
+            mutableStateOf(query.take(40).ifBlank { defaultSearchName })
+        }
+        AlertDialog(
+            onDismissRequest = { showSave = false },
+            title = { LText("Išsaugoti paiešką") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LText("Bus išsaugotos vietos ir visi dabar pasirinkti filtrai.", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { LText("Pavadinimas") }, singleLine = true)
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.saveSearch(name, selectedRoots, currentFilters)
+                        showSave = false
+                    },
+                    enabled = name.isNotBlank(),
+                ) { LText("Išsaugoti") }
+            },
+            dismissButton = { TextButton(onClick = { showSave = false }) { LText("Atšaukti") } },
+        )
+    }
+
+    if (confirmTrash) {
+        val selectedPaths = searchState.selectedPaths.toList()
+        DeleteConfirmationDialog(
+            names = selectedPaths.map { File(it).name }, permanent = false,
+            title = "Perkelti rezultatus į šiukšlinę?",
+            onDismiss = { confirmTrash = false },
+            onConfirm = { viewModel.trashSearchSelection(); confirmTrash = false },
+            loadSummary = { viewModel.loadFileSelectionInfo(selectedPaths) },
+        )
+    }
+
+    duplicateGroup?.let { group ->
+        var selectedPaths by remember(group.sha256) { mutableStateOf(emptySet<String>()) }
+        AlertDialog(
+            onDismissRequest = { duplicateGroup = null },
+            title = { LText("Pasirinkti dublikatų kopijas") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LText(
+                        "Programa nieko nepažymi automatiškai. Patikrinkite kelius; pažymėti failai bus perkelti į atkuriamą šiukšlinę.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    OutlinedButton(
+                        onClick = { selectedPaths = group.paths.drop(1).toSet() },
+                        enabled = group.paths.size > 1,
+                    ) { LText("Pažymėti visas, išskyrus pirmą") }
+                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp)) {
+                        items(group.paths, key = { "duplicate-path:$it" }) { path ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().combinedClickable(
+                                    onClick = { selectedPaths = if (path in selectedPaths) selectedPaths - path else selectedPaths + path },
+                                    onLongClick = {},
+                                ).padding(vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = path in selectedPaths,
+                                    onCheckedChange = { checked -> selectedPaths = if (checked) selectedPaths + path else selectedPaths - path },
+                                )
+                                Text(path, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                    LText("Pažymėta: ${selectedPaths.size} iš ${group.paths.size}", style = MaterialTheme.typography.labelLarge)
+                    LText("Failai: ${selectedPaths.size} · aplankai: 0 · ${uiText("Dydis: ${FileSystemRules.humanBytes(group.sizeBytes * selectedPaths.size)}")}",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.trashDuplicateCopies(selectedPaths.toList())
+                        duplicateGroup = null
+                    },
+                    enabled = selectedPaths.isNotEmpty() && selectedPaths.size < group.paths.size,
+                ) { LText("Perkelti į šiukšlinę") }
+            },
+            dismissButton = { TextButton(onClick = { duplicateGroup = null }) { LText("Atšaukti") } },
+        )
+    }
+
+    if (showCleanupReview) {
+        analysisState.analysis?.let { analysis ->
+            CleanupReviewDialog(
+                analysis = analysis,
+                duplicates = analysisState.duplicates,
+                similarImages = analysisState.similarImages,
+                similarImagesRunning = analysisState.similarImagesRunning,
+                similarImagesAnalyzed = analysisState.similarImagesAnalyzed,
+                similarImagesError = analysisState.similarImagesError,
+                initialCategory = cleanupCategory,
+                analysisRootPaths = analysisState.rootPaths.ifEmpty { listOfNotNull(analysisState.rootPath) },
+                onAnalyzeSimilarImages = viewModel::analyzeSimilarImages,
+                onMoveToTrash = { viewModel.trashAnalysisSelection(it) },
+                onMoveAllToTrash = { viewModel.trashAnalysisSelection(it, keepOneCopy = false) },
+                loadSelectionInfo = viewModel::loadFileSelectionInfo,
+                onLoadFolder = viewModel::loadCleanupFolder,
+                onOpenFile = viewModel::open,
+                onDismiss = { showCleanupReview = false },
+            )
+        }
+    }
+
+    DeviceCleanupDialog(
+        state = deviceCleanup,
+        onDismiss = viewModel::closeDeviceCleanup,
+        onRefresh = viewModel::refreshDeviceCleanup,
+        onGrantUsageAccess = viewModel::openUsageAccessSettings,
+        onOpenAppSettings = viewModel::openApplicationSettings,
+        onUninstall = viewModel::requestApplicationUninstall,
+        onForceStop = viewModel::forceStopApplication,
+    )
+}
+
+private fun sameAnalysisPath(first: String, second: String?): Boolean {
+    if (second == null) return false
+    fun normalized(value: String): String {
+        val path = value.replace('\\', '/')
+        return if (path == "/") path else path.trimEnd('/')
+    }
+    return normalized(first) == normalized(second)
+}
+
+@Composable
+private fun AnalysisOverviewCard(
+    title: String,
+    testTag: String,
+    count: Int,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onViewAll: () -> Unit,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag(testTag),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                LText(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 8.dp))
+                Text(count.toString(), style = MaterialTheme.typography.labelLarge)
+                TextButton(
+                    onClick = onViewAll,
+                    enabled = count > 0,
+                    modifier = Modifier.testTag("${testTag}_view_all"),
+                ) { LText("Rodyti visus") }
+            }
+            if (count == 0) {
+                LText("Šioje grupėje elementų nerasta", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
+internal fun StorageOverviewCard(
+    root: StorageRoot,
+    roots: List<StorageRoot>,
+    analysis: StorageAnalysis?,
+    analysisRootPaths: List<String>,
+    analysisAllStorage: Boolean,
+    running: Boolean,
+    progress: AnalysisProgress?,
+    onAnalyzeRoot: (String) -> Unit,
+    onAnalyzeFolder: () -> Unit,
+    onAnalyzeAllStorage: () -> Unit,
+    onCancel: () -> Unit,
+    onCleanup: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val mountedRoots = roots.ifEmpty { listOf(root) }.distinctBy(StorageRoot::path)
+        .sortedBy { if (it.kind == StorageRootKind.INTERNAL) 0 else 1 }
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LText("Saugyklos užpildymas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            mountedRoots.forEach { target ->
+                val total = target.totalBytes.coerceAtLeast(0L)
+                val used = (total - target.freeBytes.coerceAtLeast(0L)).coerceIn(0L, total)
+                val fraction = if (total > 0L) (used.toDouble() / total.toDouble()).toFloat().coerceIn(0f, 1f) else 0f
+                val percentage = (fraction * 100f).toInt().coerceIn(0, 100)
+                Row(
+                    modifier = Modifier.fillMaxWidth().testTag("storage_usage_${target.id}"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(storageRootIcon(target.kind), contentDescription = null,
+                        modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        LText(storageRootLabel(target), maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+                        if (total > 0L) LText(
+                            "Naudojama ${FileSystemRules.humanBytes(used)} iš ${FileSystemRules.humanBytes(total)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ) else LText("Nežinoma", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxSize(), strokeWidth = 5.dp)
+                        Text(if (total > 0L) "$percentage%" else "—", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            if (analysis != null) LText(
+                "Nuskaityta ${analysis.scannedFiles} failų ir ${analysis.scannedDirectories} aplankų",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LText(if (running) "Vykdoma analizė" else "Nuskaityti saugyklą", style = MaterialTheme.typography.labelLarge)
+            val activeStorageRoot = roots.firstOrNull { target ->
+                !analysisAllStorage && analysisRootPaths.singleOrNull()?.let { sameAnalysisPath(it, target.path) } == true
+            }
+            val visibleStorageRoots = if (running) listOfNotNull(activeStorageRoot) else roots.distinctBy(StorageRoot::path)
+            visibleStorageRoots.forEach { target ->
+                OutlinedButton(
+                    onClick = { onAnalyzeRoot(target.path) },
+                    enabled = !running,
+                    modifier = Modifier.fillMaxWidth().testTag("analyze_storage_${target.id}"),
+                ) {
+                    Icon(storageRootIcon(target.kind), contentDescription = null)
+                    LText(
+                        "Nuskaityti: ${storageRootLabel(target)}",
+                        modifier = Modifier.weight(1f).padding(start = 8.dp),
+                    )
+                    if (running && !analysisAllStorage && analysisRootPaths.singleOrNull()?.let { sameAnalysisPath(it, target.path) } == true) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    }
+                }
+            }
+            if (!running || (!analysisAllStorage && activeStorageRoot == null)) {
+                OutlinedButton(
+                    onClick = onAnalyzeFolder,
+                    enabled = !running,
+                    modifier = Modifier.fillMaxWidth().testTag("analyze_current_folder"),
+                ) {
+                    Icon(Icons.Rounded.FolderOpen, contentDescription = null)
+                    LText("Analizuoti dabartinį aplanką", modifier = Modifier.padding(start = 8.dp))
+                    if (running) CircularProgressIndicator(modifier = Modifier.padding(start = 8.dp).size(20.dp), strokeWidth = 2.dp)
+                }
+            }
+            if (mountedRoots.any { it.removable } && (!running || analysisAllStorage)) {
+                OutlinedButton(
+                    onClick = onAnalyzeAllStorage,
+                    enabled = !running && roots.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth().testTag("analyze_all_storage"),
+                ) {
+                    Icon(Icons.Rounded.Storage, contentDescription = null)
+                    Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                        LText("Analizuoti saugyklą")
+                        LText("Visose saugyklose", style = MaterialTheme.typography.labelSmall)
+                    }
+                    if (running && analysisAllStorage) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    }
+                }
+            }
+            if (running) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().testTag("analysis_progress"))
+                progress?.let { current ->
+                    LText(
+                        if (current.phase == AnalysisScanPhase.SCANNING) "Nuskaitomi failai" else "Tikrinami galimi dublikatai",
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    if (current.phase == AnalysisScanPhase.SCANNING) {
+                        LText(
+                            "Failai: ${current.scannedFiles} · aplankai: ${current.scannedDirectories} · ${FileSystemRules.humanBytes(current.scannedBytes)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        LText(
+                            "Galimi dublikatai: ${current.scannedFiles} failų · ${FileSystemRules.humanBytes(current.scannedBytes)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        LText(
+                            "Patikrintos kontrolinės sumos: ${current.hashedFiles}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    current.currentPath?.let { path ->
+                        Text(
+                            path,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.fillMaxWidth().testTag("analysis_cancel"),
+                ) { LText("Sustabdyti analizę") }
+            }
+            if (analysis != null) {
+                Button(onClick = onCleanup, enabled = !running, modifier = Modifier.fillMaxWidth()) {
+                    LText("Peržiūrėti valymą")
+                }
+            }
+        }
+    }
+}
+
+private fun storageRootLabel(root: StorageRoot): String = when (root.kind) {
+    StorageRootKind.INTERNAL -> "Vidinė atmintis"
+    StorageRootKind.SD_CARD -> root.title.ifBlank { "SD kortelė" }
+    StorageRootKind.USB_STORAGE -> root.title.ifBlank { "USB saugykla" }
+    StorageRootKind.REMOVABLE -> root.title.ifBlank { "Išimama saugykla" }
+}
+
+private fun storageRootIcon(kind: StorageRootKind) = when (kind) {
+    StorageRootKind.INTERNAL -> Icons.Rounded.Storage
+    StorageRootKind.SD_CARD, StorageRootKind.REMOVABLE -> Icons.Rounded.SdStorage
+    StorageRootKind.USB_STORAGE -> Icons.Rounded.Usb
+}
+
+@Composable
+private fun SearchSelectionToolbar(
+    count: Int,
+    onClose: () -> Unit,
+    onSelectAll: () -> Unit,
+    onCopy: () -> Unit,
+    canAddToClipboard: Boolean,
+    onAddToClipboard: () -> Unit,
+    onMove: () -> Unit,
+    onBatchRename: () -> Unit,
+    onTrash: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SelectionActionBar(
+        count = count,
+        allSelected = false,
+        onClose = onClose,
+        onToggleSelectAll = onSelectAll,
+        modifier = modifier,
+    ) {
+            IconButton(onClick = onCopy) { Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti")) }
+            if (canAddToClipboard) {
+                TextButton(onClick = onAddToClipboard, modifier = Modifier.testTag("copy-more-search")) {
+                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = uiText("Įtraukti į iškarpinę"))
+                    LText("Kopijuoti daugiau", modifier = Modifier.padding(start = 5.dp))
+                }
+            }
+            IconButton(onClick = onMove) { Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti")) }
+            if (featureVisible(OptionalFeature.BATCH_RENAME)) IconButton(onClick = onBatchRename) {
+                Icon(Icons.Rounded.Edit, contentDescription = uiText("Masinis pervadinimas"))
+            }
+            IconButton(onClick = onTrash) { Icon(Icons.Rounded.Delete, contentDescription = uiText("Į šiukšlinę"), tint = MaterialTheme.colorScheme.error) }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ResultRow(
+    entry: FileEntry,
+    onOpen: () -> Unit,
+    onReveal: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    selectionActive: Boolean = false,
+    onToggleSelection: () -> Unit = {},
+) {
+    Card(
+        modifier = modifier.fillMaxWidth().combinedClickable(
+            onClick = { if (selectionActive) onToggleSelection() else onOpen() },
+            onLongClick = onToggleSelection,
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            LocalFileVisual(
+                entry = entry,
+                targetWidth = 44.dp,
+                targetHeight = 44.dp,
+                showThumbnails = false,
+                modifier = Modifier.size(44.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(entry.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(entry.absolutePath, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (!entry.isDirectory) Text(FileSystemRules.humanBytes(entry.sizeBytes), style = MaterialTheme.typography.labelMedium)
+            IconButton(onClick = onReveal) { Icon(Icons.Rounded.FolderOpen, contentDescription = uiText("Rodyti aplanke")) }
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(
+    title: String,
+    count: String,
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+) {
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (icon != null) Icon(icon, contentDescription = null)
+        LText(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Text(count, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+private fun ErrorCard(error: String, modifier: Modifier = Modifier) {
+    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+        LText(error, modifier = Modifier.fillMaxWidth().padding(14.dp), color = MaterialTheme.colorScheme.onErrorContainer)
+    }
+}
+
+private fun kindLabel(kind: EntryKind): String = when (kind) {
+    EntryKind.DIRECTORY -> "Aplankai"
+    EntryKind.IMAGE -> "Nuotraukos"
+    EntryKind.VIDEO -> "Vaizdo įrašai"
+    EntryKind.AUDIO -> "Garso failai"
+    EntryKind.DOCUMENT -> "Dokumentai"
+    EntryKind.ARCHIVE -> "Archyvai"
+    EntryKind.APK -> "APK"
+    EntryKind.OTHER -> "Kita"
+}
+
+private fun daysLabel(days: Int): String = when (days) {
+    7 -> "7 dienas"
+    30 -> "30 dienų"
+    365 -> "1 metus"
+    else -> "$days dienų"
+}
+
+private fun decimalInput(value: String): String {
+    val normalized = value.replace(',', '.')
+    val filtered = normalized.filterIndexed { index, char -> char.isDigit() || (char == '.' && normalized.indexOf('.') == index) }
+    return filtered.take(12)
+}
+
+private fun miBTextToBytes(value: String): Long? {
+    if (value.isBlank()) return null
+    val amount = value.toDoubleOrNull()?.takeIf { it >= 0.0 && it.isFinite() } ?: return null
+    val bytes = amount * MEBIBYTE
+    return bytes.takeIf { it <= Long.MAX_VALUE.toDouble() }?.toLong()
+}
+
+private fun bytesToMiBText(value: Long?): String = value?.let { bytes ->
+    val amount = bytes.toDouble() / MEBIBYTE
+    if (amount % 1.0 == 0.0) amount.toLong().toString() else String.format(Locale.ROOT, "%.2f", amount)
+}.orEmpty()
+
+private fun daysFrom(modifiedAfter: Long?): Int? {
+    if (modifiedAfter == null) return null
+    val days = ((System.currentTimeMillis() - modifiedAfter).coerceAtLeast(DAY_MILLIS) / DAY_MILLIS).toInt()
+    return listOf(7, 30, 365).minByOrNull { kotlin.math.abs(it - days) }
+}
+
+private fun SearchFilters.hasAdvancedFilters(): Boolean =
+    minBytes != null || maxBytes != null || modifiedAfter != null || modifiedBefore != null || kinds.isNotEmpty()
+
+@Composable
+private fun DirectoryUsageRow(usage: DirectoryUsage, maximumBytes: Long, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    Card(onClick = onOpen, modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(usage.path, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(FileSystemRules.humanBytes(usage.sizeBytes), style = MaterialTheme.typography.bodySmall)
+                LText("${usage.fileCount} failų", style = MaterialTheme.typography.bodySmall)
+            }
+            LinearProgressIndicator(
+                progress = { usage.sizeBytes.toFloat() / maximumBytes.toFloat() },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}

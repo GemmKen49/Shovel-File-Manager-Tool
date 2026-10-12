@@ -28,14 +28,14 @@
 # Release instrumentation calls this non-exported verification seam from a
 # separately optimized test APK, so its binary name and method signature form a
 # stable cross-APK contract.
--keep class com.affilemanager.app.network.SftpRuntimeVerifier { *; }
+-keep class com.shovel.filemanager.network.SftpRuntimeVerifier { *; }
 
 # Shizuku and libsu start these application classes by their binary names in a
 # separate privileged process. Renaming or removing either class would make the
 # optimized APK report an available backend that can never connect.
--keep class com.affilemanager.app.advanced.ShizukuFileService { *; }
--keep class com.affilemanager.app.advanced.RootFileService { *; }
--keep class com.affilemanager.app.advanced.IPrivilegedFileService$Stub { *; }
+-keep class com.shovel.filemanager.advanced.ShizukuFileService { *; }
+-keep class com.shovel.filemanager.advanced.RootFileService { *; }
+-keep class com.shovel.filemanager.advanced.IPrivilegedFileService$Stub { *; }
 
 # SMBJ optionally supports Kerberos/GSS and mbassador EL filters. AF File Manager
 # uses username/password NTLM and no expression-language filters, so those

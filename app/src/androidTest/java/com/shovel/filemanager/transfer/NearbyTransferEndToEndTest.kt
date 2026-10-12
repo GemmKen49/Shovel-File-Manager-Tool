@@ -1,0 +1,226 @@
+package com.shovel.filemanager.transfer
+
+import androidx.test.core.app.ApplicationProvider
+import com.shovel.filemanager.AFFileManagerApplication
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.File
+import java.net.Inet4Address
+import java.net.NetworkInterface
+import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicReference
+
+class NearbyTransferEndToEndTest {
+    @Test fun groupSendsOnePrivateStageToTwoReceiversAndCleansItOnlyAfterBothFinish() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val root = File(app.cacheDir, "nearby-group-${UUID.randomUUID()}").apply { check(mkdir()) }
+        val source = File(root, "group.bin").apply { writeBytes(ByteArray(2 * 1024 * 1024) { (it * 17).toByte() }) }
+        val firstRoot = File(root, "first").apply { check(mkdir()) }
+        val secondRoot = File(root, "second").apply { check(mkdir()) }
+        val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
+            .first { it is Inet4Address && it.isSiteLocalAddress }
+        var prepared: PreparedNearbyTransfer? = null
+        try {
+            LanHttpServer(firstRoot, address, requestedCode = "12345678").use { first ->
+                LanHttpServer(secondRoot, address, requestedCode = "87654321").use { second ->
+                    val a = first.start()
+                    val b = second.start()
+                    val peers = listOf(NearbyPairing.create(a.address, a.port, a.code, "First"),
+                        NearbyPairing.create(b.address, b.port, b.code, "Second"))
+                    val own = NearbyPairing.create(a.address, 29991, "23456789", "Organizer")
+                    val invite = NearbyGroupInvite(own, "Test group")
+                    NearbyGroupController.host(invite)
+                    NearbyGroupController.hostMembers(invite, listOf(NearbyGroupMember(own, true)) + peers.map(::NearbyGroupMember))
+                    val uri = androidx.core.content.FileProvider.getUriForFile(app, "${app.packageName}.files", source)
+                    prepared = app.graph.nearbySources.prepareContentUris(listOf(uri), copyToPrivateStage = true).getOrThrow()
+                    val stage = File(requireNotNull(prepared!!.cleanupRootPath))
+                    assertTrue(stage.exists())
+                    NearbyTransferController.clearFinished()
+                    NearbyTransferController.startGroup(app, peers, prepared!!, null)
+                    val finished = withTimeout(45_000) {
+                        while (NearbyTransferController.state.value.status in setOf(NearbyTransferStatus.STARTING, NearbyTransferStatus.RUNNING)) delay(50)
+                        NearbyTransferController.state.value
+                    }
+                    assertEquals(finished.message, NearbyTransferStatus.COMPLETED, finished.status)
+                    assertEquals(2, finished.completedFiles)
+                    fun digest(file: File) = java.security.MessageDigest.getInstance("SHA-256").digest(file.readBytes()).toList()
+                    assertEquals(digest(source), digest(firstRoot.resolve(source.name)))
+                    assertEquals(digest(source), digest(secondRoot.resolve(source.name)))
+                    assertTrue(source.exists())
+                    assertTrue(!stage.exists())
+                }
+            }
+        } finally {
+            NearbyTransferController.connection.clear()
+            NearbyTransferController.clearFinished()
+            NearbyGroupController.leave()
+            prepared?.let { app.graph.nearbySources.discard(it) }
+            root.deleteRecursively()
+        }
+    }
+    @Test fun emptyPreparedBatchAuthenticatesAndPairsWithoutSendingFiles() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val root = File(app.cacheDir, "nearby-pair-${UUID.randomUUID()}").apply { check(mkdir()) }
+        val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
+            .first { it is Inet4Address && it.isSiteLocalAddress }
+        val returnPeer = AtomicReference<NearbyPairing?>()
+        try {
+            LanHttpServer(root, address, requestedCode = "12345678",
+                onNearbyPeer = { peer, _ -> returnPeer.set(peer) }).use { server ->
+                val session = server.start()
+                val pairing = NearbyPairing.create(session.address, session.port, session.code, "Test receiver")
+                val ownPairing = NearbyPairing.create(session.address, session.port, "87654321", "This phone")
+                NearbyTransferController.clearFinished()
+                NearbyTransferController.start(app, pairing, PreparedNearbyTransfer.empty(), ownPairing)
+                val finished = withTimeout(20_000) {
+                    while (NearbyTransferController.state.value.status in
+                        setOf(NearbyTransferStatus.STARTING, NearbyTransferStatus.RUNNING)) delay(50)
+                    NearbyTransferController.state.value
+                }
+                assertEquals(finished.message, NearbyTransferStatus.COMPLETED, finished.status)
+                assertEquals(pairing, NearbyTransferController.connectedPairing())
+                assertEquals(ownPairing, returnPeer.get())
+                assertTrue(root.listFiles().orEmpty().isEmpty())
+            }
+        } finally {
+            NearbyTransferController.connection.clear()
+            NearbyTransferController.clearFinished()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun largeDocumentUriStreamsToReceiverWithoutStoppingOrKeepingAPartialFile() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val root = File(app.cacheDir, "nearby-large-${UUID.randomUUID()}").apply { check(mkdir()) }
+        val source = File(root, "source.mp4")
+        val destination = File(root, "destination").apply { check(mkdir()) }
+        val block = ByteArray(256 * 1_024) { index -> (index * 31).toByte() }
+        source.outputStream().buffered().use { output -> repeat(256) { output.write(block) } }
+        block.fill(0)
+        val uri = androidx.core.content.FileProvider.getUriForFile(app, "${app.packageName}.files", source)
+        val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
+            .first { it is Inet4Address && it.isSiteLocalAddress }
+        try {
+            LanHttpServer(destination, address, requestedCode = "12345678").use { server ->
+                val session = server.start()
+                val prepared = app.graph.nearbySources.prepareContentUris(listOf(uri), copyToPrivateStage = false).getOrThrow()
+                assertEquals(listOf(uri.toString()), prepared.sourceUris)
+                assertEquals(null, prepared.cleanupRootPath)
+                NearbyTransferController.clearFinished()
+                NearbyTransferController.start(app,
+                    NearbyPairing.create(session.address, session.port, session.code, "Test receiver"), prepared)
+                val finished = withTimeout(90_000) {
+                    while (NearbyTransferController.state.value.status in
+                        setOf(NearbyTransferStatus.STARTING, NearbyTransferStatus.RUNNING)) delay(100)
+                    NearbyTransferController.state.value
+                }
+                assertEquals(finished.message, NearbyTransferStatus.COMPLETED, finished.status)
+                assertEquals(source.length(), File(destination, source.name).length())
+                assertTrue(destination.listFiles().orEmpty().none { it.name.endsWith(".partial") })
+            }
+        } finally {
+            NearbyTransferController.connection.clear()
+            NearbyTransferController.clearFinished()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun senderStillWorksWithAnOlderReceiverWithoutTheMetadataEndpoint() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val source = File(app.cacheDir, "legacy-${UUID.randomUUID()}.txt").apply { writeText("legacy-compatible") }
+        val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
+            .first { it is Inet4Address && it.isSiteLocalAddress }
+        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+        val routes = CopyOnWriteArrayList<String>()
+        val server = java.net.ServerSocket(0, 3, address).apply { soTimeout = 10_000 }
+        try {
+            val peer = executor.submit {
+                repeat(3) {
+                    server.accept().use { socket ->
+                        socket.soTimeout = 10_000
+                        val input = socket.getInputStream().bufferedReader(Charsets.UTF_8)
+                        val route = input.readLine().split(' ')[1].substringBefore('?')
+                        routes += route
+                        var length = 0
+                        while (true) {
+                            val header = input.readLine() ?: error("Missing request header")
+                            if (header.isEmpty()) break
+                            if (header.startsWith("Content-Length:", ignoreCase = true)) length = header.substringAfter(':').trim().toInt()
+                        }
+                        val body = CharArray(length)
+                        var offset = 0
+                        while (offset < length) {
+                            val count = input.read(body, offset, length - offset)
+                            check(count > 0)
+                            offset += count
+                        }
+                        if (route == "/upload") assertEquals(source.readText(), String(body))
+                        val status = if (route == "/nearby/manifest") "404 Not Found" else "200 OK"
+                        val cookie = if (route == "/login") "Set-Cookie: af_session=fixture; HttpOnly\r\n" else ""
+                        socket.getOutputStream().write("HTTP/1.1 $status\r\n${cookie}Content-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
+                    }
+                }
+            }
+            val prepared = app.graph.nearbySources.prepareLocalPaths(listOf(source.path)).getOrThrow()
+            NearbyTransferController.start(app, NearbyPairing.create(address.hostAddress!!, server.localPort, "12345678"), prepared)
+            withTimeout(20_000) {
+                while (NearbyTransferController.state.value.status in setOf(NearbyTransferStatus.STARTING, NearbyTransferStatus.RUNNING)) delay(50)
+            }
+            val result = NearbyTransferController.state.value
+            assertEquals(result.message, NearbyTransferStatus.COMPLETED, result.status)
+            peer.get(10, java.util.concurrent.TimeUnit.SECONDS)
+            assertEquals(listOf("/login", "/nearby/manifest", "/upload"), routes.toList())
+        } finally {
+            server.close()
+            executor.shutdownNow()
+            NearbyTransferController.clearFinished()
+            source.delete()
+        }
+    }
+
+    @Test fun servicePublishesBothFileListsAndPreservesExistingDestination() = runBlocking {
+        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val root = File(app.cacheDir, "nearby-e2e-${UUID.randomUUID()}").apply { mkdirs() }
+        val source = File(root, "source").apply { mkdir() }
+        val destination = File(root, "destination").apply { mkdir() }
+        val text = File(source, "hello.txt").apply { writeText("AF test content") }
+        val empty = File(source, "empty.txt").apply { createNewFile() }
+        File(destination, text.name).writeText("keep me")
+        val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
+            .first { it is Inet4Address && it.isSiteLocalAddress }
+        val updates = CopyOnWriteArrayList<LanUploadProgress>()
+        try {
+            LanHttpServer(destination, address, requestedCode = "12345678", onUploadProgress = { updates += it }).use { server ->
+                val session = server.start()
+                val prepared = app.graph.nearbySources.prepareLocalPaths(listOf(text.path, empty.path)).getOrThrow()
+                NearbyTransferController.clearFinished()
+                NearbyTransferController.start(app, NearbyPairing.create(session.address, session.port, session.code, "Test receiver"), prepared)
+                val finished = withTimeout(20_000) {
+                    while (NearbyTransferController.state.value.status in setOf(NearbyTransferStatus.STARTING, NearbyTransferStatus.RUNNING)) delay(50)
+                    NearbyTransferController.state.value
+                }
+                assertEquals(finished.message, NearbyTransferStatus.COMPLETED, finished.status)
+                assertEquals(2, finished.completedFiles)
+                assertEquals(2, finished.files.size)
+                assertTrue(finished.files.all { it.status == TransferFileStatus.COMPLETED })
+                assertEquals(listOf(text.canonicalPath, empty.canonicalPath).toSet(), finished.files.map { it.localPath }.toSet())
+                assertEquals(2, updates.first().files.size) // All metadata arrives before the first file.
+                assertTrue(updates.first().files.all { it.localPath == null })
+                val received = updates.last().files
+                assertTrue(received.all { it.status == TransferFileStatus.COMPLETED && it.localPath != null })
+                val copiedText = received.first { it.name == text.name }
+                assertEquals(text.readText(), File(requireNotNull(copiedText.localPath)).readText())
+                assertEquals("keep me", File(destination, text.name).readText())
+                assertTrue(destination.listFiles().orEmpty().none { it.name.endsWith(".partial") })
+            }
+        } finally {
+            NearbyTransferController.clearFinished()
+            root.deleteRecursively()
+        }
+    }
+}
