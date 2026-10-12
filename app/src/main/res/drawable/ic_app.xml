@@ -9,32 +9,80 @@
         android:fillColor="#0B1625"
         android:pathData="M0,0h108v108h-108z" />
 
-    <!-- Handle grip -->
+    <!-- Ground -->
     <path
-        android:fillColor="#5DD6C0"
-        android:pathData="M46,18
-            C46,15.8 47.8,14 50,14
-            H62
-            C64.2,14 66,15.8 66,18
-            V22
-            C66,24.2 64.2,26 62,26
+        android:fillColor="#6D4B35"
+        android:pathData="M12,79 H38 L43,84 H65 L70,79 H96 V94 H12 Z" />
+
+    <!-- Ground surface highlight -->
+    <path
+        android:fillColor="#A8794F"
+        android:pathData="M12,79 H38 L43,84 H65 L70,79 H96
+            V82 H71 L66,87 H42 L37,82 H12 Z" />
+
+    <!-- Soil details -->
+    <path
+        android:fillColor="#4B3427"
+        android:pathData="M12,85 H35 V87 H12 Z
+            M73,85 H96 V87 H73 Z" />
+
+    <!-- Wooden handle grip -->
+    <path
+        android:fillColor="#9B6238"
+        android:pathData="M46,14
+            C46,11.8 47.8,10 50,10
+            H58
+            C60.2,10 62,11.8 62,14
+            V18
+            C62,20.2 60.2,22 58,22
             H50
-            C47.8,26 46,24.2 46,22 Z" />
+            C47.8,22 46,20.2 46,18 Z" />
 
-    <!-- Shaft -->
+    <!-- Grip shadow -->
+    <path
+        android:fillColor="#754626"
+        android:pathData="M54,10 H58
+            C60.2,10 62,11.8 62,14
+            V18
+            C62,20.2 60.2,22 58,22 H54 Z" />
+
+    <!-- Wooden shaft -->
+    <path
+        android:fillColor="#9B6238"
+        android:pathData="M51,20 H57 V55 H51 Z" />
+
+    <!-- Shaft shadow -->
+    <path
+        android:fillColor="#754626"
+        android:pathData="M54,20 H57 V55 H54 Z" />
+
+    <!-- Diamond shovel blade -->
     <path
         android:fillColor="#5DD6C0"
-        android:pathData="M53,24 H59 V60 H53 Z" />
+        android:pathData="M47,51 H61
+            L68,67
+            C70,72 68,75 64,78
+            L54,86
+            L44,78
+            C40,75 38,72 40,67 Z" />
 
-    <!-- Spade blade -->
+    <!-- Blade shadow -->
     <path
-        android:fillColor="#5DD6C0"
-        android:pathData="M49,56
-            H63
-            L70,72
-            C72,77 70,80 66,83
-            L56,91
-            L46,83
-            C42,80 40,77 42,72 Z" />
+        android:fillColor="#32A997"
+        android:pathData="M54,51 H61
+            L68,67
+            C70,72 68,75 64,78
+            L54,86 Z" />
+
+    <!-- Dirt particles -->
+    <path
+        android:fillColor="#A8794F"
+        android:pathData="M29,72 h3 v3 h-3 z
+            M77,69 h3 v3 h-3 z" />
+
+    <path
+        android:fillColor="#6D4B35"
+        android:pathData="M35,67 h2 v2 h-2 z
+            M73,73 h2 v2 h-2 z" />
 
 </vector>
