@@ -295,15 +295,7 @@ fun ShovelTheme(
     val opaqueColors = if (settings.amoledBlack && darkTheme && settings.colorPalette != AppColorPalette.CUSTOM) {
         completeColors.withAmoledBackground()
     } else completeColors
-    val alpha = 1f - settings.cardTransparency.coerceIn(0, 100) / 100f
-    val colors = opaqueColors.copy(
-        surface = opaqueColors.surface.copy(alpha = alpha),
-        surfaceVariant = opaqueColors.surfaceVariant.copy(alpha = alpha),
-        surfaceContainerLow = opaqueColors.surfaceContainerLow.copy(alpha = alpha),
-        surfaceContainer = opaqueColors.surfaceContainer.copy(alpha = alpha),
-        surfaceContainerHigh = opaqueColors.surfaceContainerHigh.copy(alpha = alpha),
-        surfaceContainerHighest = opaqueColors.surfaceContainerHighest.copy(alpha = alpha),
-    )
+    val colors = opaqueColors
     val baseDensity = LocalDensity.current
     val interfaceScale = AppearanceRules.normalizeInterfaceScale(settings.interfaceScalePercent) / 100f
     val scaledDensity = remember(baseDensity.density, baseDensity.fontScale, interfaceScale) {
@@ -322,7 +314,7 @@ fun ShovelTheme(
             androidx.compose.material3.LocalContentColor provides opaqueColors.onBackground,
             // An explicitly chosen RGB surface must not acquire Material's accent tint.
             androidx.compose.material3.LocalTonalElevationEnabled provides (settings.colorPalette != AppColorPalette.CUSTOM),
-        ) { ProvideAppearanceWallpaper { AppearanceContentOn(opaqueColors.background) { content() } } }
+        ) { AppearanceContentOn(opaqueColors.background) { content() } }
     }
 }
 

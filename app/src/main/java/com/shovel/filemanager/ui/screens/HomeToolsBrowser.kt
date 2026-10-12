@@ -163,7 +163,6 @@ import com.shovel.filemanager.ui.components.featureVisible
 import com.shovel.filemanager.data.HomeDisplayArea
 import com.shovel.filemanager.data.HomeSection
 import com.shovel.filemanager.data.HomeShortcut
-import com.shovel.filemanager.data.HomeShortcutNavigationRules
 import com.shovel.filemanager.data.PanelWorkspace
 import com.shovel.filemanager.data.RecentFileItem
 import com.shovel.filemanager.data.RecentItem
@@ -257,7 +256,7 @@ internal fun FilesHome(
             title = shortcut.title,
             path = shortcut.path,
             icon = homeShortcutIcon(shortcut),
-            virtual = HomeShortcutNavigationRules.isVirtualCategory(shortcut.id),
+            virtual = false,
         )
     val quickLocations = customization.shortcuts.filter {
         it.visible && it.section == HomeSection.QUICK_LOCATIONS
@@ -1293,15 +1292,6 @@ private fun homeSectionTitle(section: HomeSection): String = when (section) {
 }
 
 private fun homeShortcutIcon(shortcut: HomeShortcut): ImageVector = when (shortcut.id) {
-    "builtin.downloads" -> Icons.Rounded.Download
-    "builtin.documents" -> Icons.Rounded.Description
-    "builtin.pictures" -> Icons.Rounded.PhotoLibrary
-    "builtin.videos" -> Icons.Rounded.VideoLibrary
-    "builtin.music" -> Icons.Rounded.MusicNote
-    "builtin.archives" -> Icons.Rounded.Archive
-    "builtin.apps" -> Icons.Rounded.Android
-    "builtin.installed_apps" -> Icons.Rounded.Apps
-    "builtin.cloned_apps" -> Icons.Rounded.Apps
     else -> if (File(shortcut.path).isDirectory) Icons.Rounded.Folder else Icons.Rounded.Description
 }
 

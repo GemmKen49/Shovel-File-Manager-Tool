@@ -913,7 +913,7 @@ object UiTranslator {
         "Archyvas" to "Archive",
         "Archyvai" to "Archives",
         "Kita" to "Other",
-        "Greitos vietos" to "Quick locations",
+        "Greitos vietos" to "Shortcuts",
         "Naujausi failai" to "Recent files",
         "Naujausių failų dar nėra" to "No recent files yet",
         "Neseniai pridėti" to "Recently added",

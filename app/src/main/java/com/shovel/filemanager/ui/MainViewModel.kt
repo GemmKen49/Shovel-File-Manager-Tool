@@ -52,7 +52,6 @@ import com.shovel.filemanager.data.HomeCustomizationRules
 import com.shovel.filemanager.data.HomeDisplayArea
 import com.shovel.filemanager.data.HomeSection
 import com.shovel.filemanager.data.HomeShortcut
-import com.shovel.filemanager.data.HomeShortcutNavigationRules
 import com.shovel.filemanager.editing.EditConflict
 import com.shovel.filemanager.editing.EditDestination
 import com.shovel.filemanager.editing.EditDestinationRules
@@ -495,65 +494,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val initialDownloadsPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         .takeIf(File::isDirectory)?.absolutePath ?: initialPrimaryPath
     private val initialWorkspace = graph.workspaceSession.load(initialDownloadsPath, initialPrimaryPath)
-    private val homeBuiltInShortcuts = listOf(
-        HomeShortcut(
-            id = "builtin.downloads",
-            title = "Atsisiuntimai",
-            path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath,
-            builtIn = true,
-        ),
-        HomeShortcut(
-            id = "builtin.documents",
-            title = "Dokumentai",
-            path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).absolutePath,
-            builtIn = true,
-        ),
-        HomeShortcut(
-            id = "builtin.pictures",
-            title = "Nuotraukos",
-            path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).absolutePath,
-            builtIn = true,
-        ),
-        HomeShortcut(
-            id = "builtin.videos",
-            title = "Vaizdo įrašai",
-            path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES).absolutePath,
-            builtIn = true,
-        ),
-        HomeShortcut(
-            id = "builtin.music",
-            title = "Muzika",
-            path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).absolutePath,
-            builtIn = true,
-        ),
-        HomeShortcut(
-            id = "builtin.archives",
-            title = "Archyvai",
-            path = initialPrimaryPath,
-            builtIn = true,
-        ),
-        HomeShortcut(
-            id = "builtin.apps",
-            title = "Programos",
-            path = initialPrimaryPath,
-            builtIn = true,
-        ),
-        HomeShortcut(
-            id = "builtin.installed_apps",
-            title = "Įdiegtos programos",
-            path = initialPrimaryPath,
-            builtIn = true,
-        ),
-    ) + listOfNotNull(
-        if (ClonedAppStorage.shouldOffer(Build.MANUFACTURER, File(initialPrimaryPath))) {
-            HomeShortcut(
-                id = ClonedAppStorage.SHORTCUT_ID,
-                title = "Klonuotų programų failai",
-                path = initialPrimaryPath,
-                builtIn = true,
-            )
-        } else null,
-    )
+    private val homeBuiltInShortcuts = emptyList<HomeShortcut>()
 
     private val _section = MutableStateFlow(AppSection.FILES)
     val section: StateFlow<AppSection> = _section.asStateFlow()
@@ -1360,44 +1301,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setCustomColors(colors: com.shovel.filemanager.ui.theme.CustomThemeColors): Boolean =
         runCatching { graph.appearance.setCustomColors(colors) }
             .onFailure { message(it.message ?: "Išvaizdos nustatymo išsaugoti nepavyko", true) }.isSuccess
-
-    private var wallpaperJob: kotlinx.coroutines.Job? = null
-
-    fun setWallpaper(uri: Uri?) {
-        if (wallpaperJob?.isActive == true) return
-        wallpaperJob = viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>()
-            val old = graph.appearance.settings.value.wallpaperRevision
-            var revision = 0L
-              runCatching {
-                  com.shovel.filemanager.ui.theme.AppearanceWallpaper.cleanup(context, old)
-                  if (uri != null) revision = com.shovel.filemanager.ui.theme.AppearanceWallpaper.import(context, uri) { coroutineContext.ensureActive() }
-                  coroutineContext.ensureActive()
-                  graph.appearance.setWallpaperRevision(revision)
-              }.onSuccess {
-                  com.shovel.filemanager.ui.theme.AppearanceWallpaper.cleanup(context, revision)
-              }.onFailure {
-                  if (revision != 0L) com.shovel.filemanager.ui.theme.AppearanceWallpaper.file(context, revision).delete()
-                  if (it is kotlinx.coroutines.CancellationException) throw it
-                message(it.message ?: "Išvaizdos nustatymo išsaugoti nepavyko", true)
-            }
-        }
-    }
-
-    fun setCardTransparency(percent: Int) {
-        runCatching { graph.appearance.setCardTransparency(percent) }
-            .onFailure { message("Išvaizdos nustatymo išsaugoti nepavyko", true) }
-    }
-
-    fun setWallpaperShading(percent: Int) {
-        runCatching { graph.appearance.setWallpaperShading(percent) }
-            .onFailure { message("Išvaizdos nustatymo išsaugoti nepavyko", true) }
-    }
-
-    fun setTransparentMenus(enabled: Boolean) {
-        runCatching { graph.appearance.setTransparentMenus(enabled) }
-            .onFailure { message("Išvaizdos nustatymo išsaugoti nepavyko", true) }
-    }
 
     fun moveHomeStorage(id: String, offset: Int) {
         val available = _roots.value.map(StorageRoot::id) + HomeCustomizationRules.ROOT_STORAGE_ID
@@ -4588,12 +4491,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun openHomeShortcut(shortcutId: String, path: String, panel: PanelId = _activePanel.value) {
-        if (shortcutId == ClonedAppStorage.SHORTCUT_ID) {
-            openClonedAppStorage(panel)
-            return
-        }
-        val category = HomeShortcutNavigationRules.categoryFor(shortcutId)
-        if (category != null) openFileCategory(category) else openQuickPathFromHome(path, panel)
+        openQuickPathFromHome(path, panel)
     }
 
     fun openStorageRoot(root: StorageRoot, panel: PanelId = _activePanel.value) {

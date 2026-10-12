@@ -165,7 +165,6 @@ import com.shovel.filemanager.ui.components.featureVisible
 import com.shovel.filemanager.data.HomeDisplayArea
 import com.shovel.filemanager.data.HomeSection
 import com.shovel.filemanager.data.HomeShortcut
-import com.shovel.filemanager.data.HomeShortcutNavigationRules
 import com.shovel.filemanager.data.SafLocation
 import com.shovel.filemanager.advanced.AdvancedAccessBackend
 import com.shovel.filemanager.ui.MainViewModel

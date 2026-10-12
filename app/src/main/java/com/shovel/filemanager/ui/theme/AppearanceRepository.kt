@@ -30,10 +30,6 @@ data class AppearanceSettings(
     val colorPalette: AppColorPalette = AppColorPalette.DEFAULT,
     val amoledBlack: Boolean = false,
     val customColors: CustomThemeColors = CustomThemeColors(),
-    val wallpaperRevision: Long = 0L,
-    val cardTransparency: Int = 0,
-    val wallpaperShading: Int = 72,
-    val transparentMenus: Boolean = false,
     val interfaceScalePercent: Int = AppearanceRules.DEFAULT_INTERFACE_SCALE_PERCENT,
 )
 
@@ -77,14 +73,6 @@ class AppearanceRepository(context: Context) {
 
     fun setAmoledBlack(enabled: Boolean) = update { it.copy(amoledBlack = enabled) }
 
-    fun setWallpaperRevision(revision: Long) = update { it.copy(wallpaperRevision = revision.coerceAtLeast(0L)) }
-
-    fun setCardTransparency(percent: Int) = update { it.copy(cardTransparency = percent.coerceIn(0, 100)) }
-
-    fun setWallpaperShading(percent: Int) = update { it.copy(wallpaperShading = percent.coerceIn(0, 100)) }
-
-    fun setTransparentMenus(enabled: Boolean) = update { it.copy(transparentMenus = enabled) }
-
     @Synchronized
     fun setInterfaceScalePercent(percent: Int) {
         val normalized = AppearanceRules.normalizeInterfaceScale(percent)
@@ -108,10 +96,6 @@ class AppearanceRepository(context: Context) {
                 .putString(KEY_THEME_MODE, updated.themeMode.name)
                 .putString(KEY_COLOR_PALETTE, updated.colorPalette.name)
                 .putBoolean(KEY_AMOLED_BLACK, updated.amoledBlack)
-                .putLong("wallpaper_revision", updated.wallpaperRevision)
-                .putInt("card_transparency", updated.cardTransparency)
-                .putInt("wallpaper_shading", updated.wallpaperShading)
-                .putBoolean("transparent_menus", updated.transparentMenus)
                 .putInt("interface_scale_percent", updated.interfaceScalePercent)
                 .putString("custom_colors_v1", updated.customColors.values().take(5).joinToString(",", transform = CustomThemeRules::hex))
                 .putString("custom_colors_v2", updated.customColors.values().joinToString(",", transform = CustomThemeRules::hex))
@@ -130,10 +114,6 @@ class AppearanceRepository(context: Context) {
         amoledBlack = preferences.getBoolean(KEY_AMOLED_BLACK, false),
         customColors = CustomThemeRules.parseStored(preferences.getString("custom_colors_v2", null)
             ?: preferences.getString("custom_colors_v1", null)),
-        wallpaperRevision = preferences.getLong("wallpaper_revision", 0L).coerceAtLeast(0L),
-        cardTransparency = preferences.getInt("card_transparency", 0).coerceIn(0, 100),
-        wallpaperShading = preferences.getInt("wallpaper_shading", 72).coerceIn(0, 100),
-        transparentMenus = preferences.getBoolean("transparent_menus", false),
         interfaceScalePercent = AppearanceRules.normalizeInterfaceScale(
             preferences.getInt("interface_scale_percent", AppearanceRules.DEFAULT_INTERFACE_SCALE_PERCENT),
         ),

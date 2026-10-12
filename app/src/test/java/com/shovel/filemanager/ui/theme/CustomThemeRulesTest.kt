@@ -18,12 +18,8 @@ class CustomThemeRulesTest {
         assertEquals(Color(selected.controls), scheme.primaryContainer)
         assertEquals(Color(selected.controls), scheme.secondaryContainer)
         assertEquals(Color(selected.surface), scheme.surfaceContainerHighest)
-        for (percent in listOf(0, 40, 100)) {
-            val settings = AppearanceSettings(colorPalette = AppColorPalette.CUSTOM, customColors = selected, cardTransparency = percent)
-            assertEquals(Color(selected.popup), resolvePopupColor(settings, scheme))
-            assertEquals(Color(selected.popup).copy(alpha = 1f - percent / 100f),
-                resolvePopupColor(settings.copy(transparentMenus = true), scheme))
-        }
+        val settings = AppearanceSettings(colorPalette = AppColorPalette.CUSTOM, customColors = selected)
+        assertEquals(Color(selected.popup), resolvePopupColor(settings, scheme))
     }
 
     @Test fun changingSecondaryCannotRecolorAnExplicitCardSurface() {

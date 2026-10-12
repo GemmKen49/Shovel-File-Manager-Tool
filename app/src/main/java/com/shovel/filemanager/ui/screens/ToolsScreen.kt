@@ -144,10 +144,6 @@ fun ToolsScreen(
                 onPalette = viewModel::setColorPalette,
                 onAmoledBlack = viewModel::setAmoledBlack,
                 onCustomColors = viewModel::setCustomColors,
-                onWallpaper = viewModel::setWallpaper,
-                onCardTransparency = viewModel::setCardTransparency,
-                onWallpaperShading = viewModel::setWallpaperShading,
-                onTransparentMenus = viewModel::setTransparentMenus,
                 onInterfaceScale = viewModel::setInterfaceScalePercent,
             )
         }
@@ -436,10 +432,6 @@ internal fun AppearanceSettingsCard(
     onPalette: (AppColorPalette) -> Unit,
     onAmoledBlack: (Boolean) -> Unit,
     onCustomColors: (CustomThemeColors) -> Boolean,
-    onWallpaper: (android.net.Uri?) -> Unit = {},
-    onCardTransparency: (Int) -> Unit = {},
-    onWallpaperShading: (Int) -> Unit = {},
-    onTransparentMenus: (Boolean) -> Unit = {},
     onInterfaceScale: (Int) -> Unit = {},
 ) {
     var editCustom by remember { mutableStateOf(false) }
@@ -456,7 +448,6 @@ internal fun AppearanceSettingsCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             LText("Išvaizda", fontWeight = FontWeight.SemiBold)
-            WallpaperSettings(settings, onWallpaper, onCardTransparency, onWallpaperShading, onTransparentMenus)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 LText("Dydis", style = MaterialTheme.typography.labelLarge)
                 Text("${interfaceScaleDraft.roundToInt()}%", style = MaterialTheme.typography.labelLarge)

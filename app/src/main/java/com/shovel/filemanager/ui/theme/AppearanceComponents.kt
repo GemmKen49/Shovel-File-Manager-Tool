@@ -80,8 +80,7 @@ internal fun popupColor(): Color {
 internal fun resolvePopupColor(settings: AppearanceSettings, palette: androidx.compose.material3.ColorScheme): Color {
     val opaque = if (settings.colorPalette == AppColorPalette.CUSTOM) Color(settings.customColors.popup)
         else palette.surfaceContainerHigh
-    val alpha = if (settings.transparentMenus) 1f - settings.cardTransparency.coerceIn(0, 100) / 100f else 1f
-    return opaque.copy(alpha = alpha)
+    return opaque
 }
 
 @Composable
@@ -227,12 +226,8 @@ internal fun ShovelAlertDialog(
     }
 }
 
-/** Shadows must not remain as dark rectangles when the card itself is transparent. */
 @Composable
-internal fun appearanceCardElevation() = if (LocalAppearanceSettings.current.cardTransparency > 0) {
-    CardDefaults.elevatedCardElevation(defaultElevation = 0.dp, pressedElevation = 0.dp,
-        focusedElevation = 0.dp, hoveredElevation = 0.dp, draggedElevation = 0.dp, disabledElevation = 0.dp)
-} else CardDefaults.elevatedCardElevation()
+internal fun appearanceCardElevation() = CardDefaults.elevatedCardElevation()
 
 @Composable
 internal fun ShovelFilterChip(
