@@ -37,15 +37,7 @@ import com.affilemanager.app.search.FileSearchEngine
 import com.affilemanager.app.search.SimilarImageEngine
 import com.affilemanager.app.security.CredentialVault
 import com.affilemanager.app.security.AppLockRepository
-import com.affilemanager.app.security.FileVaultEngine
 import com.affilemanager.app.sharing.LocalShareManager
-import com.affilemanager.app.workflow.AfAutomationRepository
-import com.affilemanager.app.workflow.AfAutomationScheduler
-import com.affilemanager.app.workflow.AfExecutionRepository
-import com.affilemanager.app.workflow.AfPlanRepository
-import com.affilemanager.app.workflow.AfStorageSessionFactory
-import com.affilemanager.app.workflow.AfTimelineRepository
-import com.affilemanager.app.workflow.AfWorkflowCoordinator
 import com.affilemanager.app.ui.localization.UiTranslationCatalog
 import com.affilemanager.app.ui.theme.AppearanceRepository
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
@@ -65,7 +57,6 @@ class AFFileManagerApplication : Application() {
         graph = AppGraph(this)
         graph.applicationScope.launch {
             graph.durableTransfers.restore()
-            graph.workflows.restore()
             graph.trashRetentionScheduler.synchronize(graph.trashRetentionSettings.load())
         }
     }
@@ -117,18 +108,4 @@ class AppGraph(application: Application) {
     val remoteClients = RemoteClientFactory()
     val remoteCopies by lazy { RemoteCopyEngine(sharedStorageIndex::changed) }
     val safFiles = SafFileRepository(application, sharedStorageIndex::changed)
-    val fileVault by lazy { FileVaultEngine(sharedStorageIndex::changed) }
-    val workflows: AfWorkflowCoordinator by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        AfWorkflowCoordinator(
-            scope = applicationScope,
-            operations = operationManager,
-            planRepository = AfPlanRepository(application),
-            executionRepository = AfExecutionRepository(application),
-            timelineRepository = AfTimelineRepository(application),
-            automationRepository = AfAutomationRepository(application),
-            automationScheduler = AfAutomationScheduler(application),
-            storageFactory = AfStorageSessionFactory(application, archives, networkProfiles, remoteClients, sharedStorageIndex::changed),
-            stagingDirectory = java.io.File(application.cacheDir, "af-plan-execution"),
-        )
-    }
 }
