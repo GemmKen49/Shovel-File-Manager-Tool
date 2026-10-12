@@ -1,0 +1,28 @@
+name: Remove tests
+
+# One-time helper. Deletes the unit tests and device tests, then commits.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Delete test folders
+        run: |
+          set -euo pipefail
+          rm -rf app/src/test app/src/androidTest
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Remove tests"
+          git push
