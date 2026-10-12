@@ -22,4 +22,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "Shovel"
 include(":app")
-include(":benchmark")

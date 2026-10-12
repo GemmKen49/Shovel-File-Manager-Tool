@@ -11,8 +11,6 @@ val releaseKeyAlias = providers.environmentVariable("SHOVEL_KEY_ALIAS").orNull
 val releaseKeyPassword = providers.environmentVariable("SHOVEL_KEY_PASSWORD").orNull
 val hasReleaseSigning = listOf(releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrBlank() }
 val testOptimizedRelease = providers.gradleProperty("shovelTestOptimizedRelease").orNull.toBoolean()
-// Opt-in disposable package for optimized checks without replacing a signed user app.
-val testIsolatedBenchmark = providers.gradleProperty("shovelTestIsolatedBenchmark").orNull.toBoolean()
 val targetAbi = providers.gradleProperty("shovelTargetAbi").orNull
 val supportedAbis = setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
 
@@ -25,11 +23,7 @@ android {
         // English only: drops translations bundled inside libraries too.
         localeFilters += listOf("en")
     }
-    testBuildType = when {
-        testIsolatedBenchmark -> "benchmark"
-        testOptimizedRelease -> "release"
-        else -> "debug"
-    }
+    testBuildType = if (testOptimizedRelease) "release" else "debug"
 
     defaultConfig {
         applicationId = "com.shovel.filemanager"
@@ -40,7 +34,7 @@ android {
 
         buildConfigField("String", "UPDATE_REPOSITORY", "\"GemmKen49/Shovel-File-Manager-Tool\"")
 
-        testInstrumentationRunner = if (testOptimizedRelease || testIsolatedBenchmark) {
+        testInstrumentationRunner = if (testOptimizedRelease) {
             "com.shovel.filemanager.network.OptimizedSftpInstrumentation"
         } else {
             "com.shovel.filemanager.SelfContainedTestRunner"
@@ -85,25 +79,6 @@ android {
                 "proguard-rules.pro",
             )
         }
-        create("benchmark") {
-            initWith(getByName("release"))
-            if (testIsolatedBenchmark) applicationIdSuffix = ".validation"
-            signingConfig = signingConfigs.getByName("debug")
-            matchingFallbacks += listOf("release")
-            isDebuggable = false
-            proguardFiles("benchmark-proguard-rules.pro")
-        }
-        create("profile") {
-            initWith(getByName("release"))
-            signingConfig = signingConfigs.getByName("debug")
-            matchingFallbacks += listOf("release")
-            isDebuggable = false
-            // Human-readable Baseline Profile rules must retain the app's real
-            // class and method names. Performance measurements still use the
-            // separately minified benchmark variant above.
-            isMinifyEnabled = false
-            isShrinkResources = false
-        }
     }
 
     compileOptions {
@@ -133,12 +108,6 @@ android {
             it.useJUnit()
             it.testLogging.exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         }
-    }
-
-    sourceSets.getByName("profile").apply {
-        java.directories.add("src/benchmark/java")
-        kotlin.directories.add("src/benchmark/java")
-        manifest.srcFile("src/benchmark/AndroidManifest.xml")
     }
 }
 

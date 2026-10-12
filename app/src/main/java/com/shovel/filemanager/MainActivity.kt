@@ -30,7 +30,6 @@ data class IncomingViewRequest(val uri: Uri, val mimeType: String?)
 
 class MainActivity : AppCompatActivity() {
     private val pendingViewRequest = mutableStateOf<IncomingViewRequest?>(null)
-    private val pendingBenchmarkRequest = mutableStateOf<BenchmarkRequest?>(null)
     private val pendingStorageRefresh = mutableStateOf(false)
     private var storageReceiversRegistered = false
     private val usbStorageReceiver = object : BroadcastReceiver() {
@@ -47,7 +46,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingViewRequest.value = intent.toIncomingViewRequest()
-        pendingBenchmarkRequest.value = intent.toBenchmarkRequest()
         pendingStorageRefresh.value = intent.action in storageChangeActions
         enableEdgeToEdge()
         setContent {
@@ -64,24 +62,6 @@ class MainActivity : AppCompatActivity() {
                     delay(750)
                     mainViewModel.refreshStorageRoots()
                     pendingStorageRefresh.value = false
-                }
-            }
-            LaunchedEffect(pendingBenchmarkRequest.value) {
-                pendingBenchmarkRequest.value?.let { request ->
-                    when (request) {
-                        is BenchmarkRequest.LocalDataset -> {
-                            val benchmarkRoot = requireNotNull(getExternalFilesDir(null)).canonicalFile
-                            val target = File(benchmarkRoot, "benchmark/${request.name}").canonicalFile
-                            require(target.toPath().startsWith(benchmarkRoot.toPath()))
-                            mainViewModel.setSection(AppSection.FILES)
-                            mainViewModel.navigate(PanelId.LEFT, target.path, rememberHistory = false)
-                        }
-                        is BenchmarkRequest.RemoteProfile -> {
-                            mainViewModel.setSection(AppSection.CONNECTIONS)
-                            mainViewModel.connectSavedNetworkProfile(request.id)
-                        }
-                    }
-                    pendingBenchmarkRequest.value = null
                 }
             }
             LaunchedEffect(
@@ -116,7 +96,6 @@ class MainActivity : AppCompatActivity() {
     public override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         pendingViewRequest.value = intent.toIncomingViewRequest()
-        pendingBenchmarkRequest.value = intent.toBenchmarkRequest()
         pendingStorageRefresh.value = intent.action in storageChangeActions
     }
 
@@ -164,27 +143,7 @@ class MainActivity : AppCompatActivity() {
         return IncomingViewRequest(viewUri, type)
     }
 
-    private fun Intent.toBenchmarkRequest(): BenchmarkRequest? {
-        if (BuildConfig.BUILD_TYPE !in BENCHMARK_BUILD_TYPES) return null
-        getStringExtra(EXTRA_BENCHMARK_DATASET)?.takeIf { it in BENCHMARK_DATASETS }?.let {
-            return BenchmarkRequest.LocalDataset(it)
-        }
-        getStringExtra(EXTRA_BENCHMARK_REMOTE_PROFILE)?.takeIf(String::isNotBlank)?.let {
-            return BenchmarkRequest.RemoteProfile(it)
-        }
-        return null
-    }
-
-    private sealed interface BenchmarkRequest {
-        data class LocalDataset(val name: String) : BenchmarkRequest
-        data class RemoteProfile(val id: String) : BenchmarkRequest
-    }
-
     companion object {
-        const val EXTRA_BENCHMARK_DATASET = "shovel_benchmark_dataset"
-        const val EXTRA_BENCHMARK_REMOTE_PROFILE = "shovel_benchmark_remote_profile"
-        private val BENCHMARK_BUILD_TYPES = setOf("benchmark", "profile")
-        private val BENCHMARK_DATASETS = setOf("large", "thumbnails")
         private val storageChangeActions = setOf(
             UsbManager.ACTION_USB_DEVICE_ATTACHED,
             UsbManager.ACTION_USB_DEVICE_DETACHED,
