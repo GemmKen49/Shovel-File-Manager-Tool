@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">File Manager</string>
+    <string name="app_name">Shovel</string>
     <string name="language_title">Language</string>
     <string name="language_description">App interface language. The window refreshes after a change.</string>
     <string name="language_english">English</string>
