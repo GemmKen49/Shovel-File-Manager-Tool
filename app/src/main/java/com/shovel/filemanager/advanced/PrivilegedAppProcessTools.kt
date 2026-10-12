@@ -73,7 +73,7 @@ internal object PrivilegedAppProcessTools {
                     if (count > remaining) truncated.set(true)
                 }
             }
-        }, "af-privileged-command-output").apply { isDaemon = true; start() }
+        }, "shovel-privileged-command-output").apply { isDaemon = true; start() }
         val completed = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         if (!completed) {
             process.destroyForcibly()

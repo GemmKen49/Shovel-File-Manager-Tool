@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FilterAlt
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -63,7 +63,7 @@ fun DirectoryEntryFilterDialog(
     onSelectedChange: (Set<DirectoryEntryFilter>) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Filtras",
         subtitle = "Nepasirinkus nė vieno tipo rodomi visi elementai.",
         icon = Icons.Rounded.FilterAlt,

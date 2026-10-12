@@ -5,7 +5,7 @@
 -dontwarn org.apache.commons.compress.archivers.sevenz.**
 
 # PdfBox-Android keeps JPEG 2000 support behind Gemalto's optional JP2 codec.
-# AF File Manager only appends its own lossless signature image and leaves
+# Shovel only appends its own lossless signature image and leaves
 # existing PDF streams untouched, so this optional decoder/encoder is not part
 # of the signing path. Keep every other PdfBox warning visible to R8.
 -dontwarn com.gemalto.jp2.JP2Decoder
@@ -13,7 +13,7 @@
 
 # JSch selects authentication, key-exchange, cipher, signature, and key parsing
 # implementations from fully qualified class-name strings at runtime. Preserve
-# the Android/JCE implementations AF File Manager can actually use; optional
+# the Android/JCE implementations Shovel can actually use; optional
 # desktop integrations such as Pageant, JNA, Log4j, and Unix-domain agents stay
 # removable.
 -keep,allowoptimization class com.jcraft.jsch.JSchException { *; }
@@ -37,7 +37,7 @@
 -keep class com.shovel.filemanager.advanced.RootFileService { *; }
 -keep class com.shovel.filemanager.advanced.IPrivilegedFileService$Stub { *; }
 
-# SMBJ optionally supports Kerberos/GSS and mbassador EL filters. AF File Manager
+# SMBJ optionally supports Kerberos/GSS and mbassador EL filters. Shovel
 # uses username/password NTLM and no expression-language filters, so those
 # desktop-only optional classes are intentionally absent on Android.
 -dontwarn javax.el.BeanELResolver

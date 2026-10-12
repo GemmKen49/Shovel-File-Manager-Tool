@@ -579,10 +579,10 @@ class DurableTransferEngine {
     }
 
     private fun backupFile(plan: DurableTransferPlan, item: PlannedTransferItem): File =
-        File(File(item.targetPath).parentFile, ".af-backup-${plan.id}-${item.index}")
+        File(File(item.targetPath).parentFile, ".shovel-backup-${plan.id}-${item.index}")
 
     private fun partialFile(plan: DurableTransferPlan, item: PlannedTransferItem): File =
-        File(File(item.targetPath).parentFile, ".af-part-${plan.id}-${item.index}.tmp")
+        File(File(item.targetPath).parentFile, ".shovel-part-${plan.id}-${item.index}.tmp")
 
     private fun deleteTree(file: File) {
         if (Files.isSymbolicLink(file.toPath())) {

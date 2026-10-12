@@ -5,7 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.shovel.filemanager.data.RecentFileItem
 import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.FileEntry
-import com.shovel.filemanager.ui.theme.AFFileManagerTheme
+import com.shovel.filemanager.ui.theme.ShovelTheme
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -21,7 +21,7 @@ class RecentFilesDialogTest {
         val opened = item("opened-notes.txt", "/storage/emulated/0/Documents/opened-notes.txt", 100)
         val copied = AtomicReference<List<FileEntry>>(emptyList())
         compose.setContent {
-            AFFileManagerTheme {
+            ShovelTheme {
                 RecentFilesDialog(
                     addedItems = listOf(added),
                     openedItems = listOf(opened),

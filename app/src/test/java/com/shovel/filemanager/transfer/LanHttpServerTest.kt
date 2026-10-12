@@ -76,7 +76,7 @@ class LanHttpServerTest {
             assertEquals(3, snapshots.last().size)
             assertTrue(post(firstCookie, "/nearby/disconnect").startsWith("HTTP/1.1 200"))
             assertFalse(stopped)
-            assertEquals(listOf("AF File Manager", "Phone 2"), snapshots.last().map { it.pairing.receiverName })
+            assertEquals(listOf("Shovel", "Phone 2"), snapshots.last().map { it.pairing.receiverName })
             assertTrue(post(secondCookie, "/nearby/group/heartbeat", member(2).encoded()).startsWith("HTTP/1.1 200"))
             assertTrue(request(port, "GET /nearby/group/members HTTP/1.1\r\nHost: localhost\r\nCookie: $secondCookie\r\n\r\n", address)
                 .startsWith("HTTP/1.1 200"))
@@ -98,7 +98,7 @@ class LanHttpServerTest {
             assertTrue(server.removeGroupMember(member))
             val rejected = post("/nearby/group/heartbeat")
             assertTrue(rejected.startsWith("HTTP/1.1 403"))
-            assertTrue(rejected.contains("X-AF-Group-State: removed"))
+            assertTrue(rejected.contains("X-Shovel-Group-State: removed"))
             assertTrue(post("/nearby/group/join").startsWith("HTTP/1.1 403"))
             assertTrue(request(port, "POST /upload?name=blocked.txt HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nContent-Length: 3\r\n\r\nbad", address)
                 .startsWith("HTTP/1.1 403"))
@@ -165,23 +165,23 @@ class LanHttpServerTest {
             val second = java.util.UUID.randomUUID().toString()
             fun announce(id: String, name: String, size: Long) {
                 val body = NearbyTransferManifest.encode(listOf(TransferFileProgress(name, size))).toString(Charsets.UTF_8)
-                assertTrue(request(port, "POST /nearby/manifest HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-AF-Batch-ID: $id\r\nContent-Length: ${body.toByteArray().size}\r\n\r\n$body").startsWith("HTTP/1.1 200"))
+                assertTrue(request(port, "POST /nearby/manifest HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-Shovel-Batch-ID: $id\r\nContent-Length: ${body.toByteArray().size}\r\n\r\n$body").startsWith("HTTP/1.1 200"))
             }
             announce(first, "one.txt", 100)
             Socket(InetAddress.getLoopbackAddress(), port).use { upload ->
                 upload.soTimeout = 4_000
-                upload.getOutputStream().write("POST /upload?name=one.txt HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-AF-Batch-ID: $first\r\nContent-Length: 100\r\n\r\npartial".toByteArray())
+                upload.getOutputStream().write("POST /upload?name=one.txt HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-Shovel-Batch-ID: $first\r\nContent-Length: 100\r\n\r\npartial".toByteArray())
                 assertTrue(started.await(3, java.util.concurrent.TimeUnit.SECONDS))
                 announce(second, "two.txt", 2)
                 assertEquals(listOf("one.txt", "two.txt"), updates.last().files.map { it.name })
                 assertEquals(listOf(TransferFileStatus.TRANSFERRING, TransferFileStatus.WAITING), updates.last().files.map { it.status })
-                val early = request(port, "POST /upload?name=two.txt HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-AF-Batch-ID: $second\r\nContent-Length: 2\r\n\r\nok")
+                val early = request(port, "POST /upload?name=two.txt HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-Shovel-Batch-ID: $second\r\nContent-Length: 2\r\n\r\nok")
                 assertTrue(early.startsWith("HTTP/1.1 400"))
-                assertTrue(request(port, "POST /nearby/cancel HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-AF-Batch-ID: $first\r\nContent-Length: 0\r\n\r\n").startsWith("HTTP/1.1 200"))
+                assertTrue(request(port, "POST /nearby/cancel HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-Shovel-Batch-ID: $first\r\nContent-Length: 0\r\n\r\n").startsWith("HTTP/1.1 200"))
                 assertEquals(-1, upload.getInputStream().read())
                 assertEquals(TransferFileStatus.CANCELLED, updates.last().files.first().status)
             }
-            val next = request(port, "POST /upload?name=two.txt HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-AF-Batch-ID: $second\r\nContent-Length: 2\r\n\r\nok")
+            val next = request(port, "POST /upload?name=two.txt HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-Shovel-Batch-ID: $second\r\nContent-Length: 2\r\n\r\nok")
             assertTrue(next.startsWith("HTTP/1.1 201"))
             assertEquals("ok", root.resolve("two.txt").readText())
             assertFalse(root.resolve("one.txt").exists())
@@ -209,7 +209,7 @@ class LanHttpServerTest {
                 request(
                     port,
                     "POST /nearby/manifest HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\n" +
-                        "X-AF-Batch-ID: $batch\r\nContent-Length: ${manifest.toByteArray().size}\r\n\r\n$manifest",
+                        "X-Shovel-Batch-ID: $batch\r\nContent-Length: ${manifest.toByteArray().size}\r\n\r\n$manifest",
                 ).startsWith("HTTP/1.1 200"),
             )
 
@@ -218,7 +218,7 @@ class LanHttpServerTest {
                 upload.getOutputStream().write(
                     (
                         "POST /upload?name=one.txt&fileCount=2&fileIndex=1 HTTP/1.1\r\n" +
-                            "Host: localhost\r\nCookie: $cookie\r\nX-AF-Batch-ID: $batch\r\n" +
+                            "Host: localhost\r\nCookie: $cookie\r\nX-Shovel-Batch-ID: $batch\r\n" +
                             "Content-Length: 100\r\n\r\npartial"
                         ).toByteArray(),
                 )
@@ -226,7 +226,7 @@ class LanHttpServerTest {
                 val cancelled = request(
                     port,
                     "POST /nearby/cancel-file?fileIndex=1 HTTP/1.1\r\nHost: localhost\r\n" +
-                        "Cookie: $cookie\r\nX-AF-Batch-ID: $batch\r\nContent-Length: 0\r\n\r\n",
+                        "Cookie: $cookie\r\nX-Shovel-Batch-ID: $batch\r\nContent-Length: 0\r\n\r\n",
                 )
                 assertTrue(cancelled.startsWith("HTTP/1.1 200"))
                 assertEquals(-1, upload.getInputStream().read())
@@ -235,14 +235,14 @@ class LanHttpServerTest {
             val firstStatus = request(
                 port,
                 "GET /nearby/file-status?fileIndex=1 HTTP/1.1\r\nHost: localhost\r\n" +
-                    "Cookie: $cookie\r\nX-AF-Batch-ID: $batch\r\n\r\n",
+                    "Cookie: $cookie\r\nX-Shovel-Batch-ID: $batch\r\n\r\n",
             )
             assertTrue(firstStatus.startsWith("HTTP/1.1 200"))
             assertTrue(firstStatus.endsWith("CANCELLED"))
             val second = request(
                 port,
                 "POST /upload?name=two.txt&fileCount=2&fileIndex=2 HTTP/1.1\r\nHost: localhost\r\n" +
-                    "Cookie: $cookie\r\nX-AF-Batch-ID: $batch\r\nContent-Length: 2\r\n\r\nok",
+                    "Cookie: $cookie\r\nX-Shovel-Batch-ID: $batch\r\nContent-Length: 2\r\n\r\nok",
             )
             assertTrue(second.startsWith("HTTP/1.1 201"))
             assertFalse(root.resolve("one.txt").exists())
@@ -531,7 +531,7 @@ class LanHttpServerTest {
                 upload.shutdownOutput()
                 val response = upload.getInputStream().readBytes().toString(Charsets.UTF_8)
                 assertTrue(response.startsWith("HTTP/1.1 408"))
-                assertTrue(response.contains("X-AF-Error-Code: AF-XFER-CONNECTION"))
+                assertTrue(response.contains("X-Shovel-Error-Code: SHOVEL-XFER-CONNECTION"))
             }
             assertEquals("previous destination", root.resolve("large.bin").readText())
             assertEquals(setOf("large.bin"), root.listFiles()!!.map { it.name }.toSet())
@@ -584,7 +584,7 @@ class LanHttpServerTest {
         val knownReasons = mapOf(
             "Užklausa atmesta" to "request-rejected",
             "Netinkamas susiejimo kodas" to "pairing-size",
-            "Tai nėra AF File Manager susiejimo kodas" to "pairing-format",
+            "Tai nėra Shovel susiejimo kodas" to "pairing-format",
             "Gavimo adresas turi būti privatus IPv4 adresas" to "pairing-host",
             "Netinkamas gavimo prievadas" to "pairing-port",
             "Netinkamas vienkartinis kodas" to "pairing-code",

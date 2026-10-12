@@ -225,7 +225,7 @@ class PrivilegedFileRepository(
                 operation.progress(itemDelta = 1, currentName = source.name)
                 return@forEach
             }
-            val partial = uniqueRemoteChild(destination, ".${target.name}.af-partial")
+            val partial = uniqueRemoteChild(destination, ".${target.name}.shovel-partial")
             try {
                 copyRemoteTree(source, partial, operation, depth = 0, counter = Counter())
                 require(equalTree(source, partial, Counter())) { "Nukopijuotas turinys nepatikrintas" }
@@ -263,7 +263,7 @@ class PrivilegedFileRepository(
                 skipped += 1
                 return@forEach
             }
-            val partial = uniqueRemoteChild(destination, ".${target.name}.af-partial")
+            val partial = uniqueRemoteChild(destination, ".${target.name}.shovel-partial")
             try {
                 copyLocalTree(source, partial, operation, 0, Counter())
                 require(equalLocalRemoteTree(source, partial, Counter())) { "Nukopijuotas turinys nepatikrintas" }
@@ -301,7 +301,7 @@ class PrivilegedFileRepository(
                 skipped += 1
                 return@forEach
             }
-            val partial = File(destination, ".${target.name}.${UUID.randomUUID()}.af-partial")
+            val partial = File(destination, ".${target.name}.${UUID.randomUUID()}.shovel-partial")
             require(partial.canonicalFile.parentFile == destination) { "Laikinas kelias išeina už paskirties" }
             try {
                 copyRemoteToLocalTree(source, partial, operation, 0, Counter())
@@ -359,8 +359,8 @@ class PrivilegedFileRepository(
         require(origin.canWrite) { "Pradinio failo negalima įrašyti; naudokite „Išsaugoti kaip“" }
         val parent = requireNotNull(target.parentFile)
         canonicalContained(parent, allowRoot = true)
-        val temporary = uniqueRemoteChild(parent, ".${target.name}.af-edit")
-        val backup = uniqueRemoteChild(parent, ".${target.name}.af-backup")
+        val temporary = uniqueRemoteChild(parent, ".${target.name}.shovel-edit")
+        val backup = uniqueRemoteChild(parent, ".${target.name}.shovel-backup")
         var backupMade = false
         try {
             writeRemoteFile(temporary, session.workingFile.inputStream(), EditLimits.MAX_FILE_BYTES)

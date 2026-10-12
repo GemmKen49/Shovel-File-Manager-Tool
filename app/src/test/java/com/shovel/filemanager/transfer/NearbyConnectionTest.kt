@@ -10,21 +10,21 @@ class NearbyConnectionTest {
         val first = NearbyPairing.create("192.168.1.2", 8080, "12345678")
         val second = first.copy(host = "192.168.1.3")
         connection.beginGroup(listOf(first, second))
-        connection.remember(first, "af_session=first", expires = 100L)
+        connection.remember(first, "shovel_session=first", expires = 100L)
         connection.setQueueSupported(first, true)
-        connection.remember(second, "af_session=second", expires = 200L)
-        assertEquals("af_session=first", connection.cookieFor(first))
-        assertEquals("af_session=second", connection.cookieFor(second))
+        connection.remember(second, "shovel_session=second", expires = 200L)
+        assertEquals("shovel_session=first", connection.cookieFor(first))
+        assertEquals("shovel_session=second", connection.cookieFor(second))
         assertTrue(connection.supportsQueue(first))
         assertFalse(connection.supportsQueue(second))
         time = 100L
         assertNull(connection.cookieFor(first))
         assertNotNull(connection.cookieFor(second))
-        connection.remember(first, "af_session=fresh", expires = 300L)
+        connection.remember(first, "shovel_session=fresh", expires = 300L)
         connection.clearIfRejected(second, 403)
         assertNotNull(connection.cookieFor(first))
         assertNull(connection.cookieFor(second))
-        connection.remember(first.copy(port = 8081), "af_session=unrelated")
+        connection.remember(first.copy(port = 8081), "shovel_session=unrelated")
         assertNull(connection.cookieFor(first))
         connection.clear()
         assertNull(connection.pairing())
@@ -32,7 +32,7 @@ class NearbyConnectionTest {
     @Test fun rejectedSessionIsForgottenWithoutClearingAnotherPeerOrRetryingFiles() {
         val connection = NearbyConnection { 0L }
         val peer = NearbyPairing.create("192.168.1.2", 8080, "12345678")
-        connection.remember(peer, "af_session=private")
+        connection.remember(peer, "shovel_session=private")
         assertFalse(connection.clearIfRejected(peer, 500))
         assertTrue(connection.clearIfRejected(peer.copy(port = 8081), 401))
         assertNotNull(connection.cookieFor(peer))
@@ -44,8 +44,8 @@ class NearbyConnectionTest {
         var time = 100L
         val connection = NearbyConnection { time }
         val peer = NearbyPairing.create("192.168.1.2", 8080, "12345678")
-        connection.remember(peer, "af_session=private", expires = 200L)
-        assertEquals("af_session=private", connection.cookieFor(peer))
+        connection.remember(peer, "shovel_session=private", expires = 200L)
+        assertEquals("shovel_session=private", connection.cookieFor(peer))
         assertNull(connection.cookieFor(peer.copy(code = "87654321")))
         time = 199
         assertEquals(peer, connection.pairing())
@@ -57,14 +57,14 @@ class NearbyConnectionTest {
         var time = 0L
         val connection = NearbyConnection { time }
         val peer = NearbyPairing.create("192.168.1.2", 8080, "12345678")
-        connection.remember(peer, "af_session=private", expires = Long.MAX_VALUE)
+        connection.remember(peer, "shovel_session=private", expires = Long.MAX_VALUE)
         connection.remember(peer.copy(port = 8081))
         assertNull(connection.cookieFor(peer.copy(port = 8081)))
         connection.clear()
         assertNull(connection.pairing())
-        connection.remember(peer, "af_session=private", expires = Long.MAX_VALUE)
+        connection.remember(peer, "shovel_session=private", expires = Long.MAX_VALUE)
         time = 15 * 60_000L
-        assertEquals("af_session=private", connection.cookieFor(peer))
+        assertEquals("shovel_session=private", connection.cookieFor(peer))
         connection.clear()
         assertNull(connection.cookieFor(peer))
     }
@@ -73,7 +73,7 @@ class NearbyConnectionTest {
         var time = 0L
         val connection = NearbyConnection { time }
         val peer = NearbyPairing.create("192.168.1.2", 8080, "12345678")
-        connection.remember(peer, "af_session=private", expires = Long.MAX_VALUE - 1)
+        connection.remember(peer, "shovel_session=private", expires = Long.MAX_VALUE - 1)
         time = LanSessionDuration.MAX_TIMED_MINUTES * 60_000L - 1
         assertNotNull(connection.cookieFor(peer))
         time += 1

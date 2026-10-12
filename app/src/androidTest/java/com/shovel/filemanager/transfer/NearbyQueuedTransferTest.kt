@@ -1,7 +1,7 @@
 package com.shovel.filemanager.transfer
 
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class NearbyQueuedTransferTest {
     @Test fun realReceivingServiceStopKeepsResultsButDropsCredentials() = runBlocking {
         check(android.os.Build.MODEL.contains("sdk", ignoreCase = true))
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val complete = TransferFileProgress("received.txt", 12, 12, TransferFileStatus.COMPLETED, "/fixture/received.txt")
         try {
             LanTransferController.publish(LanTransferState(status = LanTransferStatus.RUNNING, url = "http://192.168.1.2:8080",
@@ -40,7 +40,7 @@ class NearbyQueuedTransferTest {
 
     @Test fun failedManifestAcknowledgementCancelsOnlyThatBatchBeforeTheNextManifest() = runBlocking {
         check(android.os.Build.MODEL.contains("sdk", ignoreCase = true))
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val original = File(app.cacheDir, "manifest-failure-${UUID.randomUUID()}.txt").apply { writeText("original remains") }
         val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
             .first { it is Inet4Address && it.isSiteLocalAddress }
@@ -72,10 +72,10 @@ class NearbyQueuedTransferTest {
                         headers[header.substringBefore(':').lowercase()] = header.substringAfter(':').trim() }
                     val length = headers["content-length"]!!.toInt()
                     val body = readExactly(input, length)
-                    events += route to headers["x-af-batch-id"].orEmpty()
+                    events += route to headers["x-shovel-batch-id"].orEmpty()
                     if (route == "/upload") assertArrayEquals(original.readBytes(), body)
                     val status = if (route == "/nearby/manifest" && manifests.incrementAndGet() == 1) "500 Lost acknowledgement" else "200 OK"
-                    val cookie = if (route == "/login") "Set-Cookie: af_session=manifest-fixture\r\nX-AF-Queue-Version: 1\r\n" else ""
+                    val cookie = if (route == "/login") "Set-Cookie: shovel_session=manifest-fixture\r\nX-Shovel-Queue-Version: 1\r\n" else ""
                     it.getOutputStream().write("HTTP/1.1 $status\r\n${cookie}Content-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
                 } } catch (failure: Throwable) { if (running.get()) errors += failure }
             }
@@ -115,7 +115,7 @@ class NearbyQueuedTransferTest {
 
     @Test fun cancellingBeforeLoginCleansEveryQueuedPrivateCopyAndKeepsOriginals() = runBlocking {
         check(android.os.Build.MODEL.contains("sdk", ignoreCase = true))
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val original = File(app.cacheDir, "queue-original-${UUID.randomUUID()}.txt").apply { writeText("keep original") }
         val stages = (1..2).map { File(app.cacheDir, "nearby-send-staging/${UUID.randomUUID()}").apply { check(mkdirs()) } }
         val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
@@ -148,7 +148,7 @@ class NearbyQueuedTransferTest {
 
     @Test fun foregroundSenderAppendsDuringARealBlockedUploadAndSurvivesRapidNextBatches() = runBlocking {
         check(android.os.Build.MODEL.contains("sdk", ignoreCase = true))
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "nearby-queue-${UUID.randomUUID()}").apply { check(mkdir()) }
         val first = File(root, "first.bin").apply { outputStream().use { out -> repeat(256) { out.write(ByteArray(32768) { (it % 251).toByte() }) } } }
         val second = File(root, "second.txt").apply { writeText("still here after copy") }
@@ -201,7 +201,7 @@ class NearbyQueuedTransferTest {
                             val name = target.substringAfter("name=").substringBefore('&')
                             assertEquals(expectedHashes[name], hash(body)); uploads += name
                         }
-                        val cookie = if (route == "/login") "Set-Cookie: af_session=queue-fixture; HttpOnly\r\nX-AF-Queue-Version: 1\r\n" else ""
+                        val cookie = if (route == "/login") "Set-Cookie: shovel_session=queue-fixture; HttpOnly\r\nX-Shovel-Queue-Version: 1\r\n" else ""
                         it.getOutputStream().write("HTTP/1.1 200 OK\r\n${cookie}Content-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
                     } } catch (failure: Throwable) { if (running.get()) errors += failure }
                     finally { sockets.remove(socket) }

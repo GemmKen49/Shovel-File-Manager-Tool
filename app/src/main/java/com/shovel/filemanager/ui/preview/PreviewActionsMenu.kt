@@ -11,7 +11,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton

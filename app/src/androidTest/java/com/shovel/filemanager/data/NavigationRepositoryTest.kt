@@ -4,7 +4,7 @@ import android.content.ContextWrapper
 import android.content.SharedPreferences
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.SearchFilters
 import com.shovel.filemanager.model.SortDirection
@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 class NavigationRepositoryTest {
     @Test
     fun thumbnailModeIsOffByDefaultAndPersistsForOnlyTheSelectedDirectory() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val firstIdentity = "instrumentation:first:${System.nanoTime()}"
         val secondIdentity = "instrumentation:second:${System.nanoTime()}"
         val repository = NavigationRepository(application)
@@ -39,7 +39,7 @@ class NavigationRepositoryTest {
 
     @Test
     fun directoryDisplaySettingsPersistPerDirectoryAndCanBeCleared() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val firstIdentity = "instrumentation:display:first:${System.nanoTime()}"
         val secondIdentity = "instrumentation:display:second:${System.nanoTime()}"
         val repository = NavigationRepository(application)
@@ -70,7 +70,7 @@ class NavigationRepositoryTest {
 
     @Test
     fun settingAnInheritedDefaultCreatesAnIndependentOverride() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val preferenceName = "navigation-independent-${System.nanoTime()}"
         val isolatedContext = object : ContextWrapper(application) {
             override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences =
@@ -104,7 +104,7 @@ class NavigationRepositoryTest {
 
     @Test
     fun sortSettingsPersistIndependentlyForEveryVirtualLocation() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val firstIdentity = "virtual:category/images-${System.nanoTime()}"
         val secondIdentity = "virtual:category/documents-${System.nanoTime()}"
         val repository = NavigationRepository(application)
@@ -141,7 +141,7 @@ class NavigationRepositoryTest {
 
     @Test
     fun savedSearchPersistsMultipleRootsAndAdvancedFilters() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val repository = NavigationRepository(application)
         val name = "instrumentation-search-${System.nanoTime()}"
         var savedId: String? = null

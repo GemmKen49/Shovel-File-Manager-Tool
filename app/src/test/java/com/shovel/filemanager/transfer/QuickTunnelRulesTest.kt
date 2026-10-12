@@ -25,7 +25,7 @@ class QuickTunnelRulesTest {
             "ftp://192.168.1.20:21",
             "http://user@192.168.1.20:80",
             "http://192.168.1.20:80/?token=secret",
-            "http://192.168.1.20:80/not-the-af-root",
+            "http://192.168.1.20:80/not-the-shovel-root",
             "http://192.168.1.20",
             "http://8.8.8.8:80",
             "http://example.com:80",

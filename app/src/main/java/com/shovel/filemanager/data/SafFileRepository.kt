@@ -338,7 +338,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
         val safeName = FileSystemRules.validateFileName(source.name).getOrThrow()
         val targetName = freeDocumentName(destinationParent, safeName)
         if (source.isDirectory) {
-            val partialName = freeDocumentName(destinationParent, ".$targetName.af-partial")
+            val partialName = freeDocumentName(destinationParent, ".$targetName.shovel-partial")
             val directory = destinationParent.createDirectory(partialName)
                 ?: throw IllegalStateException("SAF aplanko sukurti nepavyko")
             try {
@@ -354,7 +354,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
             return
         }
         require(source.isFile) { "Nepalaikomas vietinio elemento tipas" }
-        val partialName = freeDocumentName(destinationParent, ".$targetName.af-partial")
+        val partialName = freeDocumentName(destinationParent, ".$targetName.shovel-partial")
         val mime = android.webkit.MimeTypeMap.getSingleton()
             .getMimeTypeFromExtension(source.extension.lowercase()) ?: "application/octet-stream"
         val partial = destinationParent.createFile(mime, partialName)
@@ -400,7 +400,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
         val target = if (requested.exists()) FileSystemRules.keepBothTarget(requested) else requested
         require(target.canonicalFile.toPath().startsWith(destinationParent.canonicalFile.toPath())) { "SAF vardas išeina už paskirties" }
         if (source.isDirectory) {
-            val partialDirectory = File(destinationParent, ".${target.name}.af-partial-${System.nanoTime()}")
+            val partialDirectory = File(destinationParent, ".${target.name}.shovel-partial-${System.nanoTime()}")
             require(partialDirectory.mkdir()) { "Laikino vietinio aplanko sukurti nepavyko" }
             try {
                 val children = source.listFiles()
@@ -414,7 +414,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
             return target
         }
         require(source.isFile) { "Nepalaikomas SAF elemento tipas" }
-        val partial = File(destinationParent, ".${target.name}.af-partial")
+        val partial = File(destinationParent, ".${target.name}.shovel-partial")
         try {
             var written = 0L
             val input = resolver.openInputStream(source.uri)?.buffered()

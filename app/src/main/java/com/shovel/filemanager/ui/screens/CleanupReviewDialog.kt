@@ -26,20 +26,20 @@ import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Visibility
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
-import com.shovel.filemanager.ui.theme.AfButton as Button
-import com.shovel.filemanager.ui.theme.AfCard as Card
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -58,7 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import com.shovel.filemanager.ui.theme.AfDialog
+import com.shovel.filemanager.ui.theme.ShovelDialog
 import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.model.DuplicateGroup
 import com.shovel.filemanager.model.DirectoryContentUsage
@@ -220,7 +220,7 @@ internal fun CleanupReviewDialog(
         )
     }
 
-    AfDialog(
+    ShovelDialog(
         onDismissRequest = navigateBack,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
@@ -313,7 +313,7 @@ internal fun CleanupReviewDialog(
                         Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             LText("Pažymėta: ${selected.size}", fontWeight = FontWeight.SemiBold)
                             LText("Galima atlaisvinti: ${FileSystemRules.humanBytes(selectedBytes)}", style = MaterialTheme.typography.bodySmall)
-                            LText("Pasirinkti elementai bus perkelti į atkuriamą AF File Manager šiukšlinę.", style = MaterialTheme.typography.bodySmall)
+                            LText("Pasirinkti elementai bus perkelti į atkuriamą Shovel šiukšlinę.", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }

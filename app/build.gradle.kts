@@ -5,15 +5,15 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val releaseStorePath = providers.environmentVariable("AF_KEYSTORE_PATH").orNull
-val releaseStorePassword = providers.environmentVariable("AF_KEYSTORE_PASSWORD").orNull
-val releaseKeyAlias = providers.environmentVariable("AF_KEY_ALIAS").orNull
-val releaseKeyPassword = providers.environmentVariable("AF_KEY_PASSWORD").orNull
+val releaseStorePath = providers.environmentVariable("SHOVEL_KEYSTORE_PATH").orNull
+val releaseStorePassword = providers.environmentVariable("SHOVEL_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("SHOVEL_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("SHOVEL_KEY_PASSWORD").orNull
 val hasReleaseSigning = listOf(releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrBlank() }
-val testOptimizedRelease = providers.gradleProperty("afTestOptimizedRelease").orNull.toBoolean()
+val testOptimizedRelease = providers.gradleProperty("shovelTestOptimizedRelease").orNull.toBoolean()
 // Opt-in disposable package for optimized checks without replacing a signed user app.
-val testIsolatedBenchmark = providers.gradleProperty("afTestIsolatedBenchmark").orNull.toBoolean()
-val targetAbi = providers.gradleProperty("afTargetAbi").orNull
+val testIsolatedBenchmark = providers.gradleProperty("shovelTestIsolatedBenchmark").orNull.toBoolean()
+val targetAbi = providers.gradleProperty("shovelTargetAbi").orNull
 val supportedAbis = setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
 
 android {
@@ -38,7 +38,7 @@ android {
         versionCode = 70
         versionName = "0.44.3"
 
-        buildConfigField("String", "UPDATE_REPOSITORY", "\"sinegard/AF-File-Manager\"")
+        buildConfigField("String", "UPDATE_REPOSITORY", "\"GemmKen49/Shovel-File-Manager-Tool\"")
 
         testInstrumentationRunner = if (testOptimizedRelease || testIsolatedBenchmark) {
             "com.shovel.filemanager.network.OptimizedSftpInstrumentation"
@@ -50,7 +50,7 @@ android {
         vectorDrawables.useSupportLibrary = true
 
         ndk {
-            targetAbi?.let { require(it in supportedAbis) { "Unsupported AF target ABI: $it" } }
+            targetAbi?.let { require(it in supportedAbis) { "Unsupported Shovel target ABI: $it" } }
             abiFilters += targetAbi?.let(::listOf) ?: supportedAbis
         }
     }

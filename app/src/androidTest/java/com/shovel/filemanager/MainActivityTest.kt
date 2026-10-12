@@ -82,7 +82,7 @@ class MainActivityTest {
 
     @Test
     fun startupShowsFileManagerAndCurrentPermissionState() {
-        assertEquals("AF File Manager", compose.activity.applicationInfo.loadLabel(compose.activity.packageManager).toString())
+        assertEquals("Shovel", compose.activity.applicationInfo.loadLabel(compose.activity.packageManager).toString())
         compose.onNodeWithText("Files").fetchSemanticsNode()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !Environment.isExternalStorageManager()) {
             compose.onNodeWithText("Shared-file access is required").fetchSemanticsNode()
@@ -150,7 +150,7 @@ class MainActivityTest {
         assertTrue(bounds.width <= maximumWidth)
         assertTrue(bounds.height >= metrics.heightPixels * 0.80f)
 
-        val artifact = File(requireNotNull(compose.activity.getExternalFilesDir("validation")), "af-unified-dialog.png")
+        val artifact = File(requireNotNull(compose.activity.getExternalFilesDir("validation")), "shovel-unified-dialog.png")
         artifact.outputStream().use { output ->
             assertTrue(
                 dialog.captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, output),
@@ -161,7 +161,7 @@ class MainActivityTest {
     }
 
     @Test
-    fun homeToolsUseDedicatedAfPagesAndSystemBackReturnsHome() {
+    fun homeToolsUseDedicatedShovelPagesAndSystemBackReturnsHome() {
         val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
         compose.runOnUiThread { viewModel.showFilesHome() }
         compose.onNodeWithText("Tools and security").assertIsDisplayed()
@@ -226,7 +226,7 @@ class MainActivityTest {
     @Test
     fun entryThreeDotMenuOpensTagsForOnlyThatEntry() {
         val directory = File(compose.activity.getExternalFilesDir(null), "tag-menu-${System.nanoTime()}").apply { mkdirs() }
-        val target = File(directory, "issue-108.txt").apply { writeText("AF") }
+        val target = File(directory, "issue-108.txt").apply { writeText("Shovel") }
         val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
         try {
             compose.runOnUiThread { viewModel.navigate(PanelId.LEFT, directory.absolutePath, rememberHistory = false) }
@@ -272,7 +272,7 @@ class MainActivityTest {
             compose.onNodeWithTag("favorite_entry_action").assertIsDisplayed()
             compose.onNodeWithTag("copy_entry_action").performClick()
             compose.waitUntil(timeoutMillis = 5_000) { viewModel.clipboard.value?.paths == listOf(first.absolutePath) }
-            compose.runOnUiThread { viewModel.clearAfClipboard() }
+            compose.runOnUiThread { viewModel.clearShovelClipboard() }
 
             compose.onNodeWithContentDescription("File actions: ${first.name}").performClick()
             compose.onNodeWithTag("favorite_entry_action").assertIsDisplayed().performClick()
@@ -287,7 +287,7 @@ class MainActivityTest {
             }
         } finally {
             compose.runOnUiThread {
-                viewModel.clearAfClipboard()
+                viewModel.clearShovelClipboard()
                 viewModel.clearSelection(PanelId.LEFT)
                 listOf(first, second).forEach { file ->
                     if (file.absolutePath in viewModel.favorites.value) viewModel.toggleFavorite(file.absolutePath)
@@ -592,7 +592,7 @@ class MainActivityTest {
 
     @Test
     fun savedConnectionCanBeEditedWithoutReenteringItsSecret() {
-        val graph = (compose.activity.application as AFFileManagerApplication).graph
+        val graph = (compose.activity.application as ShovelApplication).graph
         val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
         val created = runBlocking {
             graph.networkProfiles.list().forEach { graph.networkProfiles.remove(it.id).getOrThrow() }
@@ -717,21 +717,21 @@ class MainActivityTest {
     }
 
     @Test
-    fun afWorkflowCenterExposesPlansTimelineAndAutomationWithoutMixedLanguage() {
+    fun shovelWorkflowCenterExposesPlansTimelineAndAutomationWithoutMixedLanguage() {
         val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
-        compose.runOnUiThread { viewModel.openAfWorkflowCenter() }
+        compose.runOnUiThread { viewModel.openShovelWorkflowCenter() }
 
-        compose.onNodeWithTag("af_plans_list").fetchSemanticsNode()
-        assertTrue(compose.onAllNodesWithText("AF Plans").fetchSemanticsNodes().isNotEmpty())
+        compose.onNodeWithTag("shovel_plans_list").fetchSemanticsNode()
+        assertTrue(compose.onAllNodesWithText("Shovel Plans").fetchSemanticsNodes().isNotEmpty())
         compose.onNodeWithText("Timeline").performClick()
-        compose.onNodeWithTag("af_timeline_list").fetchSemanticsNode()
+        compose.onNodeWithTag("shovel_timeline_list").fetchSemanticsNode()
         compose.onNodeWithText("Where did my file go?").fetchSemanticsNode()
         compose.onNodeWithText("Automation").performClick()
-        compose.onNodeWithTag("af_automation_list").fetchSemanticsNode()
+        compose.onNodeWithTag("shovel_automation_list").fetchSemanticsNode()
         compose.onNodeWithText("Safe automation").fetchSemanticsNode()
 
         compose.onNodeWithContentDescription("Close").performClick()
-        compose.waitUntil(timeoutMillis = 5_000) { !viewModel.afWorkflowUi.value.open }
+        compose.waitUntil(timeoutMillis = 5_000) { !viewModel.shovelWorkflowUi.value.open }
     }
 
     @Test

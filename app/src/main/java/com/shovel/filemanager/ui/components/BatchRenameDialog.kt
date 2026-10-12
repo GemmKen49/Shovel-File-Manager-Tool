@@ -13,9 +13,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DriveFileRenameOutline
-import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -51,7 +51,7 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
             numberPaddingText.toIntOrNull()?.let { it in 1..9 } == true
     )
 
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Masinis pervadinimas",
         subtitle = "Pakeitimai bus vykdomi tik patvirtinus planą",
         icon = Icons.Rounded.DriveFileRenameOutline,
@@ -114,7 +114,7 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
                                 )
                             }
                             LText("Raidės", style = MaterialTheme.typography.labelLarge)
-                            AfActionRow {
+                            ShovelActionRow {
                                 RenameCaseMode.entries.forEach { mode ->
                                     FilterChip(
                                         selected = spec.caseMode == mode,

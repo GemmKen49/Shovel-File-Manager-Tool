@@ -666,8 +666,8 @@ class ArchiveEngine(
         val parent = original.parentFile ?: throw IllegalArgumentException("Archyvo aplankas nepasiekiamas")
         require(parent.isDirectory && parent.canWrite()) { "Archyvo aplankas neleidžia rašyti" }
         val token = UUID.randomUUID().toString()
-        val working = File(parent, ".${original.name}.$token.af-rewrite")
-        val backup = File(parent, ".${original.name}.$token.af-recovery")
+        val working = File(parent, ".${original.name}.$token.shovel-rewrite")
+        val backup = File(parent, ".${original.name}.$token.shovel-recovery")
         var replacementStarted = false
         try {
             Files.copy(original.toPath(), working.toPath(), StandardCopyOption.COPY_ATTRIBUTES)
@@ -692,7 +692,7 @@ class ArchiveEngine(
             actual
         } catch (failure: Throwable) {
             if (replacementStarted && backup.isFile) {
-                val restore = File(parent, ".${original.name}.$token.af-restore")
+                val restore = File(parent, ".${original.name}.$token.shovel-restore")
                 runCatching {
                     Files.copy(backup.toPath(), restore.toPath())
                     require(restore.length() == backup.length()) { "Archyvo atkūrimo kopija nepatikrinta" }
@@ -901,7 +901,7 @@ class ArchiveEngine(
 
     private suspend fun writeExtractedTarget(target: File, block: suspend (OutputStream) -> Unit) {
         target.parentFile?.let { require(it.isDirectory || it.mkdirs()) { "Nepavyko sukurti paskirties aplanko" } }
-        val partial = File(target.parentFile, ".${target.name}.af-partial")
+        val partial = File(target.parentFile, ".${target.name}.shovel-partial")
         try {
             BufferedOutputStream(FileOutputStream(partial)).use { output -> block(output) }
             runCatching {

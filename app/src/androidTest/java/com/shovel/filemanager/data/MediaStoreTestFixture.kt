@@ -10,7 +10,7 @@ import java.io.File
 /** bulkInsert allocates index rows, not physical files, on newer MediaProviders. */
 internal fun materializeIndexedFixture(context: Context, collection: Uri, relativePath: String) {
     val root = File(Environment.getExternalStorageDirectory(), relativePath).canonicalFile
-    check(root.parentFile?.name == "Pictures" && root.name.startsWith("af", ignoreCase = true))
+    check(root.parentFile?.name == "Pictures" && root.name.startsWith("shovel", ignoreCase = true))
     val selection = if (Build.VERSION.SDK_INT >= 29) "${MediaStore.MediaColumns.RELATIVE_PATH} = ?"
         else "${MediaStore.MediaColumns.DATA} LIKE ?"
     val argument = if (Build.VERSION.SDK_INT >= 29) relativePath else "${root.path}/%"

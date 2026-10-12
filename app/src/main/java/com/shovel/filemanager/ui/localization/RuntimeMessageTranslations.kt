@@ -23,7 +23,7 @@ internal object RuntimeMessageTranslations {
         "Šiukšliadėžės vaizdo nustatymo išsaugoti nepavyko" to "Could not save the Trash folder view setting",
         "Šiukšliadėžės rūšiavimo nustatymo išsaugoti nepavyko" to "Could not save the Trash folder sort setting",
         "Android failų indekso atnaujinti nepavyko" to "Could not update Android's file index",
-        "AF Quick Tunnel" to "AF Quick Tunnel",
+        "Shovel Quick Tunnel" to "Shovel Quick Tunnel",
         "Cloudflare Quick Tunnel" to "Cloudflare Quick Tunnel",
         "Quick Tunnel" to "Quick Tunnel",
         "Bendrinti per Quick Tunnel" to "Share via Quick Tunnel",
@@ -32,31 +32,31 @@ internal object RuntimeMessageTranslations {
         "Quick Tunnel sustojo dėl klaidos" to "Quick Tunnel stopped with an error",
         "Sukurkite laikiną HTTPS adresą prieigai ne vietiniame tinkle." to
             "Create a temporary HTTPS address for access outside the local network.",
-        "Bus sukurta laikina vieša HTTPS nuoroda per Cloudflare. Failus ir toliau saugo AF vienkartinis prisijungimo kodas." to
-            "A temporary public HTTPS link will be created through Cloudflare. AF's one-time sign-in code will continue to protect the files.",
-        "Quick Tunnel yra pasirenkama išorinė paslauga be veikimo garantijos. Tunelis baigsis kartu su AF Web sesija arba jį sustabdžius." to
-            "Quick Tunnel is an optional external service without an uptime guarantee. The tunnel ends with the AF Web session or when you stop it.",
-        "Tunelio komponentas įdiegtas pačiame AF File Manager; atskiros programėlės nereikia." to
-            "The tunnel component is built into AF File Manager; no separate app is required.",
+        "Bus sukurta laikina vieša HTTPS nuoroda per Cloudflare. Failus ir toliau saugo Shovel vienkartinis prisijungimo kodas." to
+            "A temporary public HTTPS link will be created through Cloudflare. Shovel's one-time sign-in code will continue to protect the files.",
+        "Quick Tunnel yra pasirenkama išorinė paslauga be veikimo garantijos. Tunelis baigsis kartu su Shovel Web sesija arba jį sustabdžius." to
+            "Quick Tunnel is an optional external service without an uptime guarantee. The tunnel ends with the Shovel Web session or when you stop it.",
+        "Tunelio komponentas įdiegtas pačiame Shovel; atskiros programėlės nereikia." to
+            "The tunnel component is built into Shovel; no separate app is required.",
         "Tunelio paleisti nepavyko" to "Could not start the tunnel",
         "Tuneliui reikia veikiančios Web sesijos" to "The tunnel needs an active Web session",
         "Tunelio užklausa netinkama" to "The tunnel request is invalid",
         "Tunelio pabaigos laikas netinkamas" to "The tunnel expiry time is invalid",
         "Vietinio Web serverio adresas netinkamas" to "The local Web server address is invalid",
         "Vietinio Web serverio prievadas netinkamas" to "The local Web server port is invalid",
-        "Leidžiamas tik vietinis AF Web serveris" to "Only the local AF Web server is allowed",
+        "Leidžiamas tik vietinis Shovel Web serveris" to "Only the local Shovel Web server is allowed",
         "Šio telefono procesoriui Quick Tunnel komponentas nerastas" to
             "The Quick Tunnel component is unavailable for this phone's processor",
         "Nextcloud" to "Nextcloud",
         "Pridėti Nextcloud" to "Add Nextcloud",
         "Prisijungti prie Nextcloud" to "Connect to Nextcloud",
         "Prisijungti naršyklėje" to "Sign in in browser",
-        "Įrašykite savo Nextcloud serverio adresą. AF atidarys numatytąją naršyklę ir gaus tik šiai programėlei skirtą atšaukiamą slaptažodį." to
-            "Enter your Nextcloud server address. AF will open the default browser and receive a revocable password created only for this app.",
+        "Įrašykite savo Nextcloud serverio adresą. Shovel atidarys numatytąją naršyklę ir gaus tik šiai programėlei skirtą atšaukiamą slaptažodį." to
+            "Enter your Nextcloud server address. Shovel will open the default browser and receive a revocable password created only for this app.",
         "Nextcloud serveris" to "Nextcloud server",
         "Ruošiamas saugus Nextcloud prisijungimas" to "Preparing secure Nextcloud sign-in",
-        "Užbaikite prisijungimą naršyklėje. AF laukia patvirtinimo." to
-            "Finish signing in in the browser. AF is waiting for approval.",
+        "Užbaikite prisijungimą naršyklėje. Shovel laukia patvirtinimo." to
+            "Finish signing in in the browser. Shovel is waiting for approval.",
         "Saugomas Nextcloud ryšys" to "Saving the Nextcloud connection",
         "Nextcloud serverio adresas per ilgas" to "The Nextcloud server address is too long",
         "Netinkamas Nextcloud serverio adresas" to "Invalid Nextcloud server address",
@@ -92,7 +92,7 @@ internal object RuntimeMessageTranslations {
         "Grupės sukurti nepavyko" to "Could not create the group",
         "Prisijungti prie grupės nepavyko" to "Could not join the group",
         "Netinkamas grupės kodas" to "Invalid group code",
-        "Tai nėra AF grupės kodas" to "This is not an AF group code",
+        "Tai nėra Shovel grupės kodas" to "This is not an Shovel group code",
         "Netinkamas grupės vardas" to "Invalid group name",
         "Grupėje per daug dalyvių" to "The group has too many members",
         "Netinkamas grupės dalyvių sąrašas" to "Invalid group member list",
@@ -453,7 +453,7 @@ internal object RuntimeMessageTranslations {
         "GitHub neatsakė laiku. Bandykite dar kartą." to "GitHub did not respond in time. Try again.",
         "Atnaujinimų patikrinti nepavyko." to "Could not check for updates.",
         "Juodraštinis leidimas neatnaujinamas" to "Draft releases are not used for updates",
-        "Leidime nėra vienareikšmio AF File Manager APK" to "The release does not contain one unambiguous AF File Manager APK",
+        "Leidime nėra vienareikšmio Shovel APK" to "The release does not contain one unambiguous Shovel APK",
         "GitHub leidime nėra tinkamos SHA-256 kontrolinės sumos" to "The GitHub release does not contain a valid SHA-256 checksum",
         "Leidimo versija turi būti vMAJOR.MINOR.PATCH formato" to "The release version must use the vMAJOR.MINOR.PATCH format",
         "Laikinos kopijos patikrinti nepavyko" to "Could not verify the temporary copy",
@@ -531,7 +531,7 @@ internal object RuntimeMessageTranslations {
         "PDF puslapis nepasiekiamas" to "The PDF page is unavailable",
         "Failo vardas per ilgas" to "The file name is too long",
         "Saugyklos failas nepasiekiamas arba per didelis" to "The vault file is unavailable or too large",
-        "Tai ne AF File Manager saugyklos failas" to "This is not an AF File Manager vault file",
+        "Tai ne Shovel saugyklos failas" to "This is not an Shovel vault file",
         "Netinkama druska" to "Invalid salt",
         "Netinkamas IV" to "Invalid IV",
         "Netinkamas pradinis dydis" to "Invalid original size",
@@ -573,7 +573,7 @@ internal object RuntimeMessageTranslations {
         "Aplanko atnaujinti nepavyko" to "Could not refresh the folder",
         "Tokia failo ar aplanko vieta neegzistuoja" to "This file or folder location does not exist",
         "Abu skydeliai turi rodyti pasiekiamus aplankus" to "Both panes must show available folders",
-        "AF plano paleisti nepavyko" to "Could not start the AF Plan",
+        "Shovel plano paleisti nepavyko" to "Could not start the Shovel Plan",
         "Paskirties katalogas nepasiekiamas" to "The destination folder is unavailable",
         "Kai kurie pasirinkti failai nebepasiekiami" to "Some selected files are no longer available",
         "Netinkamas archyvo pavadinimas" to "Invalid archive name",

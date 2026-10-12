@@ -22,12 +22,12 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.cleanup.DeviceCleanupApp
 import com.shovel.filemanager.cleanup.DeviceCleanupSnapshot
 import com.shovel.filemanager.ui.DeviceCleanupUiState
 import com.shovel.filemanager.ui.theme.CustomThemeColors
-import com.shovel.filemanager.ui.theme.AFFileManagerTheme
+import com.shovel.filemanager.ui.theme.ShovelTheme
 import com.shovel.filemanager.ui.theme.AppColorPalette
 import com.shovel.filemanager.ui.theme.AppThemeMode
 import com.shovel.filemanager.ui.theme.AppearanceSettings
@@ -42,7 +42,7 @@ class AppearanceAndCleanupUiTest {
 
     @Test fun optionalRedPaletteAndCustomPaletteRenderInLightDarkAndAmoledModes() {
         val settings = mutableStateOf(AppearanceSettings(themeMode = AppThemeMode.LIGHT))
-        compose.setContent { AFFileManagerTheme(settings.value) {
+        compose.setContent { ShovelTheme(settings.value) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 AppearanceSettingsCard(settings.value,
                     { settings.value = settings.value.copy(themeMode = it) },
@@ -65,7 +65,7 @@ class AppearanceAndCleanupUiTest {
     @Test fun interfaceScaleSliderAppliesBothSupportedEndpoints() {
         val settings = mutableStateOf(AppearanceSettings())
         var applied: Int? = null
-        compose.setContent { AFFileManagerTheme(settings.value) {
+        compose.setContent { ShovelTheme(settings.value) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 AppearanceSettingsCard(
                     settings = settings.value,
@@ -117,7 +117,7 @@ class AppearanceAndCleanupUiTest {
     }
 
     @Test fun cleanupIconsAndControlsTargetOnlyTheSelectedAppAndCacheNeedsSystemConfirmation() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixture = DeviceCleanupApp(app.packageName, "Test application with a long name", 1L, 1L, 8192L)
         var settings: String? = null
         var uninstall: String? = null
@@ -146,7 +146,7 @@ class AppearanceAndCleanupUiTest {
     }
 
     @Test fun runningAppsAreIndependentOfUsageAccessAndRequireConfirmationBeforeStopping() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixture = DeviceCleanupApp(app.packageName, "Running application", null, 0L, null, 16_384L)
         var stopped: String? = null
         compose.setContent { MaterialTheme {
@@ -185,7 +185,7 @@ class AppearanceAndCleanupUiTest {
 
     private fun capture(name: String) {
         compose.waitForIdle()
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val directory = File(app.getExternalFilesDir(null), "validation").apply { mkdirs() }
         val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
         File(directory, "$name-${bitmap.width}.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }

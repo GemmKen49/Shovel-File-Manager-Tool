@@ -1,5 +1,5 @@
 package com.shovel.filemanager.ui.screens
-import com.shovel.filemanager.ui.components.AfActionRow
+import com.shovel.filemanager.ui.components.ShovelActionRow
 
 import android.os.Build
 import androidx.compose.foundation.background
@@ -41,12 +41,12 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.ExpandLess
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
-import com.shovel.filemanager.ui.theme.AfButton as Button
-import com.shovel.filemanager.ui.theme.AfCard as Card
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,7 +87,7 @@ import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.operations.OperationSnapshot
 import com.shovel.filemanager.operations.OperationStatus
 import com.shovel.filemanager.ui.MainViewModel
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.ui.components.ProviderAppVisual
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.uiText
@@ -494,7 +494,7 @@ internal fun AppearanceSettingsCard(
                 )
             }
             LText("Temos režimas", style = MaterialTheme.typography.labelLarge)
-            AfActionRow {
+            ShovelActionRow {
                 AppThemeMode.entries.forEach { mode ->
                     val label = when (mode) {
                         AppThemeMode.SYSTEM -> "Sistema"

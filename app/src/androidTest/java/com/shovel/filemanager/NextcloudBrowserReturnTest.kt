@@ -22,7 +22,7 @@ import kotlin.concurrent.thread
 class NextcloudBrowserReturnTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
-    @Test fun systemBackFromTheLoginBrowserReturnsToTheSameAfDialog() {
+    @Test fun systemBackFromTheLoginBrowserReturnsToTheSameShovelDialog() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val browser = context.packageManager.resolveActivity(
             android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("http://127.0.0.1/")),
@@ -38,7 +38,7 @@ class NextcloudBrowserReturnTest {
         val active = AtomicBoolean(true)
         val loginPageRequested = AtomicBoolean(false)
         val fixtureFailure = AtomicReference<Throwable?>(null)
-        val worker = thread(name = "af-nextcloud-return-fixture", isDaemon = true) {
+        val worker = thread(name = "shovel-nextcloud-return-fixture", isDaemon = true) {
             while (active.get()) {
                 try {
                     server.accept().use { socket ->
@@ -56,8 +56,8 @@ class NextcloudBrowserReturnTest {
                         val polling = request.contains("/poll ")
                         if (request.contains("/login ")) loginPageRequested.set(true)
                         val body = if (loginStart) {
-                            """{"login":"$endpoint/login","poll":{"endpoint":"$endpoint/poll","token":"af-test-session"}}"""
-                        } else if (polling) "{}" else "<html><body>AF browser return fixture</body></html>"
+                            """{"login":"$endpoint/login","poll":{"endpoint":"$endpoint/poll","token":"shovel-test-session"}}"""
+                        } else if (polling) "{}" else "<html><body>Shovel browser return fixture</body></html>"
                         val bytes = body.toByteArray(Charsets.UTF_8)
                         socket.getOutputStream().apply {
                             write("HTTP/1.1 ${if (polling) "404 Not Found" else "200 OK"}\r\nContent-Length: ${bytes.size}\r\nContent-Type: ${if (loginStart || polling) "application/json" else "text/html"}\r\nConnection: close\r\n\r\n".toByteArray())
@@ -67,7 +67,7 @@ class NextcloudBrowserReturnTest {
                     }
                 } catch (_: java.net.SocketTimeoutException) {
                     // A browser may preconnect without sending a request. Close that idle socket
-                    // and keep serving the actual login page and AF polling requests.
+                    // and keep serving the actual login page and Shovel polling requests.
                 } catch (error: Exception) {
                     if (active.get()) { fixtureFailure.set(error); break }
                 }
@@ -83,7 +83,7 @@ class NextcloudBrowserReturnTest {
                     !activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
             }
             try {
-                if (InstrumentationRegistry.getArguments().getString("afPrepareBrowser") == "true")
+                if (InstrumentationRegistry.getArguments().getString("shovelPrepareBrowser") == "true")
                     prepareChromeEmulatorFixture(context, loginPageRequested)
                 compose.waitUntil(15_000) {
                     fixtureFailure.get()?.let { throw AssertionError("Login fixture failed", it) }

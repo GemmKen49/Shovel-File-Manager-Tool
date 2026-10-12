@@ -30,15 +30,15 @@ class ThumbnailGridVisualTest {
 
     @Test
     fun generatedImagePdfAndApkRenderRealVisualsInTheGrid() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("thumbnail-fixture")), "current")
         val artifact = File(requireNotNull(application.getExternalFilesDir("validation")), "thumbnail-grid.png")
         fixtureRoot.deleteRecursively()
         require(fixtureRoot.mkdirs())
         try {
-            createImage(File(fixtureRoot, "AFFileManager-photo.png"))
-            createPdf(File(fixtureRoot, "AFFileManager-document.pdf"))
-            File(application.applicationInfo.sourceDir).copyTo(File(fixtureRoot, "AFFileManager-demo.apk"), overwrite = true)
+            createImage(File(fixtureRoot, "Shovel-photo.png"))
+            createPdf(File(fixtureRoot, "Shovel-document.pdf"))
+            File(application.applicationInfo.sourceDir).copyTo(File(fixtureRoot, "Shovel-demo.apk"), overwrite = true)
 
             val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
             compose.runOnUiThread {
@@ -49,12 +49,12 @@ class ThumbnailGridVisualTest {
             }
 
             compose.waitUntil(timeoutMillis = 10_000) {
-                compose.onAllNodesWithText("AFFileManager-photo.png").fetchSemanticsNodes().isNotEmpty() &&
-                    compose.onAllNodesWithContentDescription("AFFileManager-photo.png thumbnail", useUnmergedTree = true)
+                compose.onAllNodesWithText("Shovel-photo.png").fetchSemanticsNodes().isNotEmpty() &&
+                    compose.onAllNodesWithContentDescription("Shovel-photo.png thumbnail", useUnmergedTree = true)
                         .fetchSemanticsNodes().isNotEmpty() &&
-                    compose.onAllNodesWithContentDescription("AFFileManager-document.pdf thumbnail", useUnmergedTree = true)
+                    compose.onAllNodesWithContentDescription("Shovel-document.pdf thumbnail", useUnmergedTree = true)
                         .fetchSemanticsNodes().isNotEmpty() &&
-                    compose.onAllNodesWithContentDescription("AFFileManager-demo.apk icon", useUnmergedTree = true)
+                    compose.onAllNodesWithContentDescription("Shovel-demo.apk icon", useUnmergedTree = true)
                         .fetchSemanticsNodes().isNotEmpty()
             }
 
@@ -70,7 +70,7 @@ class ThumbnailGridVisualTest {
 
     @Test
     fun thumbnailChoiceDefaultsToIconsAndIsRememberedPerDirectory() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("thumbnail-preferences")), "run-${System.nanoTime()}")
         val first = File(fixtureRoot, "pirmas")
         val second = File(fixtureRoot, "antras")
@@ -109,7 +109,7 @@ class ThumbnailGridVisualTest {
             val page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
             page.canvas.drawColor(Color.WHITE)
             page.canvas.drawText(
-                "AF File Manager PDF",
+                "Shovel PDF",
                 70f,
                 150f,
                 Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0, 96, 100); textSize = 42f },

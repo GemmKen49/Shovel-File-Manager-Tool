@@ -127,7 +127,7 @@ class SmbRemoteClient private constructor(
     override suspend fun upload(localSource: File, remotePath: String, operation: OperationContext?) = withContext(Dispatchers.IO) {
         require(localSource.isFile) { "Vietinis failas nepasiekiamas" }
         val normalized = RemotePath.normalize(remotePath)
-        val partial = RemotePath.temporarySibling(normalized, "af-partial")
+        val partial = RemotePath.temporarySibling(normalized, "shovel-partial")
         val partialSmb = toSmbPath(partial)
         try {
             share.openFile(

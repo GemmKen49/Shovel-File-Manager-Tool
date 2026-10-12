@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.AFFileManager" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <style name="Theme.Shovel" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">#0B1320</item>
         <item name="android:navigationBarColor">#07101C</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>
-    <!-- External GET_CONTENT requests keep their caller visible behind AF's picker dialog. -->
-    <style name="Theme.AFFilePicker" parent="Theme.AFFileManager">
+    <!-- External GET_CONTENT requests keep their caller visible behind Shovel's picker dialog. -->
+    <style name="Theme.ShovelFilePicker" parent="Theme.Shovel">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">false</item>

@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.shovel.filemanager.archive.ArchiveBrowserIndex
 import com.shovel.filemanager.archive.ArchiveEngine
 import com.shovel.filemanager.core.FileSystemRules
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.uiText
 import kotlinx.coroutines.Dispatchers
@@ -54,7 +54,7 @@ internal fun ApkContentsDialog(file: File, onDismiss: () -> Unit) {
         if (currentPath.isEmpty()) onDismiss()
         else currentPath = ArchiveBrowserIndex.parentOf(currentPath)
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = file.name,
         icon = Icons.Rounded.Archive,
         translateTitle = false,

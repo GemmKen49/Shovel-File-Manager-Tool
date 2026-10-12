@@ -21,7 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.MaterialTheme
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,16 +31,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import com.shovel.filemanager.ui.theme.AfDialog
+import com.shovel.filemanager.ui.theme.ShovelDialog
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.uiText
 
 /**
- * AF's adaptive dialog structure. Short forms wrap their content while long lists and forms use
+ * Shovel's adaptive dialog structure. Short forms wrap their content while long lists and forms use
  * the available height, keeping actions predictable without imitating another product.
  */
 @Composable
-fun AfModalDialog(
+fun ShovelModalDialog(
     title: String,
     icon: ImageVector,
     onDismissRequest: () -> Unit,
@@ -53,7 +53,7 @@ fun AfModalDialog(
     actions: @Composable () -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    AfDialog(
+    ShovelDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {

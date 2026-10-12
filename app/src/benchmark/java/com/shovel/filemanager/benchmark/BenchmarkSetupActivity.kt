@@ -4,7 +4,7 @@ import android.app.Activity
 import android.os.Bundle
 import android.util.Base64
 import android.widget.TextView
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.data.DirectoryDisplaySettings
 import com.shovel.filemanager.data.DirectoryLayoutMode
 import com.shovel.filemanager.network.NetworkProfile
@@ -22,7 +22,7 @@ class BenchmarkSetupActivity : Activity() {
             runCatching { prepare() }
                 .onSuccess { runOnUiThread { status.text = READY } }
                 .onFailure { error -> runOnUiThread { status.text = "$FAILED:${error::class.java.simpleName}" } }
-        }, "af-benchmark-setup").start()
+        }, "shovel-benchmark-setup").start()
     }
 
     private fun prepare() {
@@ -32,13 +32,13 @@ class BenchmarkSetupActivity : Activity() {
         require(benchmarkRoot.isDirectory || benchmarkRoot.mkdirs())
 
         val large = File(benchmarkRoot, "large")
-        seedDirectory(large, LARGE_COUNT, ".txt") { index -> "AF benchmark file $index\n".toByteArray() }
+        seedDirectory(large, LARGE_COUNT, ".txt") { index -> "Shovel benchmark file $index\n".toByteArray() }
 
         val thumbnails = File(benchmarkRoot, "thumbnails")
         val png = Base64.decode(PNG_BASE64, Base64.DEFAULT)
         seedDirectory(thumbnails, THUMBNAIL_COUNT, ".png") { png }
 
-        val graph = (application as AFFileManagerApplication).graph
+        val graph = (application as ShovelApplication).graph
         graph.navigation.setDirectoryDisplaySettings(
             large.canonicalPath,
             DirectoryDisplaySettings(layoutMode = DirectoryLayoutMode.LIST, showThumbnails = false),
@@ -64,7 +64,7 @@ class BenchmarkSetupActivity : Activity() {
     }
 
     private fun seedDirectory(directory: File, count: Int, extension: String, bytes: (Int) -> ByteArray) {
-        val marker = File(directory, ".af-benchmark-$count$extension")
+        val marker = File(directory, ".shovel-benchmark-$count$extension")
         val ready = marker.isFile && directory.listFiles()?.count { !it.name.startsWith('.') } == count
         if (ready) return
         val benchmarkRoot = requireNotNull(directory.parentFile).canonicalFile
@@ -83,7 +83,7 @@ class BenchmarkSetupActivity : Activity() {
         const val READY = "BENCHMARK_READY"
         const val PREPARING = "BENCHMARK_PREPARING"
         const val FAILED = "BENCHMARK_FAILED"
-        const val REMOTE_PROFILE_ID = "af-benchmark-ftp"
+        const val REMOTE_PROFILE_ID = "shovel-benchmark-ftp"
         const val FTP_PORT = 21210
         const val LARGE_COUNT = 10_000
         const val THUMBNAIL_COUNT = 400

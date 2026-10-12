@@ -12,17 +12,17 @@ class NearbyDiscoveryPayloadTest {
             val label = NearbyDiscoveryPayload.serviceLabel(name)
             assertTrue(label.toByteArray(StandardCharsets.UTF_8).size <= 63)
             assertEquals(label, label.toByteArray(StandardCharsets.UTF_8).toString(StandardCharsets.UTF_8))
-            assertTrue(label.startsWith("AF "))
+            assertTrue(label.startsWith("Shovel "))
         }
     }
     @Test fun groupDiscoveryIsOptionalAndItsUtf8MetadataRemainsBounded() {
         val pairing = NearbyPairing.create("192.168.1.20", 8088, "12345678", "Phone")
         val attributes = NearbyDiscoveryPayload.attributes(pairing, "Phone", "Android", "新".repeat(64))
         assertTrue(attributes.values.all { it.size <= 128 })
-        val group = NearbyDiscoveryPayload.decode("AF group", 8088, "192.168.1.20", attributes)
+        val group = NearbyDiscoveryPayload.decode("Shovel group", 8088, "192.168.1.20", attributes)
         assertTrue(group?.groupName?.isNotBlank() == true)
         assertEquals(pairing, group?.pairing)
-        val legacy = NearbyDiscoveryPayload.decode("AF phone", 8088, "192.168.1.20",
+        val legacy = NearbyDiscoveryPayload.decode("Shovel phone", 8088, "192.168.1.20",
             NearbyDiscoveryPayload.attributes(pairing, "Phone", "Android"))
         assertNull(legacy?.groupName)
     }
@@ -30,7 +30,7 @@ class NearbyDiscoveryPayloadTest {
     fun advertisedPrivateReceiverRoundTripsWithoutPersistingAnything() {
         val pairing = NearbyPairing.create("192.168.1.20", 8088, "12345678", "My phone")
         val attributes = NearbyDiscoveryPayload.attributes(pairing, "My phone", "Samsung M13")
-        val result = NearbyDiscoveryPayload.decode("AF My phone", 8088, "192.168.1.20", attributes)
+        val result = NearbyDiscoveryPayload.decode("Shovel My phone", 8088, "192.168.1.20", attributes)
 
         assertEquals(pairing, result?.pairing)
         assertEquals("My phone", result?.receiverName)

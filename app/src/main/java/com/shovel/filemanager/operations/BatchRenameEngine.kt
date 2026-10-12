@@ -251,7 +251,7 @@ class BatchRenameEngine(
     private fun uniqueTemporary(source: File): File {
         val parent = requireNotNull(source.parentFile)
         repeat(MAX_TEMP_ATTEMPTS) {
-            val candidate = File(parent, ".af-rename-${UUID.randomUUID()}.tmp")
+            val candidate = File(parent, ".shovel-rename-${UUID.randomUUID()}.tmp")
             if (!candidate.exists()) return candidate
         }
         throw IllegalStateException("Nepavyko parinkti saugaus laikino pavadinimo")

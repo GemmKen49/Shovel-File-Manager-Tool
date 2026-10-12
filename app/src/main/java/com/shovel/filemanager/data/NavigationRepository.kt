@@ -89,7 +89,7 @@ class NavigationRepository(context: Context) {
             (0 until array.length()).mapNotNull { index ->
                 when (val stored = array.getString(index)) {
                     // v0.28 and older stored these as three separate home sections.
-                    // They now share one AF tools section, while retaining the first saved position.
+                    // They now share one Shovel tools section, while retaining the first saved position.
                     "TRASH" -> HomeSection.TOOLS
                     else -> runCatching { HomeSection.valueOf(stored) }.getOrNull()
                 }

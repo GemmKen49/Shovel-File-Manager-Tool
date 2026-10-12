@@ -101,22 +101,22 @@ import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.SaveAs
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Info
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
-import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -163,7 +163,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import androidx.compose.ui.window.DialogProperties
-import com.shovel.filemanager.ui.theme.AfDialog
+import com.shovel.filemanager.ui.theme.ShovelDialog
 import com.shovel.filemanager.archive.ArchiveEntryInfo
 import com.shovel.filemanager.archive.ArchiveBrowserIndex
 import com.shovel.filemanager.archive.ArchiveBrowserItem
@@ -188,8 +188,8 @@ import com.shovel.filemanager.model.SortMode
 import com.shovel.filemanager.media.BackgroundPlaybackService
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shovel.filemanager.ui.components.BackgroundPlaybackBar
-import com.shovel.filemanager.ui.components.AfActionRow
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelActionRow
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.data.DirectoryDisplaySettings
 import com.shovel.filemanager.data.DirectoryDisplayDefaults
 import com.shovel.filemanager.data.DirectoryGridStyle
@@ -209,7 +209,7 @@ import com.shovel.filemanager.ui.components.DirectoryEntryFilterDialog
 import com.shovel.filemanager.ui.components.DirectoryEntryFilterRules
 import com.shovel.filemanager.ui.components.DirectoryDisplaySettingsDialog
 import com.shovel.filemanager.ui.components.DirectoryQuickSearchField
-import com.shovel.filemanager.ui.components.AfPullToRefresh
+import com.shovel.filemanager.ui.components.ShovelPullToRefresh
 import com.shovel.filemanager.ui.components.SelectionActionBar
 import com.shovel.filemanager.ui.components.LocalFileVisual
 import com.shovel.filemanager.ui.components.DeleteConfirmationDialog
@@ -445,7 +445,7 @@ fun FilePreviewDialog(
         }
     }
 
-    AfDialog(onDismissRequest = navigateBack, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    ShovelDialog(onDismissRequest = navigateBack, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         com.shovel.filemanager.ui.theme.AppearancePage(
             modifier = Modifier.fillMaxSize().testTag("file-preview-dialog"),
         ) {
@@ -694,14 +694,14 @@ fun FilePreviewDialog(
             target is PreviewTarget.RemoteArchive ||
             (target is PreviewTarget.PrivilegedFile && !target.localOrigin)
         val explanation = when (target) {
-            is PreviewTarget.ContentFile -> "Elementas bus trinamas per Android dokumentų teikėją ir nepateks į AF File Manager šiukšlinę."
+            is PreviewTarget.ContentFile -> "Elementas bus trinamas per Android dokumentų teikėją ir nepateks į Shovel šiukšlinę."
             is PreviewTarget.RemoteFile,
             is PreviewTarget.RemoteArchive,
             -> "Elementai bus ištrinti nuotoliniame serveryje be vietinės šiukšlinės."
-            is PreviewTarget.PrivilegedFile -> if (target.localOrigin) "Elementus bus galima atkurti iš AF File Manager šiukšlinės."
-                else "Šių apsaugotų failų nebus galima atkurti iš AF File Manager šiukšlinės."
+            is PreviewTarget.PrivilegedFile -> if (target.localOrigin) "Elementus bus galima atkurti iš Shovel šiukšlinės."
+                else "Šių apsaugotų failų nebus galima atkurti iš Shovel šiukšlinės."
             is PreviewTarget.TrashFile -> "Elemento nebebus galima atkurti iš programos šiukšliadėžės."
-            else -> "Elementus bus galima atkurti iš AF File Manager šiukšlinės."
+            else -> "Elementus bus galima atkurti iš Shovel šiukšlinės."
         }
         DeleteConfirmationDialog(
             names = listOf(source.name),
@@ -1471,7 +1471,7 @@ private fun PdfTextSelectionDialog(
             }
         }
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = "PDF puslapis ${pageIndex + 1}",
         subtitle = "Kopijuoti pažymėtą tekstą",
         icon = Icons.Rounded.ContentCopy,
@@ -2010,7 +2010,7 @@ internal fun PlaybackControls(
                 Icon(Icons.Rounded.SkipNext, contentDescription = uiText("Kitas failas"))
             }
         }
-        AfActionRow(modifier = Modifier.testTag("${prefix}_playback_options")) {
+        ShovelActionRow(modifier = Modifier.testTag("${prefix}_playback_options")) {
             FilterChip(
                 selected = loopEnabled,
                 onClick = { onLoopChanged(!loopEnabled) },
@@ -2184,7 +2184,7 @@ private fun EditConflictDialog(
         title = { LText("Originalus failas pasikeitė") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LText("AF File Manager jo neperrašė. Palyginkite versijas ir pasirinkite veiksmą.")
+                LText("Shovel jo neperrašė. Palyginkite versijas ir pasirinkite veiksmą.")
                 Text(conflict.originLabel, style = MaterialTheme.typography.bodySmall)
                 LText("Originalas atidarymo metu", fontWeight = FontWeight.SemiBold)
                 Text(revisionSummary(conflict.expected, dateFormat), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
@@ -2245,7 +2245,7 @@ private fun EditSaveAsConflictDialog(
         title = { LText("Paskirties failas jau yra") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LText("AF File Manager nieko neperrašė. Pasirinkite, kaip išspręsti konfliktą.")
+                LText("Shovel nieko neperrašė. Pasirinkite, kaip išspręsti konfliktą.")
                 Text(conflict.destination.label, style = MaterialTheme.typography.bodySmall)
                 PropertyRow("Esamo failo dydis", FileSystemRules.humanBytes(conflict.existing.sizeBytes))
                 conflict.existing.modifiedAtMillis?.let { modified ->
@@ -2555,7 +2555,7 @@ private fun ArchivePreview(
                 modifier = Modifier.testTag("directory_search_field_archive"),
             )
         }
-        AfPullToRefresh(
+        ShovelPullToRefresh(
             isRefreshing = refreshing,
             onRefresh = requestRefresh,
             modifier = Modifier.fillMaxWidth().weight(1f),
@@ -3203,7 +3203,7 @@ private fun MediaDetailsDialog(source: PreviewSource, onDismiss: () -> Unit) {
             }
         }
     }
-    AfModalDialog(title = "Informacija", icon = Icons.Rounded.Info, onDismissRequest = onDismiss,
+    ShovelModalDialog(title = "Informacija", icon = Icons.Rounded.Info, onDismissRequest = onDismiss,
         modifier = Modifier.testTag("preview_details_dialog"), actions = { TextButton(onClick = onDismiss) { LText("Uždaryti") } }) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
             PropertyRow("Pavadinimas", source.name)
@@ -3222,7 +3222,7 @@ private fun MediaDetailsDialog(source: PreviewSource, onDismiss: () -> Unit) {
 private fun mediaPreviewInfo(context: android.content.Context, source: PreviewSource, includeArtwork: Boolean = true): MediaPreviewInfo {
     val retriever = MediaMetadataRetriever()
     return try {
-        // A content URI keeps the file descriptor owned by AF and avoids asking the
+        // A content URI keeps the file descriptor owned by Shovel and avoids asking the
         // platform media process to reopen an app-private or privileged filesystem path.
         retriever.setDataSource(context, source.uri(context))
         MediaPreviewInfo(

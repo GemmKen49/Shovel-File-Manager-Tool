@@ -356,12 +356,12 @@ class LanWebDavServerTest {
             assertTrue(response.startsWith("HTTP/1.1 400"))
             assertEquals("keep the old destination", root.resolve("target.txt").readText())
             assertTrue(nested.isDirectory)
-            assertFalse(root.listFiles()!!.any { it.name.startsWith(".af-webdav-") })
+            assertFalse(root.listFiles()!!.any { it.name.startsWith(".shovel-webdav-") })
         }
     }
 
     private fun authenticated(firstLines: String): String {
-        val token = Base64.getEncoder().encodeToString("af:12345678".toByteArray(StandardCharsets.UTF_8))
+        val token = Base64.getEncoder().encodeToString("shovel:12345678".toByteArray(StandardCharsets.UTF_8))
         return firstLines.trimEnd('\r', '\n') + "\r\nAuthorization: Basic $token\r\n\r\n"
     }
 

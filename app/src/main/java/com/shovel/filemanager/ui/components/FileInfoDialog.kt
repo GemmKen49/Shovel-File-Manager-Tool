@@ -45,7 +45,7 @@ fun FileInfoDialog(entry: FileEntry, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val settingsError = uiText("Programos nustatymų atidaryti nepavyko")
     val dateFormat = rememberLocalizedDateTimeFormat(DateFormat.MEDIUM, DateFormat.SHORT)
-    AfModalDialog(
+    ShovelModalDialog(
         title = entry.name,
         translateTitle = false,
         icon = Icons.Rounded.Info,
@@ -111,7 +111,7 @@ fun FileInfoDialog(
         loading = false
     }
 
-    AfModalDialog(
+    ShovelModalDialog(
         title = single?.name ?: "Informacija",
         translateTitle = single == null,
         icon = Icons.Rounded.Info,

@@ -2,7 +2,7 @@ package com.shovel.filemanager.data
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.operations.OperationContext
 import com.shovel.filemanager.operations.OperationStatus
 import kotlinx.coroutines.runBlocking
@@ -17,7 +17,7 @@ import java.io.File
 class TrashRepositoryBrowserTest {
     @Test
     fun largeBatchContinuesPastAStaleSelectionAndCompactsNestedRoots() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val sourceRoot = File(requireNotNull(application.getExternalFilesDir("trash-batch-source")), "run-${System.nanoTime()}")
         val trashRoot = File(application.cacheDir, "trash-batch-${System.nanoTime()}")
         require(sourceRoot.mkdirs())
@@ -46,7 +46,7 @@ class TrashRepositoryBrowserTest {
 
     @Test
     fun retentionKeepsItemsWhenDisabledAndDeletesOnlyExpiredItems() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val sourceRoot = File(requireNotNull(application.getExternalFilesDir("trash-retention-source")), "run-${System.nanoTime()}")
         val trashRoot = File(application.cacheDir, "trash-retention-${System.nanoTime()}")
         require(sourceRoot.mkdirs())
@@ -72,7 +72,7 @@ class TrashRepositoryBrowserTest {
 
     @Test
     fun retentionChoicePersistsAcrossRepositoryInstances() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val first = TrashRetentionSettings(application)
         val original = first.load()
         try {
@@ -85,7 +85,7 @@ class TrashRepositoryBrowserTest {
 
     @Test
     fun browsesDirectoriesOneLevelAtATimeAndEmptiesAllTrackedItems() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val sourceRoot = File(requireNotNull(application.getExternalFilesDir("trash-browser-source")), "run-${System.nanoTime()}")
         val trashRoot = File(application.cacheDir, "trash-browser-${System.nanoTime()}")
         require(sourceRoot.mkdirs())
@@ -131,7 +131,7 @@ class TrashRepositoryBrowserTest {
 
     @Test
     fun emptyAllRemovesInvisibleOrphanedAndInterruptedTrashData() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val sourceRoot = File(requireNotNull(application.getExternalFilesDir("trash-orphan-source")), "run-${System.nanoTime()}")
         val trashRoot = File(application.cacheDir, "trash-orphans-${System.nanoTime()}")
         require(sourceRoot.mkdirs())

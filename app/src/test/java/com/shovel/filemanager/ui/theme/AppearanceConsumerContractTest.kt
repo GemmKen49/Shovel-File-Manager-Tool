@@ -13,18 +13,18 @@ class AppearanceConsumerContractTest {
         val rawImport = Regex("(?m)^import androidx\\.compose\\.material3\\.(AlertDialog|DropdownMenu|Card|ElevatedCard|Surface|FilterChip|Button)\\r?$")
         val violations = source.walkTopDown().filter { it.extension == "kt" && "/ui/theme/" !in it.invariantSeparatorsPath }
             .filter { rawImport.containsMatchIn(it.readText()) }.map { it.relativeTo(source).path }.toList()
-        assertEquals("Direct Material imports bypass AF's global appearance contract", emptyList<String>(), violations)
+        assertEquals("Direct Material imports bypass Shovel's global appearance contract", emptyList<String>(), violations)
     }
 
     @Test fun everyPageSizedBrowserUsesTheSharedPageBackground() {
         listOf("ui/screens/FileCategoryBrowserDialog.kt", "ui/screens/AdvancedStorageBrowserDialog.kt",
             "ui/screens/SafBrowserDialog.kt", "ui/screens/TrashBrowserDialog.kt", "ui/screens/CleanupReviewDialog.kt",
-            "ui/screens/AfWorkflowDialog.kt", "ui/preview/FilePreviewDialog.kt", "ui/preview/PdfSignatureDialog.kt",
+            "ui/screens/ShovelWorkflowDialog.kt", "ui/preview/FilePreviewDialog.kt", "ui/preview/PdfSignatureDialog.kt",
             "ui/terminal/TerminalOverlay.kt", "apk/SplitApkInstallActivity.kt").forEach {
             assertTrue(it, File(source, it).readText().contains("AppearancePage("))
         }
         val externalPicker = File(source, "picker/FilePickerActivity.kt").readText()
-        assertTrue("External picker keeps the shared appearance theme", externalPicker.contains("AFFileManagerTheme("))
+        assertTrue("External picker keeps the shared appearance theme", externalPicker.contains("ShovelTheme("))
         assertTrue("External picker uses the shared dialog", externalPicker.contains("LocalUploadDialog("))
         assertFalse("External picker must leave the caller visible", externalPicker.contains("AppearancePage("))
     }
@@ -36,6 +36,6 @@ class AppearanceConsumerContractTest {
             .filter { rawImport.containsMatchIn(it.readText()) }
             .map { it.relativeTo(source).path }
             .toList()
-        assertEquals("Direct Dialog imports bypass AF's live interface scale", emptyList<String>(), violations)
+        assertEquals("Direct Dialog imports bypass Shovel's live interface scale", emptyList<String>(), violations)
     }
 }

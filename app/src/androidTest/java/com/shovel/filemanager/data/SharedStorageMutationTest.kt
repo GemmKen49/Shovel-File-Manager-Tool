@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.model.ConflictPolicy
 import com.shovel.filemanager.model.SortDirection
 import com.shovel.filemanager.model.SortMode
@@ -16,7 +16,7 @@ import java.io.File
 import java.util.UUID
 
 class SharedStorageMutationTest {
-    private val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+    private val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
 
     private fun indexedName(file: File): String? = app.contentResolver.query(
         MediaStore.Files.getContentUri("external"), arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
@@ -33,7 +33,7 @@ class SharedStorageMutationTest {
     }
 
     private suspend fun fixture(block: suspend (File) -> Unit) {
-        val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "AFIndex-${UUID.randomUUID()}")
+        val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "ShovelIndex-${UUID.randomUUID()}")
         check(root.mkdirs()) { "Shared-storage test permission is missing" }
         try { block(root) } finally {
             root.deleteRecursively()

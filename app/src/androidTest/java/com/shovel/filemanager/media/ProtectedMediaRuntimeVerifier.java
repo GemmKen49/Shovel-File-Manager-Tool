@@ -39,7 +39,7 @@ public final class ProtectedMediaRuntimeVerifier {
         long modified = original.lastModified();
         byte[] originalDigest = digest(original);
         File previewRoot = new File(context.getCacheDir(), "privileged-previews");
-        File invalid = new File(context.getCacheDir(), "af-invalid-audio-" + UUID.randomUUID() + ".ogg");
+        File invalid = new File(context.getCacheDir(), "shovel-invalid-audio-" + UUID.randomUUID() + ".ogg");
         try {
             for (int attempt = 0; attempt < 2; attempt++) {
                 open(instrumentation, original);

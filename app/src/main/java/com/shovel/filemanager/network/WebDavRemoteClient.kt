@@ -132,7 +132,7 @@ class WebDavRemoteClient private constructor(
     override suspend fun upload(localSource: File, remotePath: String, operation: OperationContext?) = withContext(Dispatchers.IO) {
         require(localSource.isFile) { "Vietinis failas nepasiekiamas" }
         val normalized = RemotePath.normalize(remotePath)
-        val partial = RemotePath.temporarySibling(normalized, "af-partial")
+        val partial = RemotePath.temporarySibling(normalized, "shovel-partial")
         try {
             val body = object : RequestBody() {
                 override fun contentType() = "application/octet-stream".toMediaType()
@@ -212,7 +212,7 @@ class WebDavRemoteClient private constructor(
     private fun execute(request: Request, expected: Set<Int>): Response {
         var authenticated = request.newBuilder()
             .header("Authorization", authorization)
-            .header("User-Agent", "AFFileManager/${BuildConfig.VERSION_NAME}")
+            .header("User-Agent", "Shovel/${BuildConfig.VERSION_NAME}")
             .build()
         var followed = 0
         while (true) {

@@ -34,7 +34,7 @@ class ArchiveEngineTest {
     fun zipRoundTripPreservesNestedContent() = runBlocking {
         val source = temporary.newFolder("source")
         File(source, "nested").mkdirs()
-        File(source, "nested/duomenys.txt").writeText("AF File Manager – archyvo testas")
+        File(source, "nested/duomenys.txt").writeText("Shovel – archyvo testas")
         val archive = File(temporary.root, "backup.zip")
         val engine = ArchiveEngine()
 
@@ -45,7 +45,7 @@ class ArchiveEngineTest {
         val output = temporary.newFolder("output")
         engine.extract(archive, output)
         val restored = output.walkTopDown().first { it.name == "duomenys.txt" }
-        assertEquals("AF File Manager – archyvo testas", restored.readText())
+        assertEquals("Shovel – archyvo testas", restored.readText())
     }
 
     @Test

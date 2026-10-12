@@ -27,10 +27,10 @@ import androidx.compose.material.icons.rounded.FormatListNumbered
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ZoomIn
 import androidx.compose.material.icons.rounded.ZoomOut
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
-import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
 import androidx.compose.material3.Checkbox
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -38,7 +38,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable

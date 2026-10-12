@@ -28,7 +28,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.transfer.TransferFileProgress
 import com.shovel.filemanager.transfer.TransferFileStatus
 import com.shovel.filemanager.transfer.NearbyContact
@@ -49,7 +49,7 @@ class NearbyTransferDetailsTest {
         )
         var stopped = -1
         var previewed = false
-        compose.setContent { com.shovel.filemanager.ui.theme.AFFileManagerTheme {
+        compose.setContent { com.shovel.filemanager.ui.theme.ShovelTheme {
             NearbyTransferDetails(files, 10, 21, 3, { previewed = true }, {}, onCancelFile = { _, index -> stopped = index })
         } }
         compose.onNodeWithTag("nearby_folder_open_a").performClick()
@@ -69,7 +69,7 @@ class NearbyTransferDetailsTest {
     }
 
     @Test fun receivingShowsDetailsOnceAndTheOriginalQrControlsRemainReachable() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = androidx.lifecycle.ViewModelStore()
         val state = mutableStateOf(com.shovel.filemanager.transfer.LanTransferState())
         try {
@@ -100,7 +100,7 @@ class NearbyTransferDetailsTest {
     }
 
     @Test fun pairedDetailsCombineBothDirectionsAndCloseNeverDisconnects() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = androidx.lifecycle.ViewModelStore()
         val peer = com.shovel.filemanager.transfer.NearbyPairing("192.168.1.10", 8080, "12345678", "Other phone")
         val controller = com.shovel.filemanager.transfer.NearbyTransferController
@@ -113,7 +113,7 @@ class NearbyTransferDetailsTest {
             val lan = com.shovel.filemanager.transfer.LanTransferState(status = com.shovel.filemanager.transfer.LanTransferStatus.RUNNING,
                 incomingUpload = com.shovel.filemanager.transfer.LanUploadProgress("", 0, 1, 0, 0, 0, 30,
                     files = listOf(TransferFileProgress("receiving.txt", 30))))
-            compose.setContent { com.shovel.filemanager.ui.theme.AFFileManagerTheme {
+            compose.setContent { com.shovel.filemanager.ui.theme.ShovelTheme {
                 NearbyPhoneTransferCard(
                     viewModel = vm,
                     receiveDirectory = app.cacheDir.path,
@@ -157,13 +157,13 @@ class NearbyTransferDetailsTest {
     }
 
     @Test fun pairedScreenHidesOtherProtocolSetupButKeepsSessionActions() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = androidx.lifecycle.ViewModelStore()
         val controller = com.shovel.filemanager.transfer.NearbyTransferController
         try {
             controller.connection.remember(com.shovel.filemanager.transfer.NearbyPairing("192.168.1.10", 8080, "12345678", "Other phone"))
             val vm = com.shovel.filemanager.ui.MainViewModel(app).also { store.put("paired-screen", it) }
-            compose.setContent { com.shovel.filemanager.ui.theme.AFFileManagerTheme {
+            compose.setContent { com.shovel.filemanager.ui.theme.ShovelTheme {
                 SharingScreen(vm, androidx.compose.foundation.layout.PaddingValues())
             } }
             compose.onNodeWithText("FTP").assertDoesNotExist()
@@ -181,7 +181,7 @@ class NearbyTransferDetailsTest {
             com.shovel.filemanager.transfer.NearbyChatMessage("1", "Alice phone", "Already sent", true, 1),
             com.shovel.filemanager.transfer.NearbyChatMessage("2", "Bob phone", "Received reply", false, 2),
         )
-        compose.setContent { com.shovel.filemanager.ui.theme.AFFileManagerTheme {
+        compose.setContent { com.shovel.filemanager.ui.theme.ShovelTheme {
             NearbyTransferDetails(
                 files = emptyList(), transferredBytes = 0, totalBytes = 0, totalFiles = 0,
                 onPreview = {}, onDismiss = {}, localName = "Alice phone", peerName = "Bob phone",
@@ -198,7 +198,7 @@ class NearbyTransferDetailsTest {
         compose.onNodeWithTag("nearby_chat_message_0").performTouchInput { longClick() }
         lateinit var clipboard: ClipboardManager
         compose.runOnIdle {
-            clipboard = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+            clipboard = ApplicationProvider.getApplicationContext<ShovelApplication>()
                 .getSystemService(ClipboardManager::class.java)
         }
         compose.waitUntil(5_000) {
@@ -210,7 +210,7 @@ class NearbyTransferDetailsTest {
     }
 
     @Test fun onlyCompleteReceivedFilesOfferPreviewAndClosingDoesNotCancel() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val photo = File(app.cacheDir, "transfer-preview-${System.nanoTime()}.png")
         val bitmap = Bitmap.createBitmap(60, 40, Bitmap.Config.ARGB_8888).apply { eraseColor(0xff008577.toInt()) }
         photo.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -300,7 +300,7 @@ class NearbyTransferDetailsTest {
     }
 
     @Test fun fileViewToggleShowsFourColumnsAndPreservesFileActions() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val photo = File(app.cacheDir, "grid-preview-${System.nanoTime()}.png")
         val bitmap = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
         photo.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -369,7 +369,7 @@ class NearbyTransferDetailsTest {
     }
 
     @Test fun transferHistoryRestoresARealPreviewInsteadOfAFalseLock() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val photo = File(app.cacheDir, "history-preview-${System.nanoTime()}.png")
         val bitmap = Bitmap.createBitmap(32, 24, Bitmap.Config.ARGB_8888).apply { eraseColor(0xff00695c.toInt()) }
         photo.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -430,7 +430,7 @@ class NearbyTransferDetailsTest {
     }
 
     @Test fun receiveDestinationCanBeChosenFromRecentPaths() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = androidx.lifecycle.ViewModelStore()
         val destination = mutableStateOf("/storage/new")
         try {
@@ -453,7 +453,7 @@ class NearbyTransferDetailsTest {
     }
 
     @Test fun sendingFolderShowsItsOwnProgressAndOpensFileDetails() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = androidx.lifecycle.ViewModelStore()
         val controller = com.shovel.filemanager.transfer.NearbyTransferController
         try {

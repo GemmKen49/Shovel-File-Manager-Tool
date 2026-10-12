@@ -18,7 +18,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.After
@@ -29,7 +29,7 @@ import java.util.UUID
 
 class FilePickerActivityTest {
     @get:Rule val compose = createEmptyComposeRule()
-    private val app get() = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+    private val app get() = ApplicationProvider.getApplicationContext<ShovelApplication>()
     private val root = Environment.getExternalStorageDirectory()
     private lateinit var fixture: File
     private var oldLock = false
@@ -39,7 +39,7 @@ class FilePickerActivityTest {
             else app.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED &&
                 app.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         check(storageGranted) { "Grant storage access only on the isolated test emulator before this suite" }
-        fixture = File(root, "Download/af-picker-145-${UUID.randomUUID()}").apply { check(mkdirs()) }
+        fixture = File(root, "Download/shovel-picker-145-${UUID.randomUUID()}").apply { check(mkdirs()) }
         File(fixture, "first.txt").writeText("first picker fixture")
         File(fixture, "second.txt").writeText("second picker fixture")
         File(fixture, "excluded.png").writeBytes(byteArrayOf(0, 1, 2))
@@ -133,7 +133,7 @@ class FilePickerActivityTest {
     @Test fun appLockCannotBeBypassedByExternalPickerOrBackgroundReturn() {
         app.graph.appLock.setEnabled(true)
         ActivityScenario.launchActivityForResult<FilePickerActivity>(request(false)).use { scenario ->
-            compose.onNodeWithText("AF File Manager is locked").assertIsDisplayed()
+            compose.onNodeWithText("Shovel is locked").assertIsDisplayed()
             compose.onNodeWithTag("local_upload_search").assertDoesNotExist()
             compose.onNodeWithText("Unlock").performClick()
             // This isolated emulator deliberately has no biometric/device credential enrolled.
@@ -147,7 +147,7 @@ class FilePickerActivityTest {
             scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
             app.graph.appLock.setEnabled(true)
             scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
-            compose.onNodeWithText("AF File Manager is locked").assertIsDisplayed()
+            compose.onNodeWithText("Shovel is locked").assertIsDisplayed()
             compose.onNodeWithText("first.txt").assertDoesNotExist()
             compose.onNodeWithText("Cancel").performClick()
             assertEquals(Activity.RESULT_CANCELED, scenario.result.resultCode)

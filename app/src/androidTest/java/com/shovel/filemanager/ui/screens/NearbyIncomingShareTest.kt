@@ -15,7 +15,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.ui.IncomingShareUiState
 import com.shovel.filemanager.ui.MainViewModel
 import org.junit.Assert.assertEquals
@@ -28,7 +28,7 @@ class NearbyIncomingShareTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun startingTransferHandsThePrivateCopyToTheServiceBeforeClosingTheDialog() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val source = File(app.cacheDir, "forward-${System.nanoTime()}.txt").apply { writeText("forwarded from another app") }
         val destination = File(app.cacheDir, "receive-${System.nanoTime()}").apply { mkdir() }
         val stageRoot = File(app.cacheDir, "nearby-send-staging")
@@ -73,7 +73,7 @@ class NearbyIncomingShareTest {
     }
 
     @Test fun unavailableIncomingContentSettlesAndAllowsReturningToThePicker() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val request = mutableStateOf<IncomingShareUiState?>(IncomingShareUiState(456L,
             listOf(android.net.Uri.parse("content://com.shovel.filemanager.missing.test/file.txt"))))
         val store = ViewModelStore()
@@ -91,7 +91,7 @@ class NearbyIncomingShareTest {
     }
 
     @Test fun consumingIncomingRequestDoesNotCancelPreparationAndCloseCleansPrivateCopy() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val source = File(app.cacheDir, "incoming-${System.nanoTime()}.txt").apply { writeText("shared fixture") }
         val stageRoot = File(app.cacheDir, "nearby-send-staging")
         val before = stageRoot.listFiles().orEmpty().map(File::getName).toSet()

@@ -38,7 +38,7 @@ internal object VerifiedSshSessionFactory {
                 try {
                     if (privateKeyBytes.isNotEmpty()) {
                         jsch.addIdentity(
-                            "af-file-manager-${profile.id}",
+                            "shovel-${profile.id}",
                             privateKeyBytes,
                             null,
                             passwordBytes.takeIf(ByteArray::isNotEmpty),
@@ -100,7 +100,7 @@ internal class FingerprintHostKeyRepository(
     override fun add(hostkey: HostKey?, userinfo: com.jcraft.jsch.UserInfo?) = Unit
     override fun remove(host: String?, type: String?) = Unit
     override fun remove(host: String?, type: String?, key: ByteArray?) = Unit
-    override fun getKnownHostsRepositoryID(): String = "AF File Manager SHA-256 pinning"
+    override fun getKnownHostsRepositoryID(): String = "Shovel SHA-256 pinning"
     override fun getHostKey(): Array<HostKey> = emptyArray()
     override fun getHostKey(host: String?, type: String?): Array<HostKey> = emptyArray()
 

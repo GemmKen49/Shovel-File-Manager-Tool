@@ -47,7 +47,7 @@ internal fun AppearanceContentOn(fill: Color, content: @Composable () -> Unit) {
 }
 
 @Composable
-internal fun AfSurface(
+internal fun ShovelSurface(
     modifier: Modifier = Modifier,
     shape: Shape = RectangleShape,
     color: Color = MaterialTheme.colorScheme.surface,
@@ -65,7 +65,7 @@ internal fun AfSurface(
 }
 
 @Composable
-internal fun AfCard(
+internal fun ShovelCard(
     modifier: Modifier = Modifier,
     shape: Shape = CardDefaults.shape,
     colors: CardColors = CardDefaults.cardColors(),
@@ -80,7 +80,7 @@ internal fun AfCard(
 }
 
 @Composable
-internal fun AfCard(
+internal fun ShovelCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -99,7 +99,7 @@ internal fun AfCard(
 }
 
 @Composable
-internal fun AfElevatedCard(
+internal fun ShovelElevatedCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -107,13 +107,13 @@ internal fun AfElevatedCard(
     colors: CardColors = CardDefaults.elevatedCardColors(),
     elevation: CardElevation = appearanceCardElevation(),
     content: @Composable ColumnScope.() -> Unit,
-) = AfCard(onClick, modifier, enabled, shape, colors, elevation, content = content)
+) = ShovelCard(onClick, modifier, enabled, shape, colors, elevation, content = content)
 
 @Composable
-internal fun AfElevatedCard(
+internal fun ShovelElevatedCard(
     modifier: Modifier = Modifier,
     shape: Shape = CardDefaults.elevatedShape,
     colors: CardColors = CardDefaults.elevatedCardColors(),
     elevation: CardElevation = appearanceCardElevation(),
     content: @Composable ColumnScope.() -> Unit,
-) = AfCard(modifier, shape, colors, elevation, content = content)
+) = ShovelCard(modifier, shape, colors, elevation, content = content)

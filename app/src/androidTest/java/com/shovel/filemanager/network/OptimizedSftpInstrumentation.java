@@ -23,7 +23,7 @@ public final class OptimizedSftpInstrumentation extends Instrumentation {
     @Override
     public void onStart() {
         Bundle result = new Bundle();
-        String suite = testArguments.getString("afSuite", "sftp");
+        String suite = testArguments.getString("shovelSuite", "sftp");
         char[] password = new char[0];
         try {
             boolean verified;
@@ -53,18 +53,18 @@ public final class OptimizedSftpInstrumentation extends Instrumentation {
                 launchTargetActivity();
                 verified = com.shovel.filemanager.media.ProtectedMediaRuntimeVerifier.verify(this);
             } else if ("webdav".equals(suite)) {
-                password = required("afWebDavPassword").toCharArray();
+                password = required("shovelWebDavPassword").toCharArray();
                 verified = WebDavRuntimeVerifier.verify(
-                        required("afWebDavHost"), Integer.parseInt(required("afWebDavPort")),
-                        Boolean.parseBoolean(testArguments.getString("afWebDavTls", "false")),
-                        required("afWebDavUsername"), password, required("afWebDavPath"),
-                        testArguments.getString("afWebDavExpectedFile", ""),
-                        testArguments.getString("afWebDavExpectedError", "")
+                        required("shovelWebDavHost"), Integer.parseInt(required("shovelWebDavPort")),
+                        Boolean.parseBoolean(testArguments.getString("shovelWebDavTls", "false")),
+                        required("shovelWebDavUsername"), password, required("shovelWebDavPath"),
+                        testArguments.getString("shovelWebDavExpectedFile", ""),
+                        testArguments.getString("shovelWebDavExpectedError", "")
                 );
             } else if ("privileged".equals(suite)) {
                 launchTargetActivity();
                 verified = PrivilegedTerminalRuntimeVerifier.verifyAuthorizedBackend(
-                        getTargetContext(), Integer.parseInt(required("afExpectedUid"))
+                        getTargetContext(), Integer.parseInt(required("shovelExpectedUid"))
                 );
             } else if ("root-service".equals(suite)) {
                 verified = PrivilegedTerminalRuntimeVerifier.verifyRootServiceContract(getTargetContext());
@@ -72,10 +72,10 @@ public final class OptimizedSftpInstrumentation extends Instrumentation {
                 launchTargetActivity();
                 verified = PrivilegedTerminalRuntimeVerifier.verifyImmediateFailure(getTargetContext());
             } else if ("sftp".equals(suite)) {
-                password = required("afSftpPassword").toCharArray();
+                password = required("shovelSftpPassword").toCharArray();
                 verified = SftpRuntimeVerifier.verifyPasswordConnection(
-                        required("afSftpHost"), Integer.parseInt(required("afSftpPort")),
-                        required("afSftpUsername"), password, required("afSftpExpectedFile")
+                        required("shovelSftpHost"), Integer.parseInt(required("shovelSftpPort")),
+                        required("shovelSftpUsername"), password, required("shovelSftpExpectedFile")
                 );
             } else {
                 throw new IllegalArgumentException("Unknown optimized test suite");

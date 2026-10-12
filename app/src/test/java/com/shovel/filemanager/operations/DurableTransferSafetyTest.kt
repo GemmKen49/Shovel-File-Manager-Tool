@@ -194,6 +194,6 @@ class DurableTransferSafetyTest {
         assertEquals(0, writer.latest.nextItemIndex)
         assertEquals("written by someone else", target.readText())
         assertEquals("new version", source.readText())
-        assertEquals("old version", File(destination, ".af-backup-${transfer.id}-0").readText())
+        assertEquals("old version", File(destination, ".shovel-backup-${transfer.id}-0").readText())
     }
 }

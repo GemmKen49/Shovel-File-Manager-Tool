@@ -13,7 +13,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.transfer.LanTransferState
 import com.shovel.filemanager.transfer.NearbyGroupController
 import com.shovel.filemanager.ui.MainViewModel
@@ -25,7 +25,7 @@ import java.util.Locale
 class NearbyGroupLayoutRegressionTest {
     @get:Rule val compose = createComposeRule()
     @Test fun groupReceivingButtonsAreAlignedAndReachableInLongAndRtlLanguages() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = androidx.lifecycle.ViewModelStore()
         val locale = mutableStateOf("en")
         val vm = MainViewModel(app).also { store.put("layout", it) }

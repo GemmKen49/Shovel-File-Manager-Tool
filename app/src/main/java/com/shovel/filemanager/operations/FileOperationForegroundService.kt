@@ -14,7 +14,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.MainActivity
 import com.shovel.filemanager.R
 import com.shovel.filemanager.core.FileSystemRules
@@ -45,7 +45,7 @@ class FileOperationForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observation: Job? = null
     private val manager: FileOperationManager
-        get() = (application as AFFileManagerApplication).graph.operationManager
+        get() = (application as ShovelApplication).graph.operationManager
 
     override fun onBind(intent: Intent?): IBinder? = null
 

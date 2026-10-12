@@ -9,31 +9,31 @@ class GitHubReleaseParserAbiTest {
     fun selectsTheFirstPublishedApkMatchingTheDeviceAbi() {
         val release = GitHubReleaseParser.parse(
             releaseJson(
-                "AF-File-Manager-0.41.0-x86_64.apk",
-                "AF-File-Manager-0.41.0-arm64-v8a.apk",
-                "AF-File-Manager-0.41.0.apk",
+                "Shovel-0.41.0-x86_64.apk",
+                "Shovel-0.41.0-arm64-v8a.apk",
+                "Shovel-0.41.0.apk",
             ),
             REPOSITORY,
             listOf("arm64-v8a", "armeabi-v7a"),
         )
-        assertEquals("AF-File-Manager-0.41.0-arm64-v8a.apk", release.asset.name)
+        assertEquals("Shovel-0.41.0-arm64-v8a.apk", release.asset.name)
     }
 
     @Test
     fun universalApkRemainsABackwardCompatibleFallback() {
         val release = GitHubReleaseParser.parse(
-            releaseJson("AF-File-Manager-0.41.0.apk"),
+            releaseJson("Shovel-0.41.0.apk"),
             REPOSITORY,
             listOf("arm64-v8a"),
         )
-        assertEquals("AF-File-Manager-0.41.0.apk", release.asset.name)
+        assertEquals("Shovel-0.41.0.apk", release.asset.name)
     }
 
     @Test
     fun refusesAnApkForAnotherArchitecture() {
         assertThrows(IllegalArgumentException::class.java) {
             GitHubReleaseParser.parse(
-                releaseJson("AF-File-Manager-0.41.0-x86.apk"),
+                releaseJson("Shovel-0.41.0-x86.apk"),
                 REPOSITORY,
                 listOf("arm64-v8a"),
             )
@@ -48,6 +48,6 @@ class GitHubReleaseParserAbiTest {
     }
 
     private companion object {
-        const val REPOSITORY = "sinegard/AF-File-Manager"
+        const val REPOSITORY = "GemmKen49/Shovel-File-Manager-Tool"
     }
 }

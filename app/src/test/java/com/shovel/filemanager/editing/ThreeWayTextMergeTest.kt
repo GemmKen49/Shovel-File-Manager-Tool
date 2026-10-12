@@ -1,6 +1,6 @@
 package com.shovel.filemanager.editing
 
-import com.shovel.filemanager.workflow.AfWorkflowLimits
+import com.shovel.filemanager.workflow.ShovelWorkflowLimits
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -97,7 +97,7 @@ class ThreeWayTextMergeTest {
 
     @Test
     fun rejectsInputPastTheBoundBeforeDoingDiffWork() {
-        val oversized = "x".repeat(AfWorkflowLimits.MAX_TEXT_MERGE_CHARS + 1)
+        val oversized = "x".repeat(ShovelWorkflowLimits.MAX_TEXT_MERGE_CHARS + 1)
         val failure = runCatching { merge.merge(oversized, oversized, oversized) }.exceptionOrNull()
         assertTrue(failure is IllegalArgumentException)
     }

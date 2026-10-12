@@ -177,7 +177,7 @@ class RemoteCopyEngine(private val onMutation: suspend (List<File>) -> Unit = {}
         remote: RemoteClient,
         operation: OperationContext,
     ): String {
-        val stagingName = uniqueStagingName(".af-upload", reserved)
+        val stagingName = uniqueStagingName(".shovel-upload", reserved)
         val stagingPath = RemotePath.join(remoteDirectory, stagingName)
         var stagingExists = false
         try {
@@ -213,7 +213,7 @@ class RemoteCopyEngine(private val onMutation: suspend (List<File>) -> Unit = {}
         remote: RemoteClient,
         operation: OperationContext,
     ): File {
-        val staging = containedChild(localDirectory, uniqueStagingName(".af-download", reserved))
+        val staging = containedChild(localDirectory, uniqueStagingName(".shovel-download", reserved))
         check(staging.createNewFile()) { "Laikino vietinio failo sukurti nepavyko" }
         try {
             remote.download(RemotePath.normalize(remotePath), staging, operation)

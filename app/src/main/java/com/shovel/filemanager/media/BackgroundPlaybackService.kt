@@ -39,7 +39,7 @@ data class BackgroundPlaybackState(val uri: String, val title: String, val phase
     val active: Boolean get() = phase != BackgroundPlaybackPhase.ERROR
 }
 
-/** One explicitly started session, controlled both inside AF and by Android's media controls. */
+/** One explicitly started session, controlled both inside Shovel and by Android's media controls. */
 class BackgroundPlaybackService : Service() {
     companion object {
         private const val ACTION_PLAY = "com.shovel.filemanager.action.PLAY_IN_BACKGROUND"
@@ -112,7 +112,7 @@ class BackgroundPlaybackService : Service() {
             .setAudioAttributes(mediaAttributes())
             .setOnAudioFocusChangeListener({ change -> if (change < 0) pausePlayback() }, handler)
             .build()
-        session = MediaSession(this, "AF background playback").apply {
+        session = MediaSession(this, "Shovel background playback").apply {
             setCallback(object : MediaSession.Callback() {
                 override fun onStop() = finishPlayback()
                 override fun onPause() = pausePlayback()
@@ -157,7 +157,7 @@ class BackgroundPlaybackService : Service() {
             uris.zip(titles).map { BackgroundMediaItem(it.first, it.second.take(512)) }.distinctBy { it.uri }
         } else listOf(BackgroundMediaItem(uriText, intent.getStringExtra("title").orEmpty().take(512)))
         current.value = BackgroundPlaybackState(uriText, intent.getStringExtra("title").orEmpty().take(512)
-            .ifBlank { "AF File Manager" }, BackgroundPlaybackPhase.PREPARING, canSkip = playlist.size > 1)
+            .ifBlank { "Shovel" }, BackgroundPlaybackPhase.PREPARING, canSkip = playlist.size > 1)
         val position = intent.getLongExtra("position", 0L).coerceAtLeast(0L)
         speed = intent.getFloatExtra("speed", 1f).takeIf(Float::isFinite)?.coerceIn(0.5f, 2f) ?: 1f
         volume = intent.getFloatExtra("volume", 1f).takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: 1f

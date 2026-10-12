@@ -121,7 +121,7 @@ class BatchRenameEngineTest {
         assertEquals("two", second.readText())
         assertFalse(File(root, "new-one.txt").exists())
         assertFalse(File(root, "new-two.txt").exists())
-        assertTrue(root.listFiles().orEmpty().none { it.name.startsWith(".af-rename-") })
+        assertTrue(root.listFiles().orEmpty().none { it.name.startsWith(".shovel-rename-") })
     }
 
     @Test

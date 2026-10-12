@@ -11,7 +11,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.ui.MainViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -22,10 +22,10 @@ class NearbyPickerPagingUiTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun dateDirectionActuallyReversesRowsAndSelectAllTogglesThePage() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val resolver = application.contentResolver
         val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val prefix = "af-dates-${System.nanoTime()}"
+        val prefix = "shovel-dates-${System.nanoTime()}"
         val relative = "Pictures/$prefix/"
         val names = listOf("$prefix-c-old.jpg", "$prefix-b-middle.jpg", "$prefix-a-new.jpg")
         val store = ViewModelStore()
@@ -68,10 +68,10 @@ class NearbyPickerPagingUiTest {
     }
 
     @Test fun selectingAcrossPagesAndSearchPreparesBothFilesWithoutSending() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val resolver = application.contentResolver
         val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val prefix = "af-picker-${System.nanoTime()}"
+        val prefix = "shovel-picker-${System.nanoTime()}"
         val relative = "Pictures/$prefix/"
         val values = Array(265) { index -> ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, "$prefix-${index.toString().padStart(3, '0')}.jpg")
@@ -146,7 +146,7 @@ class NearbyPickerPagingUiTest {
         try {
             compose.waitUntil(15_000) { compose.onNode(result).isDisplayed() }
         } catch (failure: Throwable) {
-            val context = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+            val context = ApplicationProvider.getApplicationContext<ShovelApplication>()
             androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let { bitmap ->
                 File(context.getExternalFilesDir("validation"), "nearby-layout-failure.png").outputStream().use {
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)

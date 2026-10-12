@@ -1,6 +1,6 @@
 package com.shovel.filemanager.editing
 
-import com.shovel.filemanager.workflow.AfWorkflowLimits
+import com.shovel.filemanager.workflow.ShovelWorkflowLimits
 
 data class TextMergeConflict(
     val baseStartLine: Int,
@@ -25,9 +25,9 @@ data class ThreeWayTextMergeResult(
  */
 class ThreeWayTextMerge {
     fun merge(base: String, yours: String, current: String): ThreeWayTextMergeResult {
-        require(base.length <= AfWorkflowLimits.MAX_TEXT_MERGE_CHARS) { "Original text is too large to merge" }
-        require(yours.length <= AfWorkflowLimits.MAX_TEXT_MERGE_CHARS) { "Edited text is too large to merge" }
-        require(current.length <= AfWorkflowLimits.MAX_TEXT_MERGE_CHARS) { "Current text is too large to merge" }
+        require(base.length <= ShovelWorkflowLimits.MAX_TEXT_MERGE_CHARS) { "Original text is too large to merge" }
+        require(yours.length <= ShovelWorkflowLimits.MAX_TEXT_MERGE_CHARS) { "Edited text is too large to merge" }
+        require(current.length <= ShovelWorkflowLimits.MAX_TEXT_MERGE_CHARS) { "Current text is too large to merge" }
         if (yours == current) return ThreeWayTextMergeResult(yours, emptyList(), 0, 0)
         if (yours == base) return ThreeWayTextMergeResult(current, emptyList(), 0, 1)
         if (current == base) return ThreeWayTextMergeResult(yours, emptyList(), 1, 0)
@@ -35,9 +35,9 @@ class ThreeWayTextMerge {
         val baseLines = splitLines(base)
         val yourLines = splitLines(yours)
         val currentLines = splitLines(current)
-        require(baseLines.size <= AfWorkflowLimits.MAX_TEXT_MERGE_LINES) { "Original text has too many lines to merge" }
-        require(yourLines.size <= AfWorkflowLimits.MAX_TEXT_MERGE_LINES) { "Edited text has too many lines to merge" }
-        require(currentLines.size <= AfWorkflowLimits.MAX_TEXT_MERGE_LINES) { "Current text has too many lines to merge" }
+        require(baseLines.size <= ShovelWorkflowLimits.MAX_TEXT_MERGE_LINES) { "Original text has too many lines to merge" }
+        require(yourLines.size <= ShovelWorkflowLimits.MAX_TEXT_MERGE_LINES) { "Edited text has too many lines to merge" }
+        require(currentLines.size <= ShovelWorkflowLimits.MAX_TEXT_MERGE_LINES) { "Current text has too many lines to merge" }
 
         val yourChanges = changes(baseLines, yourLines)
         val currentChanges = changes(baseLines, currentLines)

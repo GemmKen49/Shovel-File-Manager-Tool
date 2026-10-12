@@ -26,7 +26,7 @@ public final class NearbyRuntimeVerifier {
         File root = new File(context.getCacheDir(), "optimized-nearby-" + UUID.randomUUID());
         if (!root.mkdir()) throw new AssertionError("Fixture directory creation failed");
         File source = new File(root, "source.txt");
-        byte[] expected = "AF private fixture bytes".getBytes(StandardCharsets.UTF_8);
+        byte[] expected = "Shovel private fixture bytes".getBytes(StandardCharsets.UTF_8);
         try (FileOutputStream output = new FileOutputStream(source)) { output.write(expected); }
         AtomicInteger logins = new AtomicInteger(), uploads = new AtomicInteger(), cancellations = new AtomicInteger();
         AtomicReference<Throwable> failed = new AtomicReference<>();
@@ -59,10 +59,10 @@ public final class NearbyRuntimeVerifier {
                             boolean uploaded = false;
                             if (start.startsWith("POST /login ")) {
                                 if (logins.incrementAndGet() != 1) throw new AssertionError("Consumed one-time code was used again");
-                                extra = "Set-Cookie: af_session=fixture-only; HttpOnly; Path=/\r\nX-AF-Queue-Version: 1\r\nX-AF-Session-Expires: " + (System.currentTimeMillis() + 180000) + "\r\n";
+                                extra = "Set-Cookie: shovel_session=fixture-only; HttpOnly; Path=/\r\nX-Shovel-Queue-Version: 1\r\nX-Shovel-Session-Expires: " + (System.currentTimeMillis() + 180000) + "\r\n";
                             } else {
-                                if (!"af_session=fixture-only".equals(headers.get("cookie"))) throw new AssertionError("Missing session cookie");
-                                String batch = headers.get("x-af-batch-id");
+                                if (!"shovel_session=fixture-only".equals(headers.get("cookie"))) throw new AssertionError("Missing session cookie");
+                                String batch = headers.get("x-shovel-batch-id");
                                 if (start.startsWith("POST /nearby/manifest ")) {
                                     if (batch == null || !batches.add(batch)) throw new AssertionError("New batch must have its own identity");
                                     order.put(batch, batches.size());
@@ -75,7 +75,7 @@ public final class NearbyRuntimeVerifier {
                                     if (scenario == 2 || scenario == 4 || scenario == 5 || (scenario == 3 && attempt == 1)) {
                                         status = "500 Server error";
                                         responseBody = "Server error";
-                                        if (scenario == 4) extra = "X-AF-Error-Code: AF-XFER-SPACE\r\nX-AF-Error-Phase: write\r\n";
+                                        if (scenario == 4) extra = "X-Shovel-Error-Code: SHOVEL-XFER-SPACE\r\nX-Shovel-Error-Phase: write\r\n";
                                         if (scenario == 5) busyStartedAt[0] = SystemClock.elapsedRealtime();
                                     }
                                 } else if (start.startsWith("GET /nearby/file-status")) {
@@ -83,7 +83,7 @@ public final class NearbyRuntimeVerifier {
                                     int scenario = order.get(batch);
                                     responseBody = scenario == 3 || scenario == 4 ? "FAILED" :
                                         scenario == 5 && SystemClock.elapsedRealtime() - busyStartedAt[0] < 5000 ? "TRANSFERRING" : "COMPLETED";
-                                    if (scenario == 4) extra = "X-AF-Error-Code: AF-XFER-SPACE\r\n";
+                                    if (scenario == 4) extra = "X-Shovel-Error-Code: SHOVEL-XFER-SPACE\r\n";
                                     acknowledged.incrementAndGet();
                                 } else if (start.startsWith("POST /nearby/cancel")) {
                                     cancellations.incrementAndGet();
@@ -96,10 +96,10 @@ public final class NearbyRuntimeVerifier {
                         } catch (SocketTimeoutException expectedTimeout) { /* Bounded listener lifetime. */ }
                     }
                 } catch (Throwable error) { if (!server.isClosed()) failed.set(error); }
-            }, "AF-owned-native-transfer-fixture");
+            }, "Shovel-owned-native-transfer-fixture");
             receiver.start();
             try {
-                String pairing = "af-file-manager://receive?host=" + address.getHostAddress() + "&port=" + server.getLocalPort() + "&code=12345678&name=NativeFixture";
+                String pairing = "shovel://receive?host=" + address.getHostAddress() + "&port=" + server.getLocalPort() + "&code=12345678&name=NativeFixture";
                 int[] expectedUploads = {1, 2, 4, 5, 6};
                 for (int batch = 1; batch <= expectedUploads.length; batch++) {
                     // Exercise the same share -> preview -> explicit Start path as a user.
@@ -127,7 +127,7 @@ public final class NearbyRuntimeVerifier {
                     while (failed.get() == null && (uploads.get() < expectedCount || running(context)) && SystemClock.elapsedRealtime() < deadline) SystemClock.sleep(50);
                     if (failed.get() != null) throw new AssertionError("Native fixture failed", failed.get());
                     if (uploads.get() != expectedCount || running(context)) throw new AssertionError("Native transfer did not finish scenario " + batch);
-                    if (batch == 4) awaitNode(test, "stable storage error", node -> node.getText() != null && node.getText().toString().contains("AF-XFER-SPACE"));
+                    if (batch == 4) awaitNode(test, "stable storage error", node -> node.getText() != null && node.getText().toString().contains("SHOVEL-XFER-SPACE"));
                     if (cancellations.get() != (batch < 4 ? 0 : 1)) throw new AssertionError("Only the permanent failed batch may be cancelled");
                 }
                 if (logins.get() != 1 || batches.size() != 5 || uploads.get() != 6 || acknowledged.get() < 5 ||
@@ -168,7 +168,7 @@ public final class NearbyRuntimeVerifier {
         verify(test); // Real normal/error sending now records explicit stable codes under R8.
         if (!journal.isFile() || journal.length() > 128 * 1024) throw new AssertionError("Private diagnostic journal is missing or unbounded");
         String report = new String(java.nio.file.Files.readAllBytes(journal.toPath()), StandardCharsets.UTF_8);
-        if (!report.contains("AF-XFER-SPACE") || !report.contains("send\trecover") || report.contains("source.txt") ||
+        if (!report.contains("SHOVEL-XFER-SPACE") || !report.contains("send\trecover") || report.contains("source.txt") ||
             report.contains("fixture-only") || report.contains("12345678") || report.contains(context.getCacheDir().toString()))
             throw new AssertionError("Private diagnostic stable codes/privacy contract failed");
         // verify() stops its owned receiver in cleanup; finished progress may
@@ -182,7 +182,7 @@ public final class NearbyRuntimeVerifier {
         if (!exported.isFile() || exported.length() > 129 * 1024) throw new AssertionError("Explicit export did not create bounded private report");
         android.net.Uri uri = cacheUri(context, exported);
         try (InputStream input = context.getContentResolver().openInputStream(uri)) {
-            if (input == null || !new String(readBounded(input, 129 * 1024), StandardCharsets.UTF_8).contains("AF transfer diagnostics v1"))
+            if (input == null || !new String(readBounded(input, 129 * 1024), StandardCharsets.UTF_8).contains("Shovel transfer diagnostics v1"))
                 throw new AssertionError("Export FileProvider read failed");
         }
         back(test);
@@ -293,7 +293,7 @@ public final class NearbyRuntimeVerifier {
                 // that the list reached its start. Use a bounded user gesture.
                 android.graphics.Rect bounds = new android.graphics.Rect();
                 container.getBoundsInScreen(bounds);
-                System.out.println("AF_FIXTURE_SCROLL_BACK " + list + " " + scroll + " " + bounds);
+                System.out.println("SHOVEL_FIXTURE_SCROLL_BACK " + list + " " + scroll + " " + bounds);
                 scrollPartial(test, container, true);
             }
             SystemClock.sleep(150);

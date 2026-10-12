@@ -28,37 +28,37 @@ class BaselineProfileGenerator {
 
     @Test
     fun startup() = baselineProfileRule.collect(
-        packageName = AfBenchmarkEnvironment.PACKAGE_NAME,
+        packageName = ShovelBenchmarkEnvironment.PACKAGE_NAME,
         maxIterations = 3,
         stableIterations = 2,
         includeInStartupProfile = true,
         filterPredicate = { rule -> rule.startsWith("Lcom/shovel/") },
     ) {
-        AfBenchmarkEnvironment.prepareTarget(device)
+        ShovelBenchmarkEnvironment.prepareTarget(device)
         pressHome()
-        startActivityAndWait(AfBenchmarkEnvironment.mainIntent())
+        startActivityAndWait(ShovelBenchmarkEnvironment.mainIntent())
     }
 
     @Test
     fun criticalUserJourneys() = baselineProfileRule.collect(
-        packageName = AfBenchmarkEnvironment.PACKAGE_NAME,
+        packageName = ShovelBenchmarkEnvironment.PACKAGE_NAME,
         maxIterations = 3,
         stableIterations = 2,
         includeInStartupProfile = false,
         filterPredicate = { rule -> rule.startsWith("Lcom/shovel/") },
     ) {
-        AfBenchmarkEnvironment.prepareTarget(device)
+        ShovelBenchmarkEnvironment.prepareTarget(device)
         pressHome()
-        startActivityAndWait(AfBenchmarkEnvironment.localIntent("large"))
-        AfBenchmarkEnvironment.run { awaitObject("file_list_content_LEFT") }
-        AfBenchmarkEnvironment.run { fling("file_list_LEFT", Direction.DOWN, times = 3) }
+        startActivityAndWait(ShovelBenchmarkEnvironment.localIntent("large"))
+        ShovelBenchmarkEnvironment.run { awaitObject("file_list_content_LEFT") }
+        ShovelBenchmarkEnvironment.run { fling("file_list_LEFT", Direction.DOWN, times = 3) }
 
-        startActivityAndWait(AfBenchmarkEnvironment.localIntent("thumbnails"))
-        AfBenchmarkEnvironment.run { awaitObject("file_grid_content_LEFT") }
-        AfBenchmarkEnvironment.run { fling("file_grid_LEFT", Direction.DOWN, times = 3) }
+        startActivityAndWait(ShovelBenchmarkEnvironment.localIntent("thumbnails"))
+        ShovelBenchmarkEnvironment.run { awaitObject("file_grid_content_LEFT") }
+        ShovelBenchmarkEnvironment.run { fling("file_grid_LEFT", Direction.DOWN, times = 3) }
 
-        startActivityAndWait(AfBenchmarkEnvironment.remoteIntent())
-        AfBenchmarkEnvironment.run { awaitObject("remote_list_ready") }
-        AfBenchmarkEnvironment.run { fling("remote_list", Direction.DOWN, times = 3) }
+        startActivityAndWait(ShovelBenchmarkEnvironment.remoteIntent())
+        ShovelBenchmarkEnvironment.run { awaitObject("remote_list_ready") }
+        ShovelBenchmarkEnvironment.run { fling("remote_list", Direction.DOWN, times = 3) }
     }
 }

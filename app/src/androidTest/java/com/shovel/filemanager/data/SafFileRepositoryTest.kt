@@ -2,14 +2,14 @@ package com.shovel.filemanager.data
 
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SafFileRepositoryTest {
     private val repository = SafFileRepository(
-        ApplicationProvider.getApplicationContext<AFFileManagerApplication>(),
+        ApplicationProvider.getApplicationContext<ShovelApplication>(),
     )
 
     @Test

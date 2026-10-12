@@ -47,11 +47,11 @@ import androidx.compose.ui.window.DialogWindowProvider
 
 /**
  * Compose popup windows capture their parent composition when they are created. Recreate the
- * window when AF's interface density changes so an already-open dialog follows the same scale as
+ * window when Shovel's interface density changes so an already-open dialog follows the same scale as
  * the page behind it.
  */
 @Composable
-internal fun AfDialog(
+internal fun ShovelDialog(
     onDismissRequest: () -> Unit,
     properties: DialogProperties = DialogProperties(),
     content: @Composable () -> Unit,
@@ -109,7 +109,7 @@ internal fun PopupContent(content: @Composable () -> Unit) {
 }
 
 @Composable
-internal fun AfButton(
+internal fun ShovelButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -133,7 +133,7 @@ private fun appearanceButtonColors(): androidx.compose.material3.ButtonColors {
 }
 
 @Composable
-internal fun AfDropdownMenu(
+internal fun ShovelDropdownMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -150,7 +150,7 @@ internal fun AfDropdownMenu(
             DropdownMenu(expanded = expanded, onDismissRequest = onDismissRequest, modifier = modifier,
                 offset = offset, scrollState = scrollState, containerColor = fill,
                 tonalElevation = 0.dp, shadowElevation = if (fill.alpha < 1f) 0.dp else 8.dp) {
-                // Material's Popup owns a separate composition. Re-provide AF's density inside
+                // Material's Popup owns a separate composition. Re-provide Shovel's density inside
                 // that composition instead of relying on the value captured by the anchor.
                 CompositionLocalProvider(
                     LocalDensity provides density,
@@ -163,7 +163,7 @@ internal fun AfDropdownMenu(
 }
 
 @Composable
-internal fun AfAlertDialog(
+internal fun ShovelAlertDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
@@ -175,7 +175,7 @@ internal fun AfAlertDialog(
     properties: DialogProperties = DialogProperties(),
 ) {
     val fill = popupColor()
-    AfDialog(onDismissRequest = onDismissRequest,
+    ShovelDialog(onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             dismissOnBackPress = properties.dismissOnBackPress,
             dismissOnClickOutside = properties.dismissOnClickOutside,
@@ -235,7 +235,7 @@ internal fun appearanceCardElevation() = if (LocalAppearanceSettings.current.car
 } else CardDefaults.elevatedCardElevation()
 
 @Composable
-internal fun AfFilterChip(
+internal fun ShovelFilterChip(
     selected: Boolean,
     onClick: () -> Unit,
     label: @Composable () -> Unit,

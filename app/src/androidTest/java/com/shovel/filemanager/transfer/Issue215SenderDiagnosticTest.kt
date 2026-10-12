@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -83,14 +83,14 @@ class Issue215SenderDiagnosticTest {
 
     @Test fun knownStorageFailureIsVisibleWithoutRetryingOrLosingPairing() = exercise(Mode.STORAGE_ERROR) { fixture, peer, state ->
         assertEquals(NearbyTransferStatus.ERROR, state.status)
-        assertTrue(state.message.orEmpty().contains("AF-XFER-SPACE"))
+        assertTrue(state.message.orEmpty().contains("SHOVEL-XFER-SPACE"))
         assertEquals(1, fixture.uploads.get())
         assertNotNull(NearbyTransferController.connection.cookieFor(peer))
     }
 
     @Test fun lostReplyWithPermanentStorageStatusAlsoDoesNotRetry() = exercise(Mode.STORAGE_STATUS) { fixture, peer, state ->
         assertEquals(NearbyTransferStatus.ERROR, state.status)
-        assertTrue(state.message.orEmpty().contains("AF-XFER-SPACE"))
+        assertTrue(state.message.orEmpty().contains("SHOVEL-XFER-SPACE"))
         assertEquals(1, fixture.uploads.get())
         assertNotNull(NearbyTransferController.connection.cookieFor(peer))
     }
@@ -283,11 +283,11 @@ class Issue215SenderDiagnosticTest {
         }
     }
 
-    private fun app(): AFFileManagerApplication {
+    private fun app(): ShovelApplication {
         check(android.os.Build.MODEL.contains("sdk", ignoreCase = true))
         return ApplicationProvider.getApplicationContext()
     }
-    private fun fixtureRoot(app: AFFileManagerApplication) = File(app.cacheDir, "issue215-${UUID.randomUUID()}").apply { check(mkdir()) }
+    private fun fixtureRoot(app: ShovelApplication) = File(app.cacheDir, "issue215-${UUID.randomUUID()}").apply { check(mkdir()) }
     private fun payload(root: File, mebibytes: Int) = File(root, "video.mp4").apply {
         val block = ByteArray(65_536) { (it % 251).toByte() }
         outputStream().use { output -> repeat(mebibytes * 16) { output.write(block) } }
@@ -299,14 +299,14 @@ class Issue215SenderDiagnosticTest {
         digest.digest().joinToString("") { "%02x".format(it) }
     }
     private fun javaHeap() = Runtime.getRuntime().let { it.totalMemory() - it.freeMemory() }
-    private fun send(app: AFFileManagerApplication, peer: NearbyPairing, prepared: PreparedNearbyTransfer) {
+    private fun send(app: ShovelApplication, peer: NearbyPairing, prepared: PreparedNearbyTransfer) {
         NearbyTransferController.start(app, peer, prepared)
     }
     private suspend fun finish(): NearbyTransferState = withTimeout(30_000) {
         while (NearbyTransferController.state.value.status in setOf(NearbyTransferStatus.STARTING, NearbyTransferStatus.RUNNING)) delay(25)
         NearbyTransferController.state.value
     }
-    private suspend fun cleanup(app: AFFileManagerApplication, root: File) {
+    private suspend fun cleanup(app: ShovelApplication, root: File) {
         NearbyTransferController.cancel(app)
         delay(900)
         NearbyTransferController.connection.clear()
@@ -379,7 +379,7 @@ class Issue215SenderDiagnosticTest {
                 if (count == 1 && mode != Mode.OK) {
                     lostAtNanos = System.nanoTime()
                     if (mode in setOf(Mode.HTTP500, Mode.HTTP500_COMMITTED)) reply(socket, 500, "temporary storage failure")
-                    if (mode == Mode.STORAGE_ERROR) reply(socket, 500, "Server error (AF-XFER-SPACE)", failure = TransferFailure.SPACE)
+                    if (mode == Mode.STORAGE_ERROR) reply(socket, 500, "Server error (SHOVEL-XFER-SPACE)", failure = TransferFailure.SPACE)
                     return // EOF without reply creates a transport IOException, not an HTTP failure.
                 }
             }
@@ -406,8 +406,8 @@ class Issue215SenderDiagnosticTest {
         }
         private fun reply(socket: Socket, status: Int, body: String, login: Boolean = false, failure: TransferFailure? = null) {
             val bytes = body.toByteArray()
-            val extra = (if (login) "Set-Cookie: af_session=diagnostic-fixture; HttpOnly\r\nX-AF-Queue-Version: 1\r\n" else "") +
-                (failure?.let { "X-AF-Error-Code: ${it.code}\r\n" } ?: "")
+            val extra = (if (login) "Set-Cookie: shovel_session=diagnostic-fixture; HttpOnly\r\nX-Shovel-Queue-Version: 1\r\n" else "") +
+                (failure?.let { "X-Shovel-Error-Code: ${it.code}\r\n" } ?: "")
             socket.getOutputStream().write(("HTTP/1.1 $status Result\r\n${extra}Content-Length: ${bytes.size}\r\nConnection: close\r\n\r\n").toByteArray())
             socket.getOutputStream().write(bytes)
             socket.getOutputStream().flush()

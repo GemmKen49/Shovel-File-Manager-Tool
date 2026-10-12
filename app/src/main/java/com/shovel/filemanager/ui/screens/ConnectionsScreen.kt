@@ -61,14 +61,14 @@ import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Visibility
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
 import androidx.compose.material3.AssistChip
-import com.shovel.filemanager.ui.theme.AfButton as Button
-import com.shovel.filemanager.ui.theme.AfCard as Card
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -121,7 +121,7 @@ import com.shovel.filemanager.data.OptionalFeature
 import com.shovel.filemanager.ui.components.featureVisible
 import com.shovel.filemanager.ui.RemoteBrowserRules
 import com.shovel.filemanager.ui.components.RemoteFileVisual
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.ui.components.DirectoryGridItemContent
 import com.shovel.filemanager.ui.components.DirectoryDisplayMenuItems
 import com.shovel.filemanager.ui.components.DirectoryEntryFilter
@@ -136,7 +136,7 @@ import com.shovel.filemanager.ui.components.SelectionActionBar
 import com.shovel.filemanager.ui.components.SelectionActionDock
 import com.shovel.filemanager.ui.components.SelectionHeader
 import com.shovel.filemanager.ui.components.longPressDragSelect
-import com.shovel.filemanager.ui.components.AfPullToRefresh
+import com.shovel.filemanager.ui.components.ShovelPullToRefresh
 import com.shovel.filemanager.ui.components.LazyListFastScroller
 import com.shovel.filemanager.ui.components.LazyGridFastScroller
 import com.shovel.filemanager.ui.components.DeleteConfirmationDialog
@@ -162,7 +162,7 @@ fun ConnectionsScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
     val right by viewModel.rightPanel.collectAsStateWithLifecycle()
     val localClipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val remoteClipboard by viewModel.remoteClipboard.collectAsStateWithLifecycle()
-    val afClipboard by viewModel.afClipboard.collectAsStateWithLifecycle()
+    val shovelClipboard by viewModel.shovelClipboard.collectAsStateWithLifecycle()
     val activeLocalState = if (activePanel == com.shovel.filemanager.ui.PanelId.LEFT) left else right
     val activeSelection = activeLocalState.selectedPaths
 
@@ -248,7 +248,7 @@ fun ConnectionsScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                     onSelectAll = viewModel::selectAllRemote,
                     onDownloadSelected = viewModel::remoteDownloadSelection,
                     onCopySelected = viewModel::copyRemoteSelection,
-                    canAddToRemoteClipboard = afClipboard != null,
+                    canAddToRemoteClipboard = shovelClipboard != null,
                     onAddToRemoteClipboard = viewModel::addRemoteSelectionToClipboard,
                     localClipboardCount = localClipboard?.takeIf { it.mode == ClipboardMode.COPY }?.paths?.size ?: 0,
                     onPasteLocalClipboard = { viewModel.pasteLocalClipboardToRemote() },
@@ -382,7 +382,7 @@ private fun NextcloudLoginDialog(
     onStart: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Pridėti Nextcloud",
         icon = Icons.Rounded.Cloud,
         onDismissRequest = onDismiss,
@@ -407,7 +407,7 @@ private fun NextcloudLoginDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             LText(
-                "Įrašykite savo Nextcloud serverio adresą. AF atidarys numatytąją naršyklę ir gaus tik šiai programėlei skirtą atšaukiamą slaptažodį.",
+                "Įrašykite savo Nextcloud serverio adresą. Shovel atidarys numatytąją naršyklę ir gaus tik šiai programėlei skirtą atšaukiamą slaptažodį.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             OutlinedTextField(
@@ -430,7 +430,7 @@ private fun NextcloudLoginDialog(
             when (state.phase) {
                 NextcloudLoginPhase.IDLE -> Unit
                 NextcloudLoginPhase.STARTING -> LText("Ruošiamas saugus Nextcloud prisijungimas")
-                NextcloudLoginPhase.WAITING_FOR_BROWSER -> LText("Užbaikite prisijungimą naršyklėje. AF laukia patvirtinimo.")
+                NextcloudLoginPhase.WAITING_FOR_BROWSER -> LText("Užbaikite prisijungimą naršyklėje. Shovel laukia patvirtinimo.")
                 NextcloudLoginPhase.SAVING -> LText("Saugomas Nextcloud ryšys")
             }
             state.error?.let {
@@ -625,7 +625,7 @@ internal fun RemoteBrowser(
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
         state.error?.let { NetworkError(it) }
-        AfPullToRefresh(
+        ShovelPullToRefresh(
             isRefreshing = state.loading,
             onRefresh = onRefresh,
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -1334,7 +1334,7 @@ internal fun LocalUploadDialog(
     }
     val allSelected = visiblePaths.isNotEmpty() && visiblePaths.all(selected::contains)
 
-    com.shovel.filemanager.ui.components.AfModalDialog(
+    com.shovel.filemanager.ui.components.ShovelModalDialog(
         onDismissRequest = { if (navigation.canNavigateBack) navigateBack() else onDismiss() },
         onClose = onDismiss,
         icon = if (filesOnly) Icons.Rounded.FolderOpen else Icons.Rounded.CloudUpload,
@@ -1407,7 +1407,7 @@ internal fun LocalUploadDialog(
                 modifier = Modifier.testTag("local_upload_selection_bar"),
             )
             message?.let { LText(it, color = MaterialTheme.colorScheme.error) }
-            AfPullToRefresh(
+            ShovelPullToRefresh(
                 isRefreshing = loading,
                 onRefresh = { refreshToken += 1 },
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -1574,7 +1574,7 @@ internal fun NetworkProfileDialog(
         (protocol != NetworkProtocol.SMB || share.isNotBlank()) &&
         (protocol != NetworkProtocol.SFTP || trustFirstUse || fingerprint.startsWith("SHA256:"))
 
-    AfModalDialog(
+    ShovelModalDialog(
         title = if (existingProfile == null) "Nauja jungtis" else "Redaguoti jungtį",
         icon = Icons.Rounded.Link,
         onDismissRequest = onDismiss,

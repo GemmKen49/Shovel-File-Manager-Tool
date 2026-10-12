@@ -29,7 +29,7 @@ public final class ReleaseShareIndexVerifier {
             .filter(ip -> ip instanceof Inet4Address && ip.isSiteLocalAddress()).findFirst()
             .orElseThrow(() -> new AssertionError("No private emulator interface"));
         File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "AFReleaseIndex-" + UUID.randomUUID());
+            "ShovelReleaseIndex-" + UUID.randomUUID());
         if (!root.mkdir()) throw new AssertionError("Owned shared fixture directory unavailable");
         try {
             int port = freePort(address);
@@ -61,7 +61,7 @@ public final class ReleaseShareIndexVerifier {
             expect(revoked, 403);
             String denied = request(address, port, "POST", "/upload?name=blocked.txt", second, new byte[]{1}, "");
             expect(denied, 403);
-            check(denied.contains("X-AF-Group-State: removed") && !new File(root, "blocked.txt").exists(), "Revoked upload denial");
+            check(denied.contains("X-Shovel-Group-State: removed") && !new File(root, "blocked.txt").exists(), "Revoked upload denial");
             stop(test);
             awaitStopped(address, port);
 
@@ -90,7 +90,7 @@ public final class ReleaseShareIndexVerifier {
             port = freePort(address);
             start(test, root, address, port, "WEBDAV", false);
             String auth = "Authorization: Basic " + android.util.Base64.encodeToString(
-                ("af:" + PASSWORD).getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP) + "\r\n";
+                ("shovel:" + PASSWORD).getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP) + "\r\n";
             expect(request(address, port, "PUT", "/dav.txt", null, bytes, auth), 201);
             check("dav.txt".equals(indexedName(context, new File(root, "dav.txt"))), "WebDAV receive index");
             expect(request(address, port, "COPY", "/dav.txt", null, new byte[0], auth + destination(address, port, "copy.txt")), 201);
@@ -146,8 +146,8 @@ public final class ReleaseShareIndexVerifier {
             socket.shutdownOutput();
             String response = ReleaseHttpResponseReader.read(socket.getInputStream(), 4096);
             expect(response, 408);
-            check(response.contains("X-AF-Error-Code: AF-XFER-CONNECTION") &&
-                response.contains("X-AF-Error-Phase: read") && !response.contains(root.getAbsolutePath()),
+            check(response.contains("X-Shovel-Error-Code: SHOVEL-XFER-CONNECTION") &&
+                response.contains("X-Shovel-Error-Phase: read") && !response.contains(root.getAbsolutePath()),
                 "Optimized receiver stable/private failure identifiers");
             File[] residue = root.listFiles();
             check(residue != null && !new File(root, "incomplete.txt").exists(), "Interrupted upload is not committed");
@@ -159,7 +159,7 @@ public final class ReleaseShareIndexVerifier {
         Context context = test.getTargetContext();
         Intent intent = new Intent().setClassName(context, SERVICE).setAction(START)
             .putExtra("root", root.getAbsolutePath()).putExtra("port", port).putExtra("protocol", protocol)
-            .putExtra("username", "af").putExtra("password", PASSWORD).putExtra("duration_minutes", 15)
+            .putExtra("username", "shovel").putExtra("password", PASSWORD).putExtra("duration_minutes", 15)
             .putExtra("bind_address", address.getHostAddress()).putExtra("group_mode", group)
             .putExtra("receiver_name", "NativeOrganizer").putExtra("group_name", "NativeFixtureGroup");
         test.runOnMainSync(() -> context.startForegroundService(intent));
@@ -185,7 +185,7 @@ public final class ReleaseShareIndexVerifier {
         throw new AssertionError("Previous native receiving session did not stop");
     }
     private static String pairing(InetAddress address, int port, String name) {
-        return "af-file-manager://receive?host=" + address.getHostAddress() + "&port=" + (port <= 65535 ? port : 23001) + "&code=23456789&name=" + name;
+        return "shovel://receive?host=" + address.getHostAddress() + "&port=" + (port <= 65535 ? port : 23001) + "&code=23456789&name=" + name;
     }
     private static String destination(InetAddress address, int port, String name) {
         return "Destination: http://" + address.getHostAddress() + ":" + port + "/" + name + "\r\n";

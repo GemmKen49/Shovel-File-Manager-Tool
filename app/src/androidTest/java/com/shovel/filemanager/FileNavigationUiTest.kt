@@ -361,9 +361,9 @@ class FileNavigationUiTest {
 
     private fun connectRootBackend(viewModel: MainViewModel) {
         val arguments = InstrumentationRegistry.getArguments()
-        val useRoot = arguments.getString("afRoot") == "true"
-        val useShizukuRoot = arguments.getString("afShizukuRoot") == "true"
-        val useShizukuShell = arguments.getString("afShizukuShell") == "true"
+        val useRoot = arguments.getString("shovelRoot") == "true"
+        val useShizukuRoot = arguments.getString("shovelShizukuRoot") == "true"
+        val useShizukuShell = arguments.getString("shovelShizukuShell") == "true"
         assumeTrue(useRoot || useShizukuRoot || useShizukuShell)
         val expected = when {
             useRoot -> AdvancedAccessBackend.ROOT
@@ -398,7 +398,7 @@ class FileNavigationUiTest {
             assertTrue(snapshot.runningApps.isNotEmpty())
             assertTrue(snapshot.runningApps.none { it.packageName == compose.activity.packageName })
             assertTrue(snapshot.runningApps.all { it.ramBytes != null && it.ramBytes >= 0L })
-            if (InstrumentationRegistry.getArguments().getString("afShizukuShell") == "true") {
+            if (InstrumentationRegistry.getArguments().getString("shovelShizukuShell") == "true") {
                 val shizukuManager = snapshot.runningApps.firstOrNull {
                     it.packageName == "moe.shizuku.privileged.api"
                 }
@@ -422,7 +422,7 @@ class FileNavigationUiTest {
 
     @Test
     fun shizukuReconnectsAfterRapidModeChanges() {
-        assumeTrue(InstrumentationRegistry.getArguments().getString("afShizukuRoot") == "true")
+        assumeTrue(InstrumentationRegistry.getArguments().getString("shovelShizukuRoot") == "true")
         val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
         try {
             repeat(3) {
@@ -438,7 +438,7 @@ class FileNavigationUiTest {
 
     @Test
     fun shizukuRootBrowsesProtectedStorageAndBackUsesRootBoundaries() {
-        assumeTrue(InstrumentationRegistry.getArguments().getString("afShizukuRoot") == "true")
+        assumeTrue(InstrumentationRegistry.getArguments().getString("shovelShizukuRoot") == "true")
         val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
 
         try {

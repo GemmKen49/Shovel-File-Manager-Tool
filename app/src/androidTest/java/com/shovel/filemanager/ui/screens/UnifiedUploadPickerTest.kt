@@ -5,7 +5,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.ui.MainViewModel
 import org.junit.Rule
 import org.junit.Test
@@ -13,7 +13,7 @@ import org.junit.Test
 class UnifiedUploadPickerTest {
     @get:Rule val compose = createComposeRule()
     @Test fun choosingStorageReplacesTheSendDialogAndCancelReturnsToIt() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = ViewModelStore()
         val vm = MainViewModel(app).also { store.put("picker", it) }
         try {

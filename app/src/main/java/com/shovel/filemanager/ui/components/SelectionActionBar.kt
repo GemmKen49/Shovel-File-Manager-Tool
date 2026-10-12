@@ -18,7 +18,7 @@ import androidx.compose.material.icons.rounded.IndeterminateCheckBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment

@@ -35,19 +35,19 @@ import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Refresh
 import com.shovel.filemanager.data.OptionalFeature
 import com.shovel.filemanager.ui.components.featureVisible
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
-import com.shovel.filemanager.ui.theme.AfButton as Button
-import com.shovel.filemanager.ui.theme.AfCard as Card
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -65,7 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import com.shovel.filemanager.ui.theme.AfDialog
+import com.shovel.filemanager.ui.theme.ShovelDialog
 import com.shovel.filemanager.advanced.AdvancedAccessBackend
 import com.shovel.filemanager.advanced.AdvancedAccessState
 import com.shovel.filemanager.core.FileSystemRules
@@ -89,7 +89,7 @@ import com.shovel.filemanager.data.DirectoryGridStyle
 import com.shovel.filemanager.data.DirectoryLayoutMode
 import com.shovel.filemanager.ui.components.PrivilegedFileVisual
 import com.shovel.filemanager.ui.components.SelectionActionBar
-import com.shovel.filemanager.ui.components.AfPullToRefresh
+import com.shovel.filemanager.ui.components.ShovelPullToRefresh
 import com.shovel.filemanager.ui.components.LazyListFastScroller
 import com.shovel.filemanager.ui.components.LazyGridFastScroller
 import com.shovel.filemanager.ui.components.DeleteConfirmationDialog
@@ -127,7 +127,7 @@ fun AdvancedStorageBrowserDialog(
     }
     val allSelected = displayedEntries.isNotEmpty() && displayedEntries.all { it.absolutePath in state.selectedPaths }
 
-    AfDialog(
+    ShovelDialog(
         onDismissRequest = { viewModel.navigateAdvancedBack() },
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
@@ -259,7 +259,7 @@ fun AdvancedStorageBrowserDialog(
                     }
                 }
 
-                AfPullToRefresh(
+                ShovelPullToRefresh(
                     isRefreshing = state.loading,
                     onRefresh = viewModel::refreshAdvancedBrowser,
                     modifier = Modifier.weight(1f),
@@ -319,7 +319,7 @@ fun AdvancedStorageBrowserDialog(
             onDismiss = { confirmDelete = false },
             onConfirm = { confirmDelete = false; viewModel.deleteAdvancedSelectionPermanently() },
             loadSummary = { viewModel.loadAdvancedSelectionInfo(state.selectedPaths) },
-            explanation = "Šių apsaugotų failų nebus galima atkurti iš AF File Manager šiukšlinės.",
+            explanation = "Šių apsaugotų failų nebus galima atkurti iš Shovel šiukšlinės.",
         )
     }
     if (showDisplaySettings) {

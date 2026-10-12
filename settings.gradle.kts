@@ -20,6 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AFFileManager"
+rootProject.name = "Shovel"
 include(":app")
 include(":benchmark")

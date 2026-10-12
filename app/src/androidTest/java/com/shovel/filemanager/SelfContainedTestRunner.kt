@@ -37,7 +37,7 @@ class SelfContainedTestRunner : AndroidJUnitRunner() {
     private fun copyOptionalVideoFixture() {
         val source = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "AFFileManagerTest/video-gesture.mp4",
+            "ShovelTest/video-gesture.mp4",
         )
         if (!source.isFile || source.length() <= 0L) return
         val target = File(requireNotNull(targetContext.getExternalFilesDir("validation")), source.name)

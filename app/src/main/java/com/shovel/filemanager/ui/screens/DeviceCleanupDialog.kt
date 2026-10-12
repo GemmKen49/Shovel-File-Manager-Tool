@@ -18,9 +18,9 @@ import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Stop
-import com.shovel.filemanager.ui.theme.AfButton as Button
-import com.shovel.filemanager.ui.theme.AfCard as Card
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -47,8 +47,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.shovel.filemanager.cleanup.DeviceCleanupApp
 import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.ui.DeviceCleanupUiState
-import com.shovel.filemanager.ui.components.AfModalDialog
-import com.shovel.filemanager.ui.components.AfPullToRefresh
+import com.shovel.filemanager.ui.components.ShovelModalDialog
+import com.shovel.filemanager.ui.components.ShovelPullToRefresh
 import com.shovel.filemanager.ui.components.ProviderAppVisual
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.rememberLocalizedDateTimeFormat
@@ -85,9 +85,9 @@ internal fun DeviceCleanupDialog(
         DeviceCleanupPage.APP_CACHE -> snapshot?.cachedApps.orEmpty()
         DeviceCleanupPage.RUNNING_APPS -> snapshot?.runningApps.orEmpty()
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Įrenginio valymas",
-        subtitle = "Tik peržiūra — AF nieko nešalina be jūsų patvirtinimo",
+        subtitle = "Tik peržiūra — Shovel nieko nešalina be jūsų patvirtinimo",
         icon = Icons.Rounded.CleaningServices,
         onDismissRequest = onDismiss,
         expandedContent = true,
@@ -146,7 +146,7 @@ internal fun DeviceCleanupDialog(
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         LText("Norint apskaičiuoti nenaudojamas programas ir teikėjo nurodytus talpyklos dydžius, reikia Android naudojimo prieigos.")
                         Button(onClick = onGrantUsageAccess) { LText("Atidaryti naudojimo prieigos nustatymus") }
-                        LText("AF nevalo kitų programų talpyklos ir nešalina programų be Android patvirtinimo.", style = MaterialTheme.typography.bodySmall)
+                        LText("Shovel nevalo kitų programų talpyklos ir nešalina programų be Android patvirtinimo.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             } else if (page == DeviceCleanupPage.RUNNING_APPS && !snapshot.privilegedAppAccessAvailable) {
@@ -178,7 +178,7 @@ internal fun DeviceCleanupDialog(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                AfPullToRefresh(
+                ShovelPullToRefresh(
                     isRefreshing = state.loading,
                     onRefresh = onRefresh,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -216,7 +216,7 @@ internal fun DeviceCleanupDialog(
         }
     }
     clearCacheApp?.let { app ->
-        AfModalDialog(
+        ShovelModalDialog(
             title = "Išvalyti talpyklą",
             subtitle = app.label,
             icon = Icons.Rounded.CleaningServices,
@@ -230,13 +230,13 @@ internal fun DeviceCleanupDialog(
             },
         ) {
             LText(
-                "Android nustatymuose atverkite „Saugykla ir talpykla“, tada „Išvalyti talpyklą“. Nesirinkite duomenų išvalymo. AF kitų programų talpyklos tiesiogiai nevalo.",
+                "Android nustatymuose atverkite „Saugykla ir talpykla“, tada „Išvalyti talpyklą“. Nesirinkite duomenų išvalymo. Shovel kitų programų talpyklos tiesiogiai nevalo.",
                 modifier = Modifier.padding(20.dp),
             )
         }
     }
     forceStopApp?.let { app ->
-        AfModalDialog(
+        ShovelModalDialog(
             title = "Sustabdyti programą?",
             subtitle = app.label,
             icon = Icons.Rounded.Stop,

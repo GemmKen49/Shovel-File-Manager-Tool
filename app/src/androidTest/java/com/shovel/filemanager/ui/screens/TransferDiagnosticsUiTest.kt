@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.transfer.*
 import com.shovel.filemanager.ui.localization.UiTranslator
 import kotlinx.coroutines.runBlocking
@@ -32,7 +32,7 @@ class TransferDiagnosticsUiTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun optInExportAndClearWorkInEnglishLithuanianLongAndRtlLayoutsWithoutChangingTheConnection() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         check(android.os.Build.MODEL.contains("sdk", ignoreCase = true))
         val locale = mutableStateOf("en")
         val visible = mutableStateOf(true)
@@ -89,14 +89,14 @@ class TransferDiagnosticsUiTest {
             val report = requireNotNull(exported)
             val uri = androidx.core.content.FileProvider.getUriForFile(app, "${app.packageName}.files", report)
             app.contentResolver.openInputStream(uri)!!.use { stream ->
-                assertTrue(stream.bufferedReader().readText().contains("AF-XFER-SPACE"))
+                assertTrue(stream.bufferedReader().readText().contains("SHOVEL-XFER-SPACE"))
             }
             assertTrue(report.canonicalPath.startsWith(File(app.cacheDir, "transfer-diagnostics").canonicalPath + File.separator))
-            assertTrue(report.readText().contains("AF-XFER-SPACE"))
+            assertTrue(report.readText().contains("SHOVEL-XFER-SPACE"))
             assertTrue(report.readText().contains("api=${android.os.Build.VERSION.SDK_INT}"))
             compose.onNodeWithTag("transfer_diagnostics_clear").performClick()
             compose.waitUntil(5_000) { !report.exists() }
-            assertFalse(runBlocking { TransferDiagnostics.export(app) }.readText().contains("AF-XFER-SPACE"))
+            assertFalse(runBlocking { TransferDiagnostics.export(app) }.readText().contains("SHOVEL-XFER-SPACE"))
             assertEquals(initialPeer, NearbyTransferController.connection.pairing())
             assertEquals(initialState, NearbyTransferController.state.value)
             compose.onNodeWithTag("transfer_diagnostics_close").performClick()

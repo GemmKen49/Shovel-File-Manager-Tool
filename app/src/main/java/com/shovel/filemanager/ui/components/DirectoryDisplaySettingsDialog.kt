@@ -11,7 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.List
 import androidx.compose.material.icons.rounded.GridView
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -60,7 +60,7 @@ fun DirectoryDisplaySettingsDialog(
     }
     var draftSortMode by remember(initialSortMode) { mutableStateOf(initialSortMode ?: SortMode.NAME) }
     var draftSortDirection by remember(initialSortDirection) { mutableStateOf(initialSortDirection) }
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Rodinio nustatymai",
         icon = Icons.Rounded.GridView,
         onDismissRequest = onDismiss,

@@ -33,7 +33,7 @@ class AppearanceRolesUiTest {
         compose.setContent {
             val palette = CustomThemeColors(background = if (background.value == Color.Black) 0xff000000.toInt() else 0xffffffff.toInt(),
                 popup = if (background.value == Color.Black) 0xffffffff.toInt() else 0xff000000.toInt())
-            AFFileManagerTheme(AppearanceSettings(colorPalette = AppColorPalette.CUSTOM, customColors = palette,
+            ShovelTheme(AppearanceSettings(colorPalette = AppColorPalette.CUSTOM, customColors = palette,
                 cardTransparency = transparency.value, transparentMenus = true)) {
                 AppearancePage { Text("page") }
                 val label: @androidx.compose.runtime.Composable () -> Unit = {
@@ -44,10 +44,10 @@ class AppearanceRolesUiTest {
                     Text("popup", Modifier.testTag("transparent_popup_text"))
                 }
                 when (kind.value) {
-                    0 -> AfAlertDialog({}, {}, text = label)
-                    1 -> com.shovel.filemanager.ui.components.AfModalDialog("Popup", androidx.compose.material.icons.Icons.Rounded.Info,
+                    0 -> ShovelAlertDialog({}, {}, text = label)
+                    1 -> com.shovel.filemanager.ui.components.ShovelModalDialog("Popup", androidx.compose.material.icons.Icons.Rounded.Info,
                         {}, actions = {}) { label() }
-                    else -> AfDropdownMenu(true, {}) { label() }
+                    else -> ShovelDropdownMenu(true, {}) { label() }
                 }
             }
         }
@@ -65,17 +65,17 @@ class AppearanceRolesUiTest {
             popup = 0xff000000.toInt(), controls = 0xffffffff.toInt()))
         val popup = mutableStateOf(false)
         compose.setContent {
-            AFFileManagerTheme(AppearanceSettings(colorPalette = AppColorPalette.CUSTOM, customColors = selected.value)) {
+            ShovelTheme(AppearanceSettings(colorPalette = AppColorPalette.CUSTOM, customColors = selected.value)) {
                 AppearancePage {
                     Column {
                         Text("page", Modifier.testTag("page_text"))
-                        AfCard { Text("card", Modifier.testTag("card_text")) }
-                        AfButton({ popup.value = true }) { Text("button", Modifier.testTag("button_text")) }
-                        AfFilterChip(true, {}, { Text("chip", Modifier.testTag("chip_text")) })
+                        ShovelCard { Text("card", Modifier.testTag("card_text")) }
+                        ShovelButton({ popup.value = true }) { Text("button", Modifier.testTag("button_text")) }
+                        ShovelFilterChip(true, {}, { Text("chip", Modifier.testTag("chip_text")) })
                     }
                 }
-                if (popup.value) AfAlertDialog({ popup.value = false }, {
-                    AfButton({}) { Text("confirm", Modifier.testTag("popup_button_text")) }
+                if (popup.value) ShovelAlertDialog({ popup.value = false }, {
+                    ShovelButton({}) { Text("confirm", Modifier.testTag("popup_button_text")) }
                 },
                     text = { Text("popup", Modifier.testTag("popup_text")) })
             }
@@ -97,7 +97,7 @@ class AppearanceRolesUiTest {
     @Test fun interfaceScaleChangesDpAndTextDensityForTheWholeTheme() {
         val scale = mutableStateOf(100)
         compose.setContent {
-            AFFileManagerTheme(AppearanceSettings(interfaceScalePercent = scale.value)) {
+            ShovelTheme(AppearanceSettings(interfaceScalePercent = scale.value)) {
                 Box(Modifier.size(100.dp).testTag("scaled_box"))
             }
         }
@@ -113,8 +113,8 @@ class AppearanceRolesUiTest {
     @Test fun interfaceScaleReachesModalDialogContent() {
         val scale = mutableStateOf(100)
         compose.setContent {
-            AFFileManagerTheme(AppearanceSettings(interfaceScalePercent = scale.value)) {
-                com.shovel.filemanager.ui.components.AfModalDialog(
+            ShovelTheme(AppearanceSettings(interfaceScalePercent = scale.value)) {
+                com.shovel.filemanager.ui.components.ShovelModalDialog(
                     title = "Popup",
                     icon = androidx.compose.material.icons.Icons.Rounded.Info,
                     onDismissRequest = {},
@@ -137,9 +137,9 @@ class AppearanceRolesUiTest {
         val scale = mutableStateOf(100)
         val expanded = mutableStateOf(true)
         compose.setContent {
-            AFFileManagerTheme(AppearanceSettings(interfaceScalePercent = scale.value)) {
+            ShovelTheme(AppearanceSettings(interfaceScalePercent = scale.value)) {
                 Box {
-                    AfDropdownMenu(expanded = expanded.value, onDismissRequest = { expanded.value = false }) {
+                    ShovelDropdownMenu(expanded = expanded.value, onDismissRequest = { expanded.value = false }) {
                         Box(Modifier.size(64.dp).testTag("scaled_popup_content"))
                     }
                 }

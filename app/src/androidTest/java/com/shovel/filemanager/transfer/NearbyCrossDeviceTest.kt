@@ -3,7 +3,7 @@ package com.shovel.filemanager.transfer
 import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -18,23 +18,23 @@ import java.net.InetAddress
 import java.security.MessageDigest
 import java.util.UUID
 
-/** Opt-in two-emulator validation. Normal connected suites skip it without afCrossRole. */
+/** Opt-in two-emulator validation. Normal connected suites skip it without shovelCrossRole. */
 class NearbyCrossDeviceTest {
     @Test fun android8SenderStreamsThirtyMegabytesToNewAndroidReceiver() = runBlocking {
         val arguments = InstrumentationRegistry.getArguments()
-        when (val role = arguments.getString("afCrossRole")) {
+        when (val role = arguments.getString("shovelCrossRole")) {
             "receiver" -> receive()
             "sender" -> send(
-                host = arguments.getString("afCrossHost") ?: "10.0.2.2",
-                port = arguments.getString("afCrossPort")?.toIntOrNull() ?: HOST_FORWARD_PORT,
+                host = arguments.getString("shovelCrossHost") ?: "10.0.2.2",
+                port = arguments.getString("shovelCrossPort")?.toIntOrNull() ?: HOST_FORWARD_PORT,
             )
-            null -> assumeTrue("Set afCrossRole to receiver or sender", false)
-            else -> error("Unknown afCrossRole: $role")
+            null -> assumeTrue("Set shovelCrossRole to receiver or sender", false)
+            else -> error("Unknown shovelCrossRole: $role")
         }
     }
 
     private suspend fun receive() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "cross-device-receiver-${UUID.randomUUID()}").apply { check(mkdirs()) }
         val address = InetAddress.getByName("127.0.0.1") as Inet4Address
         try {
@@ -61,7 +61,7 @@ class NearbyCrossDeviceTest {
     }
 
     private suspend fun send(host: String, port: Int) {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "cross-device-sender-${UUID.randomUUID()}").apply { check(mkdirs()) }
         val source = File(root, FILE_NAME)
         writeFixture(source)
@@ -122,7 +122,7 @@ class NearbyCrossDeviceTest {
     private fun fixtureBlock() = ByteArray(BLOCK_BYTES) { index -> (index * 31 + 7).toByte() }
 
     private companion object {
-        const val LOG_TAG = "AF_CROSS_DEVICE"
+        const val LOG_TAG = "SHOVEL_CROSS_DEVICE"
         const val PAIRING_CODE = "12345678"
         const val FILE_NAME = "android8-to-new.mp4"
         const val RECEIVER_PORT = 19_090

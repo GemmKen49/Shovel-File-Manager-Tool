@@ -2,7 +2,7 @@ package com.shovel.filemanager.ui
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 class TerminalSessionStoreTest {
     @Test
     fun immediateBackendFailureStopsKeepAliveWithoutKillingTheAppProcess() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = application.graph.terminalSessions
         if (store.state.value.visible) store.closeNow()
 

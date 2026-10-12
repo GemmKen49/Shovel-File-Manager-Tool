@@ -7,7 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.FileEntry
 import org.junit.Assert.assertTrue
@@ -21,7 +21,7 @@ class AnimatedImagePreviewTest {
 
     @Test fun twoFrameGifUsesAnimatedDecoderAndOpensInTheNormalZoomViewport() {
         check(android.os.Build.VERSION.SDK_INT >= 28)
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixture = File(app.cacheDir, "animated-${UUID.randomUUID()}.gif")
         val gif = "47494638396101000100800000000000ffffff21ff0b4e45545343415045322e30" +
             "030100000021f904000a0000002c0000000001000100000202440100" +

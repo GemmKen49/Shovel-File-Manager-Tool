@@ -22,7 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import com.shovel.filemanager.ui.components.AfActionRow
+import com.shovel.filemanager.ui.components.ShovelActionRow
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.uiText
 import com.shovel.filemanager.ui.theme.AppearanceSettings
@@ -37,7 +37,7 @@ internal fun WallpaperSettings(settings: AppearanceSettings, onWallpaper: (Uri?)
     var transparency by remember(settings.cardTransparency) { mutableFloatStateOf(settings.cardTransparency.toFloat()) }
     var shading by remember(settings.wallpaperShading) { mutableFloatStateOf(settings.wallpaperShading.toFloat()) }
     Column {
-        AfActionRow {
+        ShovelActionRow {
             OutlinedButton(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 modifier = Modifier.testTag("wallpaper_choose")) { LText("Fono paveikslėlis") }
             if (settings.wallpaperRevision != 0L) TextButton(onClick = { onWallpaper(null) },

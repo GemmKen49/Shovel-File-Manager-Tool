@@ -33,8 +33,8 @@ class QuickTunnelServiceTest {
     @Test
     fun bundledCloudflaredPublishesAndServesTheLocalOrigin() = runBlocking {
         assumeTrue(
-            "Run explicitly with afQuickTunnelLive=true because this uses Cloudflare's external service",
-            InstrumentationRegistry.getArguments().getString("afQuickTunnelLive") == "true",
+            "Run explicitly with shovelQuickTunnelLive=true because this uses Cloudflare's external service",
+            InstrumentationRegistry.getArguments().getString("shovelQuickTunnelLive") == "true",
         )
         LoopbackHttpFixture().use { fixture ->
             QuickTunnelController.start(context, "http://10.0.2.15:${fixture.port}", null)
@@ -45,7 +45,7 @@ class QuickTunnelServiceTest {
             // the resolver used by this Android instance. Avoid poisoning the
             // platform's negative DNS cache by querying immediately.
             delay(10_000)
-            assertEquals("AF tunnel fixture", awaitPublicBody(publicUrl))
+            assertEquals("Shovel tunnel fixture", awaitPublicBody(publicUrl))
         }
     }
 
@@ -93,7 +93,7 @@ class QuickTunnelServiceTest {
                     runCatching { server.accept() }.getOrNull()?.use { socket ->
                         val reader = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.US_ASCII))
                         while (reader.readLine()?.isNotEmpty() == true) Unit
-                        val body = "AF tunnel fixture".toByteArray(Charsets.UTF_8)
+                        val body = "Shovel tunnel fixture".toByteArray(Charsets.UTF_8)
                         socket.getOutputStream().buffered().use { output ->
                             output.write("HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n".toByteArray(Charsets.US_ASCII))
                             output.write(body)

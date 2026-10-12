@@ -40,16 +40,16 @@ class RemoteCopyEngineTest {
         assertArrayEquals("new".toByteArray(), remote.bytes("/target/duplicate (1).txt"))
         assertArrayEquals(byteArrayOf(1, 2, 3), remote.bytes("/target/album/picture.jpg"))
         assertTrue(remote.uploadTargets().all { it.substringAfterLast('/').length <= 46 })
-        assertFalse(remote.allPaths().any { ".af-upload" in it })
+        assertFalse(remote.allPaths().any { ".shovel-upload" in it })
     }
 
     @Test
     fun temporarySiblingDoesNotExtendAUserFileName() {
         val target = "/folder/${"x".repeat(255)}"
 
-        val temporary = RemotePath.temporarySibling(target, "af-partial")
+        val temporary = RemotePath.temporarySibling(target, "shovel-partial")
 
-        assertTrue(temporary.startsWith("/folder/.af-partial-"))
+        assertTrue(temporary.startsWith("/folder/.shovel-partial-"))
         assertTrue(temporary.substringAfterLast('/').length <= 47)
         assertFalse(temporary.contains("x".repeat(64)))
     }
@@ -77,7 +77,7 @@ class RemoteCopyEngineTest {
         assertEquals("old", File(local, "report.pdf").readText())
         assertEquals("new", File(local, "report (1).pdf").readText())
         assertArrayEquals(byteArrayOf(9, 8, 7), File(local, "photos/image.png").readBytes())
-        assertFalse(local.walkTopDown().any { ".af-download" in it.name })
+        assertFalse(local.walkTopDown().any { ".shovel-download" in it.name })
     }
 
     @Test
@@ -97,7 +97,7 @@ class RemoteCopyEngineTest {
         assertEquals(1, result.copiedRoots)
         assertEquals(listOf("bad.txt"), result.failures.map(RemoteCopyFailure::sourceName))
         assertArrayEquals("good".toByteArray(), remote.bytes("/target/good.txt"))
-        assertFalse(remote.allPaths().any { ".af-upload" in it })
+        assertFalse(remote.allPaths().any { ".shovel-upload" in it })
     }
 
     @Test

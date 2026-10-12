@@ -35,11 +35,11 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Schedule
-import com.shovel.filemanager.ui.theme.AfButton as Button
-import com.shovel.filemanager.ui.theme.AfCard as Card
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,7 +47,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,7 +64,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import com.shovel.filemanager.ui.theme.AfDialog
+import com.shovel.filemanager.ui.theme.ShovelDialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.data.TrashBrowserEntry
@@ -77,14 +77,14 @@ import com.shovel.filemanager.model.SortMode
 import com.shovel.filemanager.ui.MainViewModel
 import com.shovel.filemanager.ui.TrashBrowserUiState
 import com.shovel.filemanager.ui.components.DirectoryBrowserToolbar
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.ui.components.DirectoryDisplayMenuItems
 import com.shovel.filemanager.ui.components.DirectoryEntryFilter
 import com.shovel.filemanager.ui.components.DirectoryEntryFilterDialog
 import com.shovel.filemanager.ui.components.DirectoryEntryFilterRules
 import com.shovel.filemanager.ui.components.DirectoryDisplaySettingsDialog
 import com.shovel.filemanager.ui.components.DirectoryQuickSearchField
-import com.shovel.filemanager.ui.components.AfPullToRefresh
+import com.shovel.filemanager.ui.components.ShovelPullToRefresh
 import com.shovel.filemanager.ui.components.LocalFileVisual
 import com.shovel.filemanager.ui.components.LazyListFastScroller
 import com.shovel.filemanager.ui.components.LazyGridFastScroller
@@ -136,7 +136,7 @@ fun TrashBrowserDialog(
         transforming = false
     }
 
-    AfDialog(
+    ShovelDialog(
         onDismissRequest = { if (preview == null) viewModel.navigateTrashBack() },
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
@@ -233,7 +233,7 @@ fun TrashBrowserDialog(
                 HorizontalDivider()
                 if (state.loading || state.emptying) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
 
-                AfPullToRefresh(
+                ShovelPullToRefresh(
                     isRefreshing = state.loading || state.emptying,
                     onRefresh = viewModel::refreshTrashBrowser,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -355,7 +355,7 @@ fun TrashBrowserDialog(
     }
     if (showRetention) {
         var draft by remember(state.retentionPeriod) { mutableStateOf(state.retentionPeriod) }
-        AfModalDialog(
+        ShovelModalDialog(
             title = "Automatinis šiukšliadėžės valymas",
             subtitle = "Pasirinkite, kiek laiko ištrinti elementai turi būti saugomi.",
             icon = Icons.Rounded.Schedule,

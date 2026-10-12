@@ -13,22 +13,22 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-class AfWorkflowRepositoryTest {
+class ShovelWorkflowRepositoryTest {
     @get:Rule
     val temporary = TemporaryFolder()
 
     @Test
     fun plansRoundTripWithoutEmbeddingRemoteCredentials() {
         val root = temporary.newFolder("plans")
-        val repository = AfPlanRepository(root)
-        val plan = AfPlanDefinition(
+        val repository = ShovelPlanRepository(root)
+        val plan = ShovelPlanDefinition(
             id = "portable-plan",
             name = "Phone to server",
             sources = listOf(
-                AfSourceRef(AfLocationRef.remote("source-profile", "Source", "/in/report.txt"), "report.txt"),
+                ShovelSourceRef(ShovelLocationRef.remote("source-profile", "Source", "/in/report.txt"), "report.txt"),
             ),
             destinations = listOf(
-                AfDestinationRef(AfLocationRef.remote("target-profile", "Target", "/archive")),
+                ShovelDestinationRef(ShovelLocationRef.remote("target-profile", "Target", "/archive")),
             ),
             conflictPolicy = ConflictPolicy.KEEP_BOTH,
             verification = TransferVerification.SHA256,
@@ -37,7 +37,7 @@ class AfWorkflowRepositoryTest {
 
         val saved = repository.save(plan)
         val restored = repository.find(plan.id)
-        val persisted = File(root, "af_workflows_v1/plans.json").readText()
+        val persisted = File(root, "shovel_workflows_v1/plans.json").readText()
 
         assertEquals(saved, restored)
         assertTrue(persisted.contains("source-profile"))
@@ -49,8 +49,8 @@ class AfWorkflowRepositoryTest {
     @Test
     fun malformedMetadataIsQuarantinedInsteadOfPartiallyLoaded() {
         val root = temporary.newFolder("corrupt")
-        val repository = AfPlanRepository(root)
-        val storageDirectory = File(root, "af_workflows_v1")
+        val repository = ShovelPlanRepository(root)
+        val storageDirectory = File(root, "shovel_workflows_v1")
         File(storageDirectory, "plans.json").writeText("{not-json")
 
         assertTrue(repository.list().isEmpty())
@@ -61,36 +61,36 @@ class AfWorkflowRepositoryTest {
     @Test
     fun interruptedExecutionPersistsItsRecoveryBackupAndJournal() = runTest {
         val root = temporary.newFolder("execution")
-        val storage = FakeAfStorage()
+        val storage = FakeShovelStorage()
         val source = storage.file("/phone/file.txt", "content", "phone")
         val destination = storage.directory("/server", "server")
-        val plan = AfPlanDefinition(
+        val plan = ShovelPlanDefinition(
             id = "recovery-plan",
             name = "Recovery",
-            sources = listOf(AfSourceRef(source, "file.txt")),
-            destinations = listOf(AfDestinationRef(destination)),
+            sources = listOf(ShovelSourceRef(source, "file.txt")),
+            destinations = listOf(ShovelDestinationRef(destination)),
             conflictPolicy = ConflictPolicy.KEEP_BOTH,
             verification = TransferVerification.SHA256,
             failurePolicy = TransferFailurePolicy.STOP,
         )
-        val preview = AfPlanPreflight().preview(plan, storage, nowMillis = 50)
-        val repository = AfExecutionRepository(root)
+        val preview = ShovelPlanPreflight().preview(plan, storage, nowMillis = 50)
+        val repository = ShovelExecutionRepository(root)
         repository.create(preview)
-        val backup = AfLocationRef.remote("server", "server", "/.file.af-backup")
-        val state = AfExecutionState(
+        val backup = ShovelLocationRef.remote("server", "server", "/.file.shovel-backup")
+        val state = ShovelExecutionState(
             executionId = preview.executionId,
-            status = AfExecutionStatus.INTERRUPTED,
+            status = ShovelExecutionStatus.INTERRUPTED,
             nextEntryIndex = 1,
             activeBackup = backup,
             attempt = 1,
             startedAtMillis = 60,
         )
         val journal = listOf(
-            AfReceiptItem(
+            ShovelReceiptItem(
                 source = source,
                 destination = child(destination, "file.txt"),
                 directory = false,
-                status = AfReceiptItemStatus.COPIED,
+                status = ShovelReceiptItemStatus.COPIED,
                 sizeBytes = 7,
                 sha256 = storage.sha256(source),
             ),
@@ -110,23 +110,23 @@ class AfWorkflowRepositoryTest {
     @Test
     fun consumedUndoIsDurablyRemovedFromTheOriginalReceipt() {
         val root = temporary.newFolder("timeline")
-        val repository = AfTimelineRepository(root)
-        val source = AfLocationRef.local(File(root, "source.txt").path)
-        val destination = AfLocationRef.local(File(root, "destination.txt").path)
-        val receipt = AfOperationReceipt(
+        val repository = ShovelTimelineRepository(root)
+        val source = ShovelLocationRef.local(File(root, "source.txt").path)
+        val destination = ShovelLocationRef.local(File(root, "destination.txt").path)
+        val receipt = ShovelOperationReceipt(
             id = "receipt-1",
             planId = "plan-1",
             planName = "Copy",
             startedAtMillis = 10,
             finishedAtMillis = 20,
-            status = AfExecutionStatus.COMPLETED,
+            status = ShovelExecutionStatus.COMPLETED,
             verification = TransferVerification.SHA256,
             items = listOf(
-                AfReceiptItem(
+                ShovelReceiptItem(
                     source = source,
                     destination = destination,
                     directory = false,
-                    status = AfReceiptItemStatus.COPIED,
+                    status = ShovelReceiptItemStatus.COPIED,
                     sizeBytes = 1,
                     sha256 = "a".repeat(64),
                 ),
@@ -143,51 +143,51 @@ class AfWorkflowRepositoryTest {
     }
 
     @Test
-    fun timelineSearchFollowsTheFileAcrossSeveralAfOperations() {
+    fun timelineSearchFollowsTheFileAcrossSeveralShovelOperations() {
         val root = temporary.newFolder("trace")
         val first = receipt(
             id = "receipt-first",
-            source = AfLocationRef.local(File(root, "original/report.txt").path),
-            destination = AfLocationRef.remote("server", "Server", "/incoming/report.txt"),
+            source = ShovelLocationRef.local(File(root, "original/report.txt").path),
+            destination = ShovelLocationRef.remote("server", "Server", "/incoming/report.txt"),
             finished = 20,
         )
         val second = receipt(
             id = "receipt-second",
-            source = AfLocationRef.remote("server", "Server", "/incoming/report.txt"),
-            destination = AfLocationRef.remote("server", "Server", "/archive/report.txt"),
+            source = ShovelLocationRef.remote("server", "Server", "/incoming/report.txt"),
+            destination = ShovelLocationRef.remote("server", "Server", "/archive/report.txt"),
             finished = 30,
         )
         val unrelated = receipt(
             id = "receipt-other",
-            source = AfLocationRef.local(File(root, "photo.jpg").path),
-            destination = AfLocationRef.remote("server", "Server", "/photos/photo.jpg"),
+            source = ShovelLocationRef.local(File(root, "photo.jpg").path),
+            destination = ShovelLocationRef.remote("server", "Server", "/photos/photo.jpg"),
             finished = 40,
         )
 
-        val traced = AfTimelineSearch.trace(listOf(unrelated, second, first), "original/report.txt")
+        val traced = ShovelTimelineSearch.trace(listOf(unrelated, second, first), "original/report.txt")
 
-        assertEquals(listOf("receipt-second", "receipt-first"), traced.map(AfOperationReceipt::id))
+        assertEquals(listOf("receipt-second", "receipt-first"), traced.map(ShovelOperationReceipt::id))
     }
 
     private fun receipt(
         id: String,
-        source: AfLocationRef,
-        destination: AfLocationRef,
+        source: ShovelLocationRef,
+        destination: ShovelLocationRef,
         finished: Long,
-    ) = AfOperationReceipt(
+    ) = ShovelOperationReceipt(
         id = id,
         planId = "plan-trace",
         planName = "Trace",
         startedAtMillis = finished - 1,
         finishedAtMillis = finished,
-        status = AfExecutionStatus.COMPLETED,
+        status = ShovelExecutionStatus.COMPLETED,
         verification = TransferVerification.SHA256,
         items = listOf(
-            AfReceiptItem(
+            ShovelReceiptItem(
                 source = source,
                 destination = destination,
                 directory = false,
-                status = AfReceiptItemStatus.COPIED,
+                status = ShovelReceiptItemStatus.COPIED,
                 sizeBytes = 1,
                 sha256 = "b".repeat(64),
             ),

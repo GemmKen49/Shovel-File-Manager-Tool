@@ -5,7 +5,7 @@ import android.graphics.BitmapFactory
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -14,7 +14,7 @@ import java.util.UUID
 class AppearanceWallpaperTest {
     @Test fun importHonorsOrientationIsPrivateAndFailedOrCancelledImportLeavesNoDebris() {
         check(android.os.Build.MODEL.contains("sdk"))
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "wallpaper-test-${UUID.randomUUID()}").apply { mkdir() }
         val repository = AppearanceRepository(app)
         val before = repository.settings.value

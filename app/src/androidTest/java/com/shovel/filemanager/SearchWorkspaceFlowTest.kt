@@ -81,7 +81,7 @@ class SearchWorkspaceFlowTest {
     }
 
     private fun captureSearchWorkspace() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val artifact = File(requireNotNull(application.getExternalFilesDir("validation")), "search-workspace-0.5.0.png")
         artifact.parentFile?.mkdirs()
         artifact.outputStream().use { output ->

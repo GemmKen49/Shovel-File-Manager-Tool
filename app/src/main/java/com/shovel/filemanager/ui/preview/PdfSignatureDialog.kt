@@ -31,8 +31,8 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Draw
 import androidx.compose.material.icons.rounded.Save
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
-import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -41,7 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,7 +72,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import com.shovel.filemanager.ui.theme.AfDialog
+import com.shovel.filemanager.ui.theme.ShovelDialog
 import com.shovel.filemanager.pdfsigning.PdfSignaturePlacement
 import com.shovel.filemanager.pdfsigning.SavedSignature
 import com.shovel.filemanager.pdfsigning.SignatureDrawing
@@ -83,7 +83,7 @@ import com.shovel.filemanager.pdfsigning.VisualSignatureRules
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.uiText
 import com.shovel.filemanager.ui.SignatureLibraryUiState
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -154,7 +154,7 @@ internal fun PdfSignatureDialog(
         if (submitted && !applying && error != null) submitted = false
     }
 
-    AfDialog(
+    ShovelDialog(
         onDismissRequest = { if (!applying && !submitted) onDismiss() },
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
@@ -390,7 +390,7 @@ private fun SaveSignatureDialog(
 ) {
     var name by remember { mutableStateOf("") }
     val normalizedName = name.trim()
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Išsaugoti parašą",
         icon = Icons.Rounded.Save,
         onDismissRequest = onDismiss,
@@ -437,7 +437,7 @@ private fun SavedSignaturesDialog(
     onRefresh: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Išsaugoti parašai",
         icon = Icons.Rounded.Draw,
         onDismissRequest = onDismiss,

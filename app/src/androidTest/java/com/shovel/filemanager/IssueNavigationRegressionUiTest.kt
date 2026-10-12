@@ -28,9 +28,9 @@ class IssueNavigationRegressionUiTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun everyFileCategoryStaysScopedInsideItsFolderAndBackRestoresTheCategory() {
-        val app = compose.activity.application as AFFileManagerApplication
+        val app = compose.activity.application as ShovelApplication
         val vm = ViewModelProvider(compose.activity)[MainViewModel::class.java]
-        val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "AFCategory-${UUID.randomUUID()}")
+        val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "ShovelCategory-${UUID.randomUUID()}")
         check(root.mkdirs())
         val specifications = listOf(
             Triple(FileCategory.IMAGES, "photo.jpg", "image/jpeg"),

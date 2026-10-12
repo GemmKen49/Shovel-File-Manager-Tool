@@ -498,7 +498,7 @@ class LocalFileRepository(
                 require(bytes.size <= maxBytes) { "Turinys per didelis vidiniam redaktoriui" }
                 val file = File(path)
                 require(file.isFile && file.canWrite()) { "Failo negalima įrašyti" }
-                val temporary = File(file.parentFile, ".${file.name}.af.tmp")
+                val temporary = File(file.parentFile, ".${file.name}.shovel.tmp")
                 try {
                     temporary.outputStream().use { output ->
                         output.write(bytes)

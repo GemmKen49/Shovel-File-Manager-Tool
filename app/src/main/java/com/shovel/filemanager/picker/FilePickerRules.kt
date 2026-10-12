@@ -43,7 +43,7 @@ internal class FilePickerBoundary(roots: List<File>) {
         val file = File(path).canonicalFile
         val root = roots.firstOrNull { file.toPath().startsWith(it.toPath()) } ?: return null
         val relative = root.toPath().relativize(file.toPath()).map { it.toString() }
-        // Even AF's own external app-private data must not become an exported picker source.
+        // Even Shovel's own external app-private data must not become an exported picker source.
         if (relative.size >= 2 && relative[0].equals("Android", true) &&
             relative[1].lowercase(Locale.ROOT) in setOf("data", "obb")) return null
         file

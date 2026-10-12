@@ -260,7 +260,7 @@ fun palettePreviewColors(palette: AppColorPalette, custom: CustomThemeColors = C
 }
 
 @Composable
-fun AFFileManagerTheme(
+fun ShovelTheme(
     settings: AppearanceSettings = AppearanceSettings(),
     content: @Composable () -> Unit,
 ) {

@@ -24,9 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shovel.filemanager.apk.ApkInstallMetadata
 import com.shovel.filemanager.core.FileSystemRules
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.ui.localization.LText
-import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -40,7 +40,7 @@ internal fun ApkInstallConfirmationDialog(
     val result by produceState<Result<ApkInstallMetadata>?>(null, cacheKey) {
         value = withContext(Dispatchers.IO) { runCatching { load() } }
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Patvirtinti programos diegimą", icon = Icons.Rounded.InstallMobile,
         onDismissRequest = onDismiss, modifier = Modifier.testTag("apk_install_confirmation"),
         actions = {

@@ -20,7 +20,7 @@ import java.nio.ByteOrder;
 public final class BackgroundPlaybackRuntimeVerifier {
     public static boolean verify(Instrumentation instrumentation) throws Exception {
         Context context = instrumentation.getTargetContext();
-        File file = new File(context.getCacheDir(), "af-optimized-background.wav");
+        File file = new File(context.getCacheDir(), "shovel-optimized-background.wav");
         int bytes = 32000;
         ByteBuffer wave = ByteBuffer.allocate(44 + bytes).order(ByteOrder.LITTLE_ENDIAN);
         wave.put("RIFF".getBytes("US-ASCII")).putInt(36 + bytes).put("WAVEfmt ".getBytes("US-ASCII"))
@@ -29,7 +29,7 @@ public final class BackgroundPlaybackRuntimeVerifier {
         try (FileOutputStream output = new FileOutputStream(file)) { output.write(wave.array()); }
         try {
             instrumentation.runOnMainSync(() -> context.startForegroundService(command(context, "PLAY_IN_BACKGROUND")
-                .putExtra("uri", Uri.fromFile(file).toString()).putExtra("title", "AF playback test")
+                .putExtra("uri", Uri.fromFile(file).toString()).putExtra("title", "Shovel playback test")
                 .putExtra("position", 0L).putExtra("loop", true).putExtra("speed", 1f).putExtra("volume", 0f)));
             await(() -> notification(context) != null && notification(context).actions != null && notification(context).actions.length == 2);
             Notification initial = notification(context);

@@ -2,7 +2,7 @@ package com.shovel.filemanager.ui.theme
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -11,7 +11,7 @@ import org.junit.runner.RunWith
 class AppearanceRepositoryTest {
     @Test
     fun customPalettePersistsAndInvalidWritesLeavePreviousSettingsIntact() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val repository = AppearanceRepository(application)
         val before = repository.settings.value
         try {
@@ -39,7 +39,7 @@ class AppearanceRepositoryTest {
 
     @Test
     fun appearanceSettingsPersistAcrossRepositoryInstances() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val repository = AppearanceRepository(application)
         try {
             repository.setThemeMode(AppThemeMode.DARK)

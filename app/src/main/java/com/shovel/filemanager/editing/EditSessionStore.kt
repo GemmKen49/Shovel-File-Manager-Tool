@@ -143,7 +143,7 @@ class EditSessionStore(cacheDirectory: File) {
         val source = session.workingFile.canonicalFile
         requireContained(directory, source)
         require(source.isFile && source.canRead()) { "Editable copy is no longer available" }
-        val temporary = File(directory, ".${source.name}.af-transform-${UUID.randomUUID()}.tmp").canonicalFile
+        val temporary = File(directory, ".${source.name}.shovel-transform-${UUID.randomUUID()}.tmp").canonicalFile
         requireContained(directory, temporary)
         try {
             produce(source, temporary)
@@ -430,7 +430,7 @@ class EditSessionStore(cacheDirectory: File) {
     ) {
         val parent = requireNotNull(target.parentFile) { "Target has no parent folder" }
         require(parent.isDirectory) { "Target folder is not available" }
-        val temporary = File(parent, ".${target.name}.af-edit-${UUID.randomUUID()}.tmp")
+        val temporary = File(parent, ".${target.name}.shovel-edit-${UUID.randomUUID()}.tmp")
         requireContained(parent, temporary)
         try {
             temporary.outputStream().use { output ->
@@ -457,7 +457,7 @@ class EditSessionStore(cacheDirectory: File) {
     private fun atomicCreate(target: File, write: (OutputStream) -> Unit): Boolean {
         val parent = requireNotNull(target.parentFile) { "Target has no parent folder" }
         require(parent.isDirectory) { "Target folder is not available" }
-        val temporary = File(parent, ".${target.name}.af-edit-${UUID.randomUUID()}.tmp")
+        val temporary = File(parent, ".${target.name}.shovel-edit-${UUID.randomUUID()}.tmp")
         requireContained(parent, temporary)
         try {
             temporary.outputStream().use { output ->

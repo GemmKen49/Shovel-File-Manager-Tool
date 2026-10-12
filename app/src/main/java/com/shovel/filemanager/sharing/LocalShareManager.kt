@@ -35,7 +35,7 @@ class LocalShareManager(
             }
             pruneOldStages(shareDirectory)
             val files = if (sources.any(File::isDirectory)) {
-                val archive = File(shareDirectory, "AF-share-${UUID.randomUUID()}.zip")
+                val archive = File(shareDirectory, "Shovel-share-${UUID.randomUUID()}.zip")
                 archives.create(ArchiveFormat.ZIP, archive, sources)
                 listOf(archive)
             } else {

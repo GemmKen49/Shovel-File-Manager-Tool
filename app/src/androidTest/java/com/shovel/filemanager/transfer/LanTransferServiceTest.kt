@@ -123,7 +123,7 @@ class LanTransferServiceTest {
                 "POST /nearby/message HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $cookie\r\nContent-Length: ${text.toByteArray().size}\r\n\r\n$text")
             val blocked = message(firstCookie, "blocked fixture")
             assertTrue(blocked.startsWith("HTTP/1.1 403"))
-            assertTrue(blocked.contains("X-AF-Message-Blocked: 1"))
+            assertTrue(blocked.contains("X-Shovel-Message-Blocked: 1"))
             // Both fixtures share an IP, but only the selected device is blocked.
             assertTrue(message(secondCookie, "second fixture").startsWith("HTTP/1.1 200"))
             assertTrue(NearbyChatController.state.value.messages.any { it.body == "second fixture" && it.senderName == second.receiverName })
@@ -149,7 +149,7 @@ class LanTransferServiceTest {
             val removed = request(uri.host, uri.port,
                 "GET /nearby/group/members HTTP/1.1\r\nHost: ${uri.host}\r\nCookie: $firstCookie\r\n\r\n")
             assertTrue(removed.startsWith("HTTP/1.1 403"))
-            assertTrue(removed.contains("X-AF-Group-State: removed"))
+            assertTrue(removed.contains("X-Shovel-Group-State: removed"))
             val body = first.encoded()
             val rejoin = request(
                 uri.host, uri.port,
@@ -211,8 +211,8 @@ class LanTransferServiceTest {
 
             val endpoint = requireNotNull(NetworkProfileRules.parseWebDavEndpoint(uri.toString()))
             val profile = NetworkProfile(
-                id = "local-af-webdav",
-                name = "Local AF WebDAV",
+                id = "local-shovel-webdav",
+                name = "Local Shovel WebDAV",
                 protocol = NetworkProtocol.WEBDAV,
                 host = endpoint.host,
                 port = endpoint.port,

@@ -76,7 +76,7 @@ class PrivilegedPtyBackendTest {
             workingDirectory = working.absolutePath,
         )
         try {
-            val marker = "AF_PRIVILEGED_PTY_${System.nanoTime()}"
+            val marker = "SHOVEL_PRIVILEGED_PTY_${System.nanoTime()}"
             backend.write("pwd; id; printf '$marker\\n'; exit\n".toByteArray())
             val output = ByteArrayOutputStream()
             val buffer = ByteArray(8 * 1_024)

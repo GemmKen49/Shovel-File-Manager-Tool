@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.shovel.filemanager.ui.localization.LText
-import com.shovel.filemanager.ui.theme.AFFileManagerTheme
+import com.shovel.filemanager.ui.theme.ShovelTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -37,8 +37,8 @@ class SplitApkInstallActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         sessionId = savedInstanceState?.getInt("session", -1) ?: intent.getIntExtra("expected_session", -1)
         setContent {
-            val appearance by (application as com.shovel.filemanager.AFFileManagerApplication).graph.appearance.settings.collectAsStateWithLifecycle()
-            AFFileManagerTheme(settings = appearance) { com.shovel.filemanager.ui.theme.AppearancePage(Modifier.fillMaxSize()) {
+            val appearance by (application as com.shovel.filemanager.ShovelApplication).graph.appearance.settings.collectAsStateWithLifecycle()
+            ShovelTheme(settings = appearance) { com.shovel.filemanager.ui.theme.AppearancePage(Modifier.fillMaxSize()) {
             Column(Modifier.padding(24.dp)) {
                 LText("APK rinkinys")
                 message.value?.let { LText(it) } ?: CircularProgressIndicator()

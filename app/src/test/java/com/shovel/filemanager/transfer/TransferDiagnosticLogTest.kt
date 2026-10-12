@@ -24,7 +24,7 @@ class TransferDiagnosticLogTest {
         log.record(event("secret-password /personal/video.mp4 192.168.1.7"))
         val report = log.report()
         listOf("secret", "personal", "video", "192.168", "password").forEach { assertFalse(report.contains(it)) }
-        assertTrue(report.contains("AF-XFER-CONFLICT"))
+        assertTrue(report.contains("SHOVEL-XFER-CONFLICT"))
         assertTrue(report.contains("receive\tcommit\t-\t1\t5242880"))
         assertEquals(report, TransferDiagnosticLog(file).report())
     }
@@ -51,7 +51,7 @@ class TransferDiagnosticLogTest {
         val report = TransferDiagnosticLog(file).report()
         assertFalse(report.contains("private/file"))
         assertFalse(report.contains("secret"))
-        assertTrue(report.contains("AF-XFER-CONFLICT"))
+        assertTrue(report.contains("SHOVEL-XFER-CONFLICT"))
         file.writeText("x".repeat(TransferDiagnosticLog.MAX_BYTES + 1))
         val log = TransferDiagnosticLog(file)
         assertTrue(log.report().contains("diagnostic_storage_failed=true"))

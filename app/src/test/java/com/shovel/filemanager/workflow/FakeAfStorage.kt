@@ -4,14 +4,14 @@ import com.shovel.filemanager.operations.OperationContext
 import java.io.File
 import java.security.MessageDigest
 
-internal class FakeAfStorage : AfStorageSession {
+internal class FakeShovelStorage : ShovelStorageSession {
     private data class Node(
         val directory: Boolean,
         var bytes: ByteArray = byteArrayOf(),
         var modifiedAtMillis: Long = 1L,
     )
 
-    private val nodes = linkedMapOf<String, Pair<AfLocationRef, Node>>()
+    private val nodes = linkedMapOf<String, Pair<ShovelLocationRef, Node>>()
     var availableBytes: Long? = Long.MAX_VALUE
     var stagingBytes: Long? = Long.MAX_VALUE
     var failInstallAt: String? = null
@@ -20,25 +20,25 @@ internal class FakeAfStorage : AfStorageSession {
     val deleted = mutableListOf<String>()
     val installed = mutableListOf<String>()
 
-    fun location(path: String, profile: String = "server"): AfLocationRef =
-        AfLocationRef.remote(profile, profile, path)
+    fun location(path: String, profile: String = "server"): ShovelLocationRef =
+        ShovelLocationRef.remote(profile, profile, path)
 
-    fun directory(path: String, profile: String = "server"): AfLocationRef = location(path, profile).also {
+    fun directory(path: String, profile: String = "server"): ShovelLocationRef = location(path, profile).also {
         nodes[it.identityKey()] = it to Node(directory = true)
     }
 
-    fun file(path: String, content: String, profile: String = "server"): AfLocationRef =
+    fun file(path: String, content: String, profile: String = "server"): ShovelLocationRef =
         file(path, content.toByteArray(), profile)
 
-    fun file(path: String, content: ByteArray, profile: String = "server"): AfLocationRef = location(path, profile).also {
+    fun file(path: String, content: ByteArray, profile: String = "server"): ShovelLocationRef = location(path, profile).also {
         nodes[it.identityKey()] = it to Node(directory = false, bytes = content.copyOf())
     }
 
-    fun bytes(location: AfLocationRef): ByteArray? = nodes[location.identityKey()]?.second?.bytes?.copyOf()
-    fun exists(location: AfLocationRef): Boolean = location.identityKey() in nodes
+    fun bytes(location: ShovelLocationRef): ByteArray? = nodes[location.identityKey()]?.second?.bytes?.copyOf()
+    fun exists(location: ShovelLocationRef): Boolean = location.identityKey() in nodes
 
-    override suspend fun enumerate(source: AfSourceRef): List<AfEnumeratedEntry> {
-        require(source.kind == AfSourceKind.FILE_SYSTEM) { "Fake archive enumeration is unsupported" }
+    override suspend fun enumerate(source: ShovelSourceRef): List<ShovelEnumeratedEntry> {
+        require(source.kind == ShovelSourceKind.FILE_SYSTEM) { "Fake archive enumeration is unsupported" }
         val root = source.location.normalized()
         val rootNode = nodes[root.identityKey()]?.second ?: return emptyList()
         val prefix = root.path.trimEnd('/') + "/"
@@ -48,19 +48,19 @@ internal class FakeAfStorage : AfStorageSession {
         }
         return selected.map { (location, node) ->
             val relative = if (location.path == root.path) "" else location.path.removePrefix(prefix)
-            AfEnumeratedEntry(
+            ShovelEnumeratedEntry(
                 relativePath = relative,
                 snapshot = snapshot(location, node),
                 depth = if (relative.isEmpty()) 0 else relative.count { it == '/' } + 1,
             )
-        }.sortedWith(compareBy<AfEnumeratedEntry> { it.depth }.thenBy { it.relativePath })
+        }.sortedWith(compareBy<ShovelEnumeratedEntry> { it.depth }.thenBy { it.relativePath })
             .also { require(it.firstOrNull()?.snapshot?.directory == rootNode.directory) }
     }
 
-    override suspend fun stat(location: AfLocationRef): AfNodeSnapshot? =
+    override suspend fun stat(location: ShovelLocationRef): ShovelNodeSnapshot? =
         nodes[location.normalized().identityKey()]?.let { (stored, node) -> snapshot(stored, node) }
 
-    override suspend fun listChildren(directory: AfLocationRef): List<AfNodeSnapshot> {
+    override suspend fun listChildren(directory: ShovelLocationRef): List<ShovelNodeSnapshot> {
         val normalized = directory.normalized()
         require(nodes[normalized.identityKey()]?.second?.directory == true)
         val prefix = normalized.path.trimEnd('/') + "/"
@@ -68,25 +68,25 @@ internal class FakeAfStorage : AfStorageSession {
             if (candidate.kind != normalized.kind || candidate.profileId != normalized.profileId) return@mapNotNull null
             val relative = candidate.path.removePrefix(prefix)
             if (!candidate.path.startsWith(prefix) || '/' in relative) null else snapshot(candidate, node)
-        }.sortedBy(AfNodeSnapshot::name)
+        }.sortedBy(ShovelNodeSnapshot::name)
     }
 
-    override suspend fun availableBytes(directory: AfLocationRef): Long? = availableBytes
+    override suspend fun availableBytes(directory: ShovelLocationRef): Long? = availableBytes
 
     override suspend fun stagingAvailableBytes(): Long? = stagingBytes
 
-    override suspend fun sha256(location: AfLocationRef, operation: OperationContext?): String {
+    override suspend fun sha256(location: ShovelLocationRef, operation: OperationContext?): String {
         val node = nodes[location.normalized().identityKey()]?.second ?: error("Missing fake node")
         require(!node.directory)
         return digest(node.bytes)
     }
 
-    override suspend fun sourceSha256(source: AfSourceRef, entry: AfEnumeratedEntry): String =
+    override suspend fun sourceSha256(source: ShovelSourceRef, entry: ShovelEnumeratedEntry): String =
         sha256(entry.snapshot.location)
 
     override suspend fun materialize(
-        source: AfSourceRef,
-        entry: AfEnumeratedEntry,
+        source: ShovelSourceRef,
+        entry: ShovelEnumeratedEntry,
         destination: File,
         operation: OperationContext,
     ) {
@@ -96,7 +96,7 @@ internal class FakeAfStorage : AfStorageSession {
         destination.writeBytes(node.bytes)
     }
 
-    override suspend fun createDirectory(location: AfLocationRef) {
+    override suspend fun createDirectory(location: ShovelLocationRef) {
         val normalized = location.normalized()
         val existing = nodes[normalized.identityKey()]?.second
         require(existing == null || existing.directory)
@@ -105,7 +105,7 @@ internal class FakeAfStorage : AfStorageSession {
 
     override suspend fun install(
         sourceFile: File,
-        destination: AfLocationRef,
+        destination: ShovelLocationRef,
         replace: Boolean,
         operation: OperationContext,
     ) {
@@ -120,7 +120,7 @@ internal class FakeAfStorage : AfStorageSession {
         this.installed += normalized.identityKey()
     }
 
-    override suspend fun delete(location: AfLocationRef, recursive: Boolean) {
+    override suspend fun delete(location: ShovelLocationRef, recursive: Boolean) {
         val normalized = location.normalized()
         val key = normalized.identityKey()
         if (key == failDeleteAt) error("Injected delete failure")
@@ -136,7 +136,7 @@ internal class FakeAfStorage : AfStorageSession {
         require(node.directory || children.isEmpty())
     }
 
-    override suspend fun rename(from: AfLocationRef, to: AfLocationRef) {
+    override suspend fun rename(from: ShovelLocationRef, to: ShovelLocationRef) {
         val source = from.normalized()
         val destination = to.normalized()
         require(source.kind == destination.kind && source.profileId == destination.profileId)
@@ -158,7 +158,7 @@ internal class FakeAfStorage : AfStorageSession {
 
     override suspend fun close() = Unit
 
-    private fun snapshot(location: AfLocationRef, node: Node): AfNodeSnapshot = AfNodeSnapshot(
+    private fun snapshot(location: ShovelLocationRef, node: Node): ShovelNodeSnapshot = ShovelNodeSnapshot(
         location = location,
         name = location.path.substringAfterLast('/').ifBlank { "/" },
         directory = node.directory,

@@ -10,7 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import org.junit.Assert.assertArrayEquals
 import org.junit.Rule
 import org.junit.Test
@@ -24,7 +24,7 @@ class ApkContentsDialogTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun signedContainerStyleZipBrowsesDirectoriesWithoutChangingBytes() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val file = File(app.cacheDir, "package-${UUID.randomUUID()}.apks")
         ZipOutputStream(file.outputStream()).use { zip ->
             listOf("base.apk", "res/layout/main.xml", "META-INF/CERT.SF").forEach { name ->

@@ -90,7 +90,7 @@ class SftpRemoteClient private constructor(
     override suspend fun upload(localSource: File, remotePath: String, operation: OperationContext?) = withContext(Dispatchers.IO) {
         require(localSource.isFile) { "Vietinis failas nepasiekiamas" }
         val normalized = RemotePath.normalize(remotePath)
-        val partial = RemotePath.temporarySibling(normalized, "af-partial")
+        val partial = RemotePath.temporarySibling(normalized, "shovel-partial")
         try {
             channel.put(partial).use { output ->
                 localSource.inputStream().buffered().use { input ->
@@ -121,7 +121,7 @@ class SftpRemoteClient private constructor(
     override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
         val normalized = RemotePath.normalize(path)
         check(!remotePathExists(normalized)) { "Toks pavadinimas jau naudojamas" }
-        val partial = RemotePath.temporarySibling(normalized, "af-create")
+        val partial = RemotePath.temporarySibling(normalized, "shovel-create")
         try {
             ByteArrayInputStream(ByteArray(0)).use { empty ->
                 channel.put(empty, partial, ChannelSftp.OVERWRITE)

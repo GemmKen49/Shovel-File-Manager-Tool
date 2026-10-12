@@ -20,7 +20,7 @@ object ArchiveCompressionRules {
     }
 }
 
-/** Bounded user-facing target for formats whose compression strength AF controls. */
+/** Bounded user-facing target for formats whose compression strength Shovel controls. */
 object ArchiveTargetSizeRules {
     const val MIN_MIB = 1L
     const val MAX_MIB = 8_192L

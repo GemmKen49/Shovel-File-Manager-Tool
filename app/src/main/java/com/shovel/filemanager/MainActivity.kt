@@ -17,11 +17,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.shovel.filemanager.ui.AFFileManagerApp
+import com.shovel.filemanager.ui.ShovelApp
 import com.shovel.filemanager.ui.AppSection
 import com.shovel.filemanager.ui.MainViewModel
 import com.shovel.filemanager.ui.PanelId
-import com.shovel.filemanager.ui.theme.AFFileManagerTheme
+import com.shovel.filemanager.ui.theme.ShovelTheme
 import com.shovel.filemanager.ui.components.LocalStorageRoots
 import kotlinx.coroutines.delay
 import java.io.File
@@ -101,9 +101,9 @@ class MainActivity : AppCompatActivity() {
                 val remoteReady = network.value.connectedProfile != null && network.value.entries.isNotEmpty()
                 if (homeReady || localReady || remoteReady) reportFullyDrawn()
             }
-            AFFileManagerTheme(settings = appearance.value) {
+            ShovelTheme(settings = appearance.value) {
                 CompositionLocalProvider(LocalStorageRoots provides storageRoots.value) {
-                    AFFileManagerApp(
+                    ShovelApp(
                         viewModel = mainViewModel,
                         incomingViewRequest = pendingViewRequest.value,
                         onIncomingViewRequestConsumed = { pendingViewRequest.value = null },
@@ -181,8 +181,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val EXTRA_BENCHMARK_DATASET = "af_benchmark_dataset"
-        const val EXTRA_BENCHMARK_REMOTE_PROFILE = "af_benchmark_remote_profile"
+        const val EXTRA_BENCHMARK_DATASET = "shovel_benchmark_dataset"
+        const val EXTRA_BENCHMARK_REMOTE_PROFILE = "shovel_benchmark_remote_profile"
         private val BENCHMARK_BUILD_TYPES = setOf("benchmark", "profile")
         private val BENCHMARK_DATASETS = setOf("large", "thumbnails")
         private val storageChangeActions = setOf(

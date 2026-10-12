@@ -13,7 +13,7 @@ import java.io.File
 
 /** Nothing leaves the device without an explicit user export. */
 internal object TransferDiagnostics {
-    const val STORAGE_ERROR_CODE = "AF-DIAG-STORAGE"
+    const val STORAGE_ERROR_CODE = "SHOVEL-DIAG-STORAGE"
     private var journal: TransferDiagnosticLog? = null
     private val mutableEnabled = MutableStateFlow(false)
     val enabled = mutableEnabled.asStateFlow()
@@ -54,7 +54,7 @@ internal object TransferDiagnostics {
         initialize(context)
         val log = requireNotNull(journal)
         fun safeDeviceValue(value: String) = value.filter { it.isLetterOrDigit() || it in " ._-" }.take(80)
-        val report = "AF transfer diagnostics v1\napp=${BuildConfig.VERSION_NAME}\napi=${Build.VERSION.SDK_INT}\n" +
+        val report = "Shovel transfer diagnostics v1\napp=${BuildConfig.VERSION_NAME}\napi=${Build.VERSION.SDK_INT}\n" +
             "manufacturer=${safeDeviceValue(Build.MANUFACTURER)}\nmodel=${safeDeviceValue(Build.MODEL)}\n" + log.report()
         check(report.toByteArray(Charsets.UTF_8).size <= TransferDiagnosticLog.MAX_BYTES + 1024)
         val destination = File(context.cacheDir, "transfer-diagnostics/report.txt")

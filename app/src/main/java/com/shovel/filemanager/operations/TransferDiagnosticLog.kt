@@ -15,11 +15,11 @@ import java.util.UUID
 
 /** Explicit wire identifiers: never serialize optimizer-controlled class or enum names. */
 enum class TransferFailure(val code: String, val retryable: Boolean = false) {
-    PERMISSION("AF-XFER-PERMISSION"), SPACE("AF-XFER-SPACE"), CONFLICT("AF-XFER-CONFLICT"),
-    SOURCE("AF-XFER-SOURCE"), STORAGE("AF-XFER-STORAGE"), INVALID("AF-XFER-INVALID"),
-    CANCELLED("AF-XFER-CANCELLED"), TIMEOUT("AF-XFER-TIMEOUT", true),
-    CONNECTION("AF-XFER-CONNECTION", true), CALLBACK("AF-XFER-CALLBACK"),
-    UNKNOWN("AF-XFER-UNKNOWN");
+    PERMISSION("SHOVEL-XFER-PERMISSION"), SPACE("SHOVEL-XFER-SPACE"), CONFLICT("SHOVEL-XFER-CONFLICT"),
+    SOURCE("SHOVEL-XFER-SOURCE"), STORAGE("SHOVEL-XFER-STORAGE"), INVALID("SHOVEL-XFER-INVALID"),
+    CANCELLED("SHOVEL-XFER-CANCELLED"), TIMEOUT("SHOVEL-XFER-TIMEOUT", true),
+    CONNECTION("SHOVEL-XFER-CONNECTION", true), CALLBACK("SHOVEL-XFER-CALLBACK"),
+    UNKNOWN("SHOVEL-XFER-UNKNOWN");
 
     companion object {
         fun fromCode(code: String?): TransferFailure? = entries.firstOrNull { it.code == code }

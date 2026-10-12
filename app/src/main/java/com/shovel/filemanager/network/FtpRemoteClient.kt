@@ -133,7 +133,7 @@ class FtpRemoteClient private constructor(
         ensureControlAlive()
         require(localSource.isFile) { "Vietinis failas nepasiekiamas" }
         val normalized = RemotePath.normalize(remotePath)
-        val partial = RemotePath.temporarySibling(normalized, "af-partial")
+        val partial = RemotePath.temporarySibling(normalized, "shovel-partial")
         try {
             val output = client.storeFileStream(partial) ?: throw IllegalStateException("FTP įkėlimas nepradėtas")
             output.use { stream ->
@@ -169,7 +169,7 @@ class FtpRemoteClient private constructor(
         ensureControlAlive()
         val normalized = RemotePath.normalize(path)
         check(!remotePathExists(normalized)) { "Toks pavadinimas jau naudojamas" }
-        val partial = RemotePath.temporarySibling(normalized, "af-create")
+        val partial = RemotePath.temporarySibling(normalized, "shovel-create")
         try {
             ByteArrayInputStream(ByteArray(0)).use { empty ->
                 check(client.storeFile(partial, empty)) { "Failo sukurti nepavyko" }

@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.theme.CustomThemeColors
 import com.shovel.filemanager.ui.theme.CustomThemeRules
@@ -42,7 +42,7 @@ internal fun CustomPaletteDialog(
     val parsed = remember(fields) { CustomThemeRules.parseDraft(fields) }
     val labels = listOf("Pagrindinė spalva", "Antrinė spalva", "Trečioji spalva", "Fono spalva", "Kortelių spalva",
         "Meniu ir dialogų spalva", "Mygtukų ir pasirinkimų spalva")
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Pasirinktinė paletė",
         icon = Icons.Rounded.Palette,
         onDismissRequest = onDismiss,

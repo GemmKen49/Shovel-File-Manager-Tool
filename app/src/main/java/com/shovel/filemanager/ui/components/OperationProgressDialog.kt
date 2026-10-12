@@ -19,7 +19,7 @@ import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.operations.OperationSnapshot
 import com.shovel.filemanager.operations.OperationStatus
 import com.shovel.filemanager.ui.localization.LText
-import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
 
 @Composable
 internal fun OperationProgressDialog(
@@ -36,7 +36,7 @@ internal fun OperationProgressDialog(
             (operation.completedItems.toFloat() / operation.totalItems).coerceIn(0f, 1f)
         else -> null
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = operation.title,
         icon = Icons.Rounded.Sync,
         onDismissRequest = onHide,

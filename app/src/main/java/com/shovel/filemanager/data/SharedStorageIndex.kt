@@ -22,7 +22,7 @@ import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** Publishes committed filesystem changes to other Android apps, not just AF's list. */
+/** Publishes committed filesystem changes to other Android apps, not just Shovel's list. */
 class SharedStorageIndex(context: Context) {
     private val context = context.applicationContext
     private val lock = Mutex()
@@ -98,7 +98,7 @@ class SharedStorageIndex(context: Context) {
                 }
                 if (batch.isNotEmpty()) scan(batch.toTypedArray())
             } finally {
-                // Even partial changes invalidate AF's old category snapshots.
+                // Even partial changes invalidate Shovel's old category snapshots.
                 if (sharedMutation) onChanged()
             }
         }

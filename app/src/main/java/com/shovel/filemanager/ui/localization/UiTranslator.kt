@@ -45,8 +45,8 @@ object UiTranslator {
         "Žinutė" to "Message",
         "Siųsti žinutę" to "Send message",
         "Šio veiksmo nebus galima atšaukti." to "This action cannot be undone.",
-        "Elementus bus galima atkurti iš AF File Manager šiukšlinės." to
-            "Items can be restored from AF File Manager Trash.",
+        "Elementus bus galima atkurti iš Shovel šiukšlinės." to
+            "Items can be restored from Shovel Trash.",
         "Dalis turinio neįskaičiuota, nes pasiekta saugi skenavimo riba." to
             "Some content was not counted because the safe scan limit was reached.",
         "Slėpti" to "Hide",
@@ -63,14 +63,14 @@ object UiTranslator {
         "APK nenurodo patikimos maksimalios Android versijos; rodoma kūrėjo pasirinkta tikslinė API." to
             "The APK does not specify a reliable maximum Android version; the developer's target API is shown.",
         "Atidaryti programos nustatymus" to "Open app settings",
-        "Šių apsaugotų failų nebus galima atkurti iš AF File Manager šiukšlinės." to
-            "These protected files cannot be restored from AF File Manager Trash.",
+        "Šių apsaugotų failų nebus galima atkurti iš Shovel šiukšlinės." to
+            "These protected files cannot be restored from Shovel Trash.",
         "Elementus vėliau bus galima atkurti arba ištrinti visam laikui." to
             "Items can later be restored or permanently deleted.",
         "Elementai bus ištrinti nuotoliniame serveryje be vietinės šiukšlinės." to
             "Items will be deleted on the remote server without local trash.",
-        "Elementas bus trinamas per Android dokumentų teikėją ir nepateks į AF File Manager šiukšlinę." to
-            "The item will be deleted through Android's document provider and will not enter AF File Manager Trash.",
+        "Elementas bus trinamas per Android dokumentų teikėją ir nepateks į Shovel šiukšlinę." to
+            "The item will be deleted through Android's document provider and will not enter Shovel Trash.",
         "Elemento nebebus galima atkurti iš programos šiukšliadėžės." to
             "The item can no longer be restored from the app Trash.",
         "Raudona" to "Red",
@@ -79,8 +79,8 @@ object UiTranslator {
         "Saugykla" to "Storage",
         "Leidimas nesuteiktas" to "Permission not granted",
         "Įkeliama…" to "Loading…",
-        "Atrakinti AF File Manager" to "Unlock AF File Manager",
-        "AF File Manager užrakinta" to "AF File Manager is locked",
+        "Atrakinti Shovel" to "Unlock Shovel",
+        "Shovel užrakinta" to "Shovel is locked",
         "Biometrinio lango atidaryti nepavyko" to "Could not open authentication",
         "Pagrindinė spalva" to "Primary color",
         "Antrinė spalva" to "Secondary color",
@@ -90,7 +90,7 @@ object UiTranslator {
         "Spalvas įrašykite #RRGGBB formatu. Teksto kontrastas pritaikomas automatiškai." to "Enter colors as #RRGGBB. Text contrast is adjusted automatically.",
         "Išvalyti talpyklą" to "Clear cache",
         "Atidaryti nustatymus" to "Open settings",
-        "Android nustatymuose atverkite „Saugykla ir talpykla“, tada „Išvalyti talpyklą“. Nesirinkite duomenų išvalymo. AF kitų programų talpyklos tiesiogiai nevalo." to "In Android settings, open Storage and cache, then Clear cache. Do not choose Clear data. AF cannot clear other apps' caches directly.",
+        "Android nustatymuose atverkite „Saugykla ir talpykla“, tada „Išvalyti talpyklą“. Nesirinkite duomenų išvalymo. Shovel kitų programų talpyklos tiesiogiai nevalo." to "In Android settings, open Storage and cache, then Clear cache. Do not choose Clear data. Shovel cannot clear other apps' caches directly.",
         "Programų nuskaityti nepavyko" to "Could not scan apps",
         "Veikiančios programos" to "Running apps",
         "Veikiančių programų atmintį ir jų stabdymą Android leidžia tik per aktyvią Root arba Shizuku prieigą." to
@@ -109,7 +109,7 @@ object UiTranslator {
         "RAM dydis nepasiekiamas" to "RAM usage is unavailable",
         "Root arba Shizuku prieiga neaktyvi" to "Root or Shizuku access is not active",
         "Galima sustabdyti tik įdiegtą naudotojo programą" to "Only an installed user app can be stopped",
-        "AF File Manager negali sustabdyti savęs" to "AF File Manager cannot stop itself",
+        "Shovel negali sustabdyti savęs" to "Shovel cannot stop itself",
         "Veikiančių programų sąrašas nepasiekiamas" to "The running app list is unavailable",
         "Netinkamas paketo pavadinimas" to "Invalid package name",
         "Privilegijuotos komandos išvesties skaitytuvas nesustojo" to
@@ -329,7 +329,7 @@ object UiTranslator {
         "Archyvo slaptažodis (nebūtinas)" to "Archive password (optional)",
         "Išpakuoti čia" to "Extract here",
         "Atžymėti" to "Deselect",
-        "Tai nėra AF File Manager susiejimo kodas" to "This is not an AF File Manager pairing code",
+        "Tai nėra Shovel susiejimo kodas" to "This is not an Shovel pairing code",
         "Gavimo adresas turi būti privatus IPv4 adresas" to "The receiver address must be a private IPv4 address",
         "Netinkamas įrenginio vardas" to "Invalid device name",
         "Pasirinkite bent vieną failą" to "Select at least one file",
@@ -398,13 +398,13 @@ object UiTranslator {
         "Wi-Fi Direct įrenginys" to "Wi-Fi Direct device",
         "Arba įklijuokite susiejimo kodą" to "Or paste the pairing code",
         "Įrenginio valymas" to "Device cleanup",
-        "Tik peržiūra — AF niekada automatiškai nešalina programų ar talpyklos" to "Review only — AF never removes apps or cache automatically",
-        "Tik peržiūra — AF nieko nešalina be jūsų patvirtinimo" to "Review only — AF removes nothing without your confirmation",
+        "Tik peržiūra — Shovel niekada automatiškai nešalina programų ar talpyklos" to "Review only — Shovel never removes apps or cache automatically",
+        "Tik peržiūra — Shovel nieko nešalina be jūsų patvirtinimo" to "Review only — Shovel removes nothing without your confirmation",
         "Nenaudojamos programos" to "Unused apps",
         "Programų talpykla" to "App cache",
         "Norint apskaičiuoti nenaudojamas programas ir teikėjo nurodytus talpyklos dydžius, reikia Android naudojimo prieigos." to "Android usage access is required to calculate unused apps and provider-reported cache sizes.",
         "Atidaryti naudojimo prieigos nustatymus" to "Open usage access settings",
-        "AF nevalo kitų programų talpyklos ir nešalina programų be Android patvirtinimo." to "AF does not clear another app’s cache and does not uninstall anything without Android confirmation.",
+        "Shovel nevalo kitų programų talpyklos ir nešalina programų be Android patvirtinimo." to "Shovel does not clear another app’s cache and does not uninstall anything without Android confirmation.",
         "Ši Android versija neatskleidžia kitų programų talpyklos dydžių. Peržiūrėkite juos programos sistemos nustatymuose." to "This Android build does not expose other apps’ cache sizes. Open an app’s system settings to review it.",
         "Nė viena programa neatitinka 90 dienų taisyklės" to "No apps meet the 90-day rule",
         "Nėra pasiekiamų talpyklos dydžių" to "No cache sizes are available",
@@ -427,7 +427,7 @@ object UiTranslator {
         "Pridėti teikėjo aplanką" to "Add provider folder",
         "Teikėjo vietų dar nepridėta" to "No provider locations added",
         "Pridėkite Google Drive, Nextcloud, Files arba bet kurį Android įdiegtą teikėją." to "Add Google Drive, Nextcloud, Files or any provider installed on Android.",
-        "Android suteikia AF prieigą tik prie čia pasirinkto teikėjo aplanko. Visai Google Drive paskyrai reikalingas atskiras Google prisijungimas." to "Android gives AF access only to the provider folder selected here. A separate Google sign-in is required for the whole Google Drive account.",
+        "Android suteikia Shovel prieigą tik prie čia pasirinkto teikėjo aplanko. Visai Google Drive paskyrai reikalingas atskiras Google prisijungimas." to "Android gives Shovel access only to the provider folder selected here. A separate Google sign-in is required for the whole Google Drive account.",
         "Naudokite „Pridėti žymelę“ bet kurio failo ar aplanko meniu." to "Use ‘Add bookmark’ in any file or folder menu.",
         "Pasirinkta" to "Selected",
         "Analizė" to "Analyze",
@@ -445,7 +445,7 @@ object UiTranslator {
         "Bendrinti šį aplanką" to "Share this folder",
         "Bendrinimo nustatymai" to "Sharing settings",
         "Prievadas (tuščias = automatinis)" to "Port (blank = automatic)",
-        "Naudotojo vardas (tuščias = af)" to "Username (blank = af)",
+        "Naudotojo vardas (tuščias = shovel)" to "Username (blank = shovel)",
         "Laikinas slaptažodis (tuščias = sugeneruotas)" to "Temporary password (blank = generated)",
         "Tik skaityti" to "Read only",
         "Neleisti įkelti, pervadinti ar trinti" to "Do not allow uploads, renaming, or deletion",
@@ -472,10 +472,10 @@ object UiTranslator {
         "Atsijungimas · rankinis" to "Disconnect · manual",
         "Artimų įrenginių paieška išjungta. QR kodas ir rankinis susiejimas vis tiek veikia." to "Nearby device search is off. QR code and manual pairing still work.",
         "Artimų įrenginių leidimas nesuteiktas. Galite nuskaityti QR kodą arba įklijuoti susiejimo kodą." to "Nearby devices permission was not granted. You can scan the QR code or paste the pairing code.",
-        "Rasti artimus AF įrenginius" to "Find nearby AF devices",
-        "Artimi AF įrenginiai" to "Nearby AF devices",
+        "Rasti artimus Shovel įrenginius" to "Find nearby Shovel devices",
+        "Artimi Shovel įrenginiai" to "Nearby Shovel devices",
         "Ieškoti dar kartą" to "Search again",
-        "Artimų AF įrenginių nerasta. Abiejuose telefonuose įjunkite Wi-Fi ir gavėjo telefone palikite atvertą gavimo langą." to "No nearby AF devices were found. Turn on Wi-Fi on both phones and keep the receive screen open on the receiving phone.",
+        "Artimų Shovel įrenginių nerasta. Abiejuose telefonuose įjunkite Wi-Fi ir gavėjo telefone palikite atvertą gavimo langą." to "No nearby Shovel devices were found. Turn on Wi-Fi on both phones and keep the receive screen open on the receiving phone.",
         "Artimų įrenginių rodymo paleisti nepavyko" to "Could not make this phone visible to nearby devices",
         "Artimų įrenginių paieška nepavyko" to "Nearby device search failed",
         "Nepalaikoma radimo versija" to "Unsupported discovery version",
@@ -537,7 +537,7 @@ object UiTranslator {
         "Programos tipas" to "App type",
         "Sisteminė" to "System",
         "Naudotojo" to "User",
-        "Pasirinkti failai bus perkelti į AF File Manager šiukšlinę ir juos bus galima atkurti." to "The selected files will be moved to AF File Manager trash and can be restored.",
+        "Pasirinkti failai bus perkelti į Shovel šiukšlinę ir juos bus galima atkurti." to "The selected files will be moved to Shovel trash and can be restored.",
         "Pasirinkite vieną programą, kurią norite pašalinti" to "Select one app to uninstall",
         "Programos šalinimo lango atidaryti nepavyko" to "Could not open the app uninstall screen",
         "Išsaugomos įdiegtos programos" to "Saving installed apps",
@@ -616,7 +616,7 @@ object UiTranslator {
         "Įjunkite Root arba Shizuku root prieigą skiltyje Daugiau" to "Enable Root or Shizuku root access in More",
         "Išplėstiniai nustatymai" to "Advanced settings",
         "Įprasta Shizuku prieiga veikia kaip Android shell ir negali atverti sistemos šaknies /. Root saugyklai reikia rootinto įrenginio arba Shizuku tarnybos, veikiančios su root teisėmis." to "Standard Shizuku access runs as the Android shell and cannot open the system root /. Root storage requires a rooted device or a Shizuku service running with root privileges.",
-        "Sistemos šaknis / atveriama tik su Root arba Shizuku root prieiga. Tai nėra įprastas Android leidimas ir AF File Manager jo neapeina." to "The system root / can be opened only with Root or Shizuku root access. This is not a standard Android permission, and AF File Manager does not bypass it.",
+        "Sistemos šaknis / atveriama tik su Root arba Shizuku root prieiga. Tai nėra įprastas Android leidimas ir Shovel jo neapeina." to "The system root / can be opened only with Root or Shizuku root access. This is not a standard Android permission, and Shovel does not bypass it.",
         "Nežinomas" to "Unknown",
         "Neprieinama" to "Unavailable",
         "Įjungtas" to "Enabled",
@@ -749,7 +749,7 @@ object UiTranslator {
         "Rodomas dalinis turinys arba daliniai aplankų dydžiai, nes pasiekta saugi skenavimo riba." to "Some contents or folder sizes are partial because the safe scan limit was reached.",
         "Aplankas yra už analizuojamos vietos ribų" to "The folder is outside the analyzed location",
         "Atidaryti saugaus valymo peržiūrą" to "Open safe cleanup review",
-        "Pasirinkti elementai bus perkelti į atkuriamą AF File Manager šiukšlinę." to "Selected items will be moved to AF File Manager's recoverable trash.",
+        "Pasirinkti elementai bus perkelti į atkuriamą Shovel šiukšlinę." to "Selected items will be moved to Shovel's recoverable trash.",
         "Lyginamos nuotraukos…" to "Comparing photos…",
         "Panašumas tikrinamas įrenginyje. Tai gali užtrukti, todėl analizė paleidžiama tik paprašius." to "Similarity is checked on the device. It can take time, so analysis starts only when requested.",
         "Ieškoti panašių nuotraukų" to "Find similar photos",
@@ -1121,7 +1121,7 @@ object UiTranslator {
         "SHA-256 apskaičiuoti nepavyko" to "Could not calculate SHA-256",
         "Archyvo pradžia" to "Archive root",
         "Grįžti į ankstesnį archyvo aplanką" to "Return to the previous archive folder",
-        "Šifruotas AF File Manager failas. Jį galima iššifruoti tik atidarius iš vietinės saugyklos." to "Encrypted AF File Manager file. It can be decrypted only when opened from local storage.",
+        "Šifruotas Shovel failas. Jį galima iššifruoti tik atidarius iš vietinės saugyklos." to "Encrypted Shovel file. It can be decrypted only when opened from local storage.",
         "Trukmė" to "Duration",
         "Bitų sparta" to "Bit rate",
         "Parašo SHA-256" to "Signature SHA-256",
@@ -1170,16 +1170,16 @@ object UiTranslator {
         "Prisijungimų paslaptys šifruojamos Android Keystore. Analitika ir reklamos SDK nepridėti." to "Connection secrets are encrypted with Android Keystore. No analytics or ad SDKs are included.",
         "Tvarkaraščių nėra" to "No schedules",
         "Prisijunkite skiltyje „Ryšiai“, atidarykite sinchronizavimą ir pasirinkite intervalą." to "Connect under Connections, open synchronization, and choose an interval.",
-        "AF File Manager užrakinta" to "AF File Manager is locked",
-        "Nauja AF File Manager versija" to "New AF File Manager version",
+        "Shovel užrakinta" to "Shovel is locked",
+        "Nauja Shovel versija" to "New Shovel version",
         "Atnaujinimas paruoštas" to "Update ready",
         "APK SHA-256 ir pasirašymo sertifikatas patikrinti. Diegimą patvirtinsite Android sistemos lange." to "The APK SHA-256 and signing certificate were verified. Confirm installation in Android.",
         "Android nustatymuose leiskite diegti iš šios programos, tada grįžkite ir dar kartą pasirinkite „Diegti“." to "Allow installs from this app in Android settings, then return and select Install again.",
-        "Android nustatymuose leiskite diegti iš AF File Manager, grįžkite ir spauskite „Diegti“." to "Allow installs from AF File Manager in Android settings, then return and select Install.",
+        "Android nustatymuose leiskite diegti iš Shovel, grįžkite ir spauskite „Diegti“." to "Allow installs from Shovel in Android settings, then return and select Install.",
         "Patvirtinkite tapatybę Android sistemos lange" to "Confirm your identity in the Android system dialog",
         "Įrenginyje nenustatyta tinkama biometrija arba ekrano užraktas" to "No supported biometric or screen lock is configured on this device",
-        "Įjungti AF File Manager užraktą" to "Enable AF File Manager lock",
-        "Išjungti AF File Manager užraktą" to "Disable AF File Manager lock",
+        "Įjungti Shovel užraktą" to "Enable Shovel lock",
+        "Išjungti Shovel užraktą" to "Disable Shovel lock",
         "Ką daryti" to "What to do",
         "Diagnostikos kodas" to "Diagnostic code",
         "miniatiūra" to "thumbnail",
@@ -1451,7 +1451,7 @@ object UiTranslator {
         "Atmesti pakeitimus" to "Discard changes",
         "Tęsti redagavimą" to "Keep editing",
         "Originalus failas pasikeitė" to "The original file changed",
-        "AF File Manager jo neperrašė. Palyginkite versijas ir pasirinkite veiksmą." to "AF File Manager did not overwrite it. Compare the revisions and choose what to do.",
+        "Shovel jo neperrašė. Palyginkite versijas ir pasirinkite veiksmą." to "Shovel did not overwrite it. Compare the revisions and choose what to do.",
         "Originalas atidarymo metu" to "Original when opened",
         "Jūsų redaguojama kopija" to "Your edited copy",
         "Dabartinis originalas" to "Current original",
@@ -1509,7 +1509,7 @@ object UiTranslator {
         "Rinktis per Android dokumentų sistemą" to "Choose through Android Documents",
         "Išsaugoti čia" to "Save here",
         "Paskirties failas jau yra" to "The destination file already exists",
-        "AF File Manager nieko neperrašė. Pasirinkite, kaip išspręsti konfliktą." to "AF File Manager did not overwrite anything. Choose how to resolve the conflict.",
+        "Shovel nieko neperrašė. Pasirinkite, kaip išspręsti konfliktą." to "Shovel did not overwrite anything. Choose how to resolve the conflict.",
         "Esamo failo dydis" to "Existing file size",
         "Esamas failas pakeistas" to "Existing file modified",
         "Esamo failo SHA-256" to "Existing file SHA-256",
@@ -1556,14 +1556,14 @@ object UiTranslator {
         "Katalogo vaizdo nustatymo perskaityti nepavyko" to "Could not read folder display settings",
         "Kopijuoti archyvo aplanką" to "Copy archive folder",
         "Pridėti archyvo įrašą į kopijavimo rinkinį" to "Add archive entry to the copy set",
-        "AF planai" to "AF Plans",
+        "Shovel planai" to "Shovel Plans",
         "Planai" to "Plans",
         "Istorija" to "Timeline",
         "Automatika" to "Automation",
         "Pirmiausia peržiūra, tada saugus vykdymas" to "Preview first, then run safely",
         "Naujas planas" to "New plan",
-        "Naujas AF planas" to "New AF Plan",
-        "Redaguojamas AF planas" to "Edit AF Plan",
+        "Naujas Shovel planas" to "New Shovel Plan",
+        "Redaguojamas Shovel planas" to "Edit Shovel Plan",
         "Išsaugoti planai" to "Saved plans",
         "Planų dar nėra" to "No plans yet",
         "Nukopijuokite failus, pridėkite vieną ar kelias paskirtis ir pirmiausia peržiūrėkite rezultatą." to "Copy files, add one or more destinations, and preview the result first.",
@@ -1588,9 +1588,9 @@ object UiTranslator {
         "Planą reikia pataisyti" to "Plan needs attention",
         "Vykdyti patvirtintą planą" to "Run the approved plan",
         "Kur dingo mano failas?" to "Where did my file go?",
-        "Ieškoma tik AF File Manager atliktų operacijų istorijoje." to "Searches only operations performed by AF File Manager.",
+        "Ieškoma tik Shovel atliktų operacijų istorijoje." to "Searches only operations performed by Shovel.",
         "Istorija tuščia" to "Timeline is empty",
-        "Čia bus saugomi AF planų, automatizavimo ir saugaus atšaukimo kvitai." to "Receipts for AF Plans, automation, and safe undo will appear here.",
+        "Čia bus saugomi Shovel planų, automatizavimo ir saugaus atšaukimo kvitai." to "Receipts for Shovel Plans, automation, and safe undo will appear here.",
         "Uždaryti kvitą" to "Close receipt",
         "Eksportuoti JSON" to "Export JSON",
         "Eksportuoti tekstą" to "Export text",
@@ -1603,7 +1603,7 @@ object UiTranslator {
         "Taisyklių dar nėra" to "No rules yet",
         "Atverkite išsaugotą planą ir pasirinkite „Automatizuoti“." to "Open a saved plan and choose Automate.",
         "Pašalinti automatiką" to "Remove automation",
-        "Automatizuoti AF planą" to "Automate AF Plan",
+        "Automatizuoti Shovel planą" to "Automate Shovel Plan",
         "Taisyklės pavadinimas" to "Rule name",
         "Tik nematuojamas tinklas" to "Unmetered network only",
         "Tik įkraunant" to "Only while charging",
@@ -1632,7 +1632,7 @@ object UiTranslator {
         "Rinkinyje yra šaltinių iš kelių vietų. Atverkite „Įklijuoti į kelias vietas“, kad prieš vykdymą matytumėte visą planą." to "The set contains sources from several locations. Open Paste to many to review the complete plan before running it.",
         "Atverti planą" to "Open plan",
         "Įklijuoti į kelias vietas" to "Paste to many",
-        "AF planai ir operacijų istorija" to "AF Plans and operation timeline",
+        "Shovel planai ir operacijų istorija" to "Shovel Plans and operation timeline",
         "Kopijuokite į kelias vietas, pirmiausia patikrinkite konfliktus, eksportuokite kvitą ir saugiai atšaukite." to "Copy to several destinations, review conflicts first, export a receipt, and undo safely.",
         "„Sujungti“ palygins originalą, jūsų pakeitimus ir dabartinę serverio versiją. Neaiškios vietos bus aiškiai pažymėtos redaktoriuje." to "Merge compares the original, your changes, and the current server version. Ambiguous sections are clearly marked in the editor.",
         "Planas neberastas" to "Plan is missing",
@@ -1656,32 +1656,32 @@ object UiTranslator {
         "Trijų versijų sujungimas nepavyko" to "Three-way merge failed",
         "Pirmiausia nukopijuokite failus, tada atverkite „Įklijuoti į kelias vietas“" to "Copy files first, then open Paste to many",
         "Prieš pridėdami dabartinį serverio aplanką prisijunkite prie serverio" to "Connect to a server before adding its current folder",
-        "AF planas neužbaigtas" to "AF Plan is incomplete",
-        "AF plano peržiūra nepavyko" to "AF Plan preview failed",
-        "AF planas išsaugotas" to "AF Plan saved",
-        "AF plano išsaugoti nepavyko" to "Could not save the AF Plan",
-        "Prieš vykdydami peržiūrėkite AF planą" to "Preview the AF Plan before running it",
+        "Shovel planas neužbaigtas" to "Shovel Plan is incomplete",
+        "Shovel plano peržiūra nepavyko" to "Shovel Plan preview failed",
+        "Shovel planas išsaugotas" to "Shovel Plan saved",
+        "Shovel plano išsaugoti nepavyko" to "Could not save the Shovel Plan",
+        "Prieš vykdydami peržiūrėkite Shovel planą" to "Preview the Shovel Plan before running it",
         "Po peržiūros failai pasikeitė; peržiūrėkite atnaujintą planą" to "Files changed after preview; review the refreshed plan",
-        "AF planas įtrauktas į operacijų eilę" to "AF Plan added to the operation queue",
-        "AF plano pašalinti nepavyko" to "Could not remove the AF Plan",
+        "Shovel planas įtrauktas į operacijų eilę" to "Shovel Plan added to the operation queue",
+        "Shovel plano pašalinti nepavyko" to "Could not remove the Shovel Plan",
         "Atšaukimo peržiūra nepavyko" to "Undo preview failed",
         "Saugus atšaukimas įtrauktas į operacijų eilę" to "Safe undo added to the operation queue",
         "Atšaukimo paleisti nepavyko" to "Could not start undo",
         "Pasirinkite automatinį tvarkaraštį" to "Choose an automatic schedule",
         "Pirmiausia peržiūrėkite automatikos planą" to "Review the automation plan first",
-        "AF plano peržiūroje yra kliūčių" to "AF Plan preview contains blockers",
+        "Shovel plano peržiūroje yra kliūčių" to "Shovel Plan preview contains blockers",
         "Automatikos plano peržiūra nepavyko" to "Automation plan preview failed",
         "Automatika išsaugota su dabartine peržiūra" to "Automation saved with the current preview",
         "Automatikos išsaugoti nepavyko" to "Could not save automation",
         "Automatikos atnaujinti nepavyko" to "Could not update automation",
         "Automatikos pašalinti nepavyko" to "Could not remove automation",
-        "Į AF planą galima pridėti tik vietinio archyvo įrašą" to "Only a local archive entry can be added to an AF Plan",
+        "Į Shovel planą galima pridėti tik vietinio archyvo įrašą" to "Only a local archive entry can be added to an Shovel Plan",
         "Archyvo įrašo pridėti nepavyko" to "Could not add the archive entry",
         "Archyvo įrašų negalima pridėti prie iškirpimo rinkinio" to "Archive entries cannot be added to a cut set",
         "Archyvo įrašas pridėtas prie kopijavimo rinkinio" to "Archive entry added to the copy set",
         "Archyvo įrašas jau yra kopijavimo rinkinyje" to "Archive entry is already in the copy set",
-        "Ši paskirtis jau yra AF plane" to "This destination is already in the AF Plan",
-        "Pasiekta AF plano paskirčių riba" to "AF Plan destination limit reached",
+        "Ši paskirtis jau yra Shovel plane" to "This destination is already in the Shovel Plan",
+        "Pasiekta Shovel plano paskirčių riba" to "Shovel Plan destination limit reached",
         // Model-backed labels also pass through LText; they must not bypass the catalog.
         "Terminalas" to "Terminal",
         "Sinchronizavimas" to "Sync",
@@ -1715,7 +1715,7 @@ object UiTranslator {
         return result
     }
 
-    private val codedTransferError = Regex("^(?:Serverio klaida|Server error) \\((AF-XFER-[A-Z]+|[0-9]+)\\)$")
+    private val codedTransferError = Regex("^(?:Serverio klaida|Server error) \\((SHOVEL-XFER-[A-Z]+|[0-9]+)\\)$")
 
     /** Kept so existing call sites keep working; the language argument is ignored. */
     @Suppress("UNUSED_PARAMETER")
@@ -2005,8 +2005,8 @@ object UiTranslator {
             Regex("^Pasirinkta: (\\d+)\\. Elementus vėliau bus galima atkurti arba ištrinti visam laikui\\.$") to { match: MatchResult ->
                 "Selected: ${match.groupValues[1]}. Items can later be restored or deleted permanently."
             },
-            Regex("^Pasirinkta: (\\d+)\\. Šių apsaugotų failų nebus galima atkurti iš AF File Manager šiukšlinės\\.$") to { match: MatchResult ->
-                "Selected: ${match.groupValues[1]}. These protected files cannot be restored from AF File Manager trash."
+            Regex("^Pasirinkta: (\\d+)\\. Šių apsaugotų failų nebus galima atkurti iš Shovel šiukšlinės\\.$") to { match: MatchResult ->
+                "Selected: ${match.groupValues[1]}. These protected files cannot be restored from Shovel trash."
             },
             Regex("^Vienu metu galima tvarkyti iki ([\\d ]+) elementų$") to { match: MatchResult -> "You can process up to ${match.groupValues[1]} items at once" },
             Regex("^Eil\\. (\\d+), stulp\\. (\\d+)$") to { match: MatchResult -> "Ln ${match.groupValues[1]}, Col ${match.groupValues[2]}" },
@@ -2215,8 +2215,8 @@ object UiTranslator {
             Regex("^Rasta (\\d+) · metaduomenys (\\d+)/(\\d+)$") to { match: MatchResult -> "Found ${match.groupValues[1]} · metadata ${match.groupValues[2]}/${match.groupValues[3]}" },
             Regex("^Planas: (\\d+) veiksmų · (.+) · konfliktų (\\d+)$") to { match: MatchResult -> "Plan: ${match.groupValues[1]} actions · ${match.groupValues[2]} · ${match.groupValues[3]} conflicts" },
             Regex("^Tik skirtumai · (\\d+)$") to { match: MatchResult -> "Differences only · ${match.groupValues[1]}" },
-            Regex("^Bus atšauktas AF File Manager ilgalaikis leidimas vietai „(.+)“\\. Failai nebus trinami\\.$") to { match: MatchResult ->
-                "AF File Manager's persistent permission for “${match.groupValues[1]}” will be revoked. Files will not be deleted."
+            Regex("^Bus atšauktas Shovel ilgalaikis leidimas vietai „(.+)“\\. Failai nebus trinami\\.$") to { match: MatchResult ->
+                "Shovel's persistent permission for “${match.groupValues[1]}” will be revoked. Files will not be deleted."
             },
             Regex("^Bus bendrinamas aktyvus katalogas: (.+)$") to { match: MatchResult -> "Active folder to share: ${match.groupValues[1]}" },
             Regex("^Bus pašalintas „(.+)“ profilis ir jo užšifruotas prisijungimo įrašas\\.$") to { match: MatchResult ->
@@ -2234,8 +2234,8 @@ object UiTranslator {
             Regex("^„(.+)“ nebebus galima atkurti iš programos šiukšliadėžės\\.$") to { match: MatchResult ->
                 "“${match.groupValues[1]}” can no longer be restored from the app trash."
             },
-            Regex("^„(.+)“ bus trinamas per Android dokumentų teikėją ir nepateks į AF File Manager šiukšlinę\\.$") to { match: MatchResult ->
-                "“${match.groupValues[1]}” will be deleted through Android's document provider and will not enter AF File Manager trash."
+            Regex("^„(.+)“ bus trinamas per Android dokumentų teikėją ir nepateks į Shovel šiukšlinę\\.$") to { match: MatchResult ->
+                "“${match.groupValues[1]}” will be deleted through Android's document provider and will not enter Shovel trash."
             },
             Regex("^Failas nebeegzistuoja: (.+)$") to { match: MatchResult ->
                 "File no longer exists: ${match.groupValues[1]}"

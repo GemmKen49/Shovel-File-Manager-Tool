@@ -3,7 +3,7 @@ package com.shovel.filemanager.transfer
 import android.app.Instrumentation
 import android.os.Environment
 import android.provider.MediaStore
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.model.ConflictPolicy
 import com.shovel.filemanager.operations.OperationContext
 import kotlinx.coroutines.runBlocking
@@ -17,10 +17,10 @@ import java.util.UUID
 object IssueRegressionRuntimeVerifier {
     @JvmStatic fun verify(test: Instrumentation): Boolean = runBlocking {
         check(android.os.Build.MODEL.contains("sdk", true)) { "Disposable emulator required" }
-        val app = test.targetContext.applicationContext as AFFileManagerApplication
+        val app = test.targetContext.applicationContext as ShovelApplication
         val graph = app.graph
         val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "AFOptimizedIndex-${UUID.randomUUID()}")
+            "ShovelOptimizedIndex-${UUID.randomUUID()}")
         check(root.mkdir())
         val source = File(root, "original.apk")
         File(app.applicationInfo.sourceDir).copyTo(source)
@@ -77,7 +77,7 @@ object IssueRegressionRuntimeVerifier {
                 check(remaining.startsWith("HTTP/1.1 200") && NearbyGroupCodec.decode(remaining.substringAfter("\r\n\r\n").toByteArray()).size == 2)
                 check(server.removeGroupMember(secondPeer))
                 val rejected = request("POST /upload?name=blocked.txt HTTP/1.1\r\nHost: localhost\r\nCookie: $second\r\nContent-Length: 1\r\n\r\nx")
-                check(rejected.startsWith("HTTP/1.1 403") && rejected.contains("X-AF-Group-State: removed"))
+                check(rejected.startsWith("HTTP/1.1 403") && rejected.contains("X-Shovel-Group-State: removed"))
                 check(!File(root, "blocked.txt").exists())
             }
             true

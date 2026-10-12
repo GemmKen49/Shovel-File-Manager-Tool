@@ -4,7 +4,7 @@ import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import android.view.accessibility.AccessibilityNodeInfo
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -14,7 +14,7 @@ class SplitApkInstallerTest {
     @Test(timeout = 120_000) fun originalSplitSetRequiresAndroidConfirmationAndMismatchedSignaturesNeverInstall() {
         // Synthetic package install/uninstall is restricted to our disposable test emulator.
         check(android.os.Build.FINGERPRINT.contains("generic") || android.os.Build.MODEL.contains("sdk"))
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         fun waitForText(timeout: Long, matches: (String) -> Boolean): AccessibilityNodeInfo? {
             fun find(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {

@@ -148,7 +148,7 @@ class RemoteEditSaver(private val sessions: EditSessionStore) {
         originLabel: String = RemotePath.normalize(targetPath),
     ): EditSaveResult {
         val normalizedTarget = RemotePath.normalize(targetPath)
-        val stagedPath = RemotePath.temporarySibling(normalizedTarget, "af-edit")
+        val stagedPath = RemotePath.temporarySibling(normalizedTarget, "shovel-edit")
         var stagedExists = false
         var backupPath: String? = null
         var targetInstalled = false
@@ -170,7 +170,7 @@ class RemoteEditSaver(private val sessions: EditSessionStore) {
             val targetEntry = findEntry(client, normalizedTarget)
             require(targetEntry?.directory != true) { "The remote destination became a folder" }
             if (targetEntry != null) {
-                backupPath = RemotePath.temporarySibling(normalizedTarget, "af-backup")
+                backupPath = RemotePath.temporarySibling(normalizedTarget, "shovel-backup")
                 client.rename(normalizedTarget, requireNotNull(backupPath))
             }
 
@@ -229,7 +229,7 @@ class RemoteEditSaver(private val sessions: EditSessionStore) {
         val initialPath = RemotePath.normalize(initialDestination.path)
         val directory = RemotePath.normalize("$initialPath/..")
         val requestedName = initialPath.substringAfterLast('/')
-        val stagedPath = RemotePath.temporarySibling(initialPath, "af-edit")
+        val stagedPath = RemotePath.temporarySibling(initialPath, "shovel-edit")
         var stagedExists = false
         try {
             client.upload(session.workingFile, stagedPath, OperationContext.background())

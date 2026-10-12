@@ -32,13 +32,13 @@ class Issue215ReceiverDiagnosticTest {
             Socket(InetAddress.getLoopbackAddress(), port).use { upload ->
                 upload.soTimeout = 5_000
                 upload.getOutputStream().write(("POST /upload?name=video.mp4 HTTP/1.1\r\nHost: localhost\r\n" +
-                    "Cookie: $cookie\r\nX-AF-Batch-ID: $id\r\nContent-Length: 5242880\r\n\r\n").toByteArray())
+                    "Cookie: $cookie\r\nX-Shovel-Batch-ID: $id\r\nContent-Length: 5242880\r\n\r\n").toByteArray())
                 upload.getOutputStream().write(ByteArray(16_384))
                 upload.getOutputStream().flush()
                 assertTrue(started.await(3, TimeUnit.SECONDS))
                 val start = System.nanoTime()
                 repeat(4) { check ->
-                    val remote = request(port, "GET /nearby/file-status?fileIndex=1 HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-AF-Batch-ID: $id\r\n\r\n")
+                    val remote = request(port, "GET /nearby/file-status?fileIndex=1 HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-Shovel-Batch-ID: $id\r\n\r\n")
                     assertTrue(remote.endsWith("TRANSFERRING"))
                     assertEquals(NearbyUploadRecovery.WAIT,
                         NearbyTransferRetry.decide(IOException("injected link loss"), TransferFileStatus.TRANSFERRING, 1))
@@ -51,7 +51,7 @@ class Issue215ReceiverDiagnosticTest {
                 upload.shutdownOutput()
                 val response = upload.getInputStream().readBytes().toString(Charsets.UTF_8)
                 assertTrue(response.startsWith("HTTP/1.1 408"))
-                assertTrue(response.contains("X-AF-Error-Code: AF-XFER-CONNECTION"))
+                assertTrue(response.contains("X-Shovel-Error-Code: SHOVEL-XFER-CONNECTION"))
                 assertEquals(TransferFileStatus.FAILED, updates.last().files.single().status)
                 assertFalse(root.listFiles().orEmpty().any { it.name.endsWith(".partial") })
                 assertTrue(post(port, "/upload?name=video.mp4", cookie, id, ByteArray(5 * 1_048_576)).startsWith("HTTP/1.1 201"))
@@ -79,8 +79,8 @@ class Issue215ReceiverDiagnosticTest {
                 NearbyTransferManifest.encode(listOf(TransferFileProgress("video.mp4", body.size.toLong())))).startsWith("HTTP/1.1 200"))
             val failed = post(port, "/upload?name=video.mp4", cookie, id, body)
             assertTrue(failed.startsWith("HTTP/1.1 500"))
-            assertTrue(failed.contains("X-AF-Error-Code: AF-XFER-CONFLICT"))
-            assertTrue(failed.contains("X-AF-Error-Phase: commit"))
+            assertTrue(failed.contains("X-Shovel-Error-Code: SHOVEL-XFER-CONFLICT"))
+            assertTrue(failed.contains("X-Shovel-Error-Phase: commit"))
             assertEquals(TransferFailure.CONFLICT, updates.last().files.single().failure)
             assertEquals(TransferPhase.COMMIT, events.last().phase)
             assertEquals(TransferFailure.CONFLICT, events.last().failure)
@@ -130,13 +130,13 @@ class Issue215ReceiverDiagnosticTest {
                 NearbyTransferManifest.encode(listOf(TransferFileProgress("video.mp4", body.size.toLong())))).startsWith("HTTP/1.1 200"))
             val response = post(port, "/upload?name=video.mp4", cookie, id, body)
             assertTrue(response.startsWith("HTTP/1.1 500"))
-            assertTrue(response.contains("X-AF-Error-Code: AF-XFER-CALLBACK"))
-            assertTrue(response.contains("X-AF-Error-Phase: notify"))
+            assertTrue(response.contains("X-Shovel-Error-Code: SHOVEL-XFER-CALLBACK"))
+            assertTrue(response.contains("X-Shovel-Error-Phase: notify"))
             assertFalse(response.contains("secret"))
             assertFalse(events.joinToString { it.line() }.contains("video.mp4"))
-            val status = request(port, "GET /nearby/file-status?fileIndex=1 HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-AF-Batch-ID: $id\r\n\r\n")
+            val status = request(port, "GET /nearby/file-status?fileIndex=1 HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-Shovel-Batch-ID: $id\r\n\r\n")
             assertTrue(status.endsWith("FAILED"))
-            assertTrue(status.contains("X-AF-Error-Code: AF-XFER-CALLBACK"))
+            assertTrue(status.contains("X-Shovel-Error-Code: SHOVEL-XFER-CALLBACK"))
             assertTrue(root.listFiles().orEmpty().isEmpty())
             reject.set(false)
             assertTrue(post(port, "/upload?name=video.mp4", cookie, id, body).startsWith("HTTP/1.1 201"))
@@ -167,7 +167,7 @@ class Issue215ReceiverDiagnosticTest {
         .lineSequence().first { it.startsWith("Set-Cookie:") }.substringAfter(": ").substringBefore(';')
 
     private fun post(port: Int, path: String, cookie: String, id: String, body: ByteArray): String = request(port,
-        "POST $path HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-AF-Batch-ID: $id\r\nContent-Length: ${body.size}\r\n\r\n", body)
+        "POST $path HTTP/1.1\r\nHost: localhost\r\nCookie: $cookie\r\nX-Shovel-Batch-ID: $id\r\nContent-Length: ${body.size}\r\n\r\n", body)
 
     private fun request(port: Int, headers: String, body: ByteArray = byteArrayOf()): String =
         Socket(InetAddress.getLoopbackAddress(), port).use { socket ->

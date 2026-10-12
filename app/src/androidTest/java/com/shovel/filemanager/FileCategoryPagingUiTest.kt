@@ -29,11 +29,11 @@ class FileCategoryPagingUiTest {
     fun imagesShowABoundedFirstPageAndAppendWhileScrolling() {
         val resolver = compose.activity.contentResolver
         val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val relativePath = "Pictures/AFUiPaging-${System.nanoTime()}/"
+        val relativePath = "Pictures/ShovelUiPaging-${System.nanoTime()}/"
         val fixtureCount = 600
         val values = Array(fixtureCount) { index ->
             ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "af-ui-${index.toString().padStart(4, '0')}.jpg")
+                put(MediaStore.Images.Media.DISPLAY_NAME, "shovel-ui-${index.toString().padStart(4, '0')}.jpg")
                 put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                 put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
                 put(MediaStore.Images.Media.IS_PENDING, 0)
@@ -54,7 +54,7 @@ class FileCategoryPagingUiTest {
             }
             val firstPageMillis = SystemClock.elapsedRealtime() - startedAt
             val firstPageSize = viewModel.fileCategory.value.entries.size
-            Log.i("AF_CATEGORY_PERF", "first_page_ms=$firstPageMillis entries=$firstPageSize")
+            Log.i("SHOVEL_CATEGORY_PERF", "first_page_ms=$firstPageMillis entries=$firstPageSize")
             assertTrue(firstPageSize <= FileCategoryPagingRules.FIRST_PAGE_RESULTS)
             assertNotNull(viewModel.fileCategory.value.nextOffset)
             compose.onNodeWithTag("category_list").assertIsDisplayed().performScrollToIndex(firstPageSize - 1)

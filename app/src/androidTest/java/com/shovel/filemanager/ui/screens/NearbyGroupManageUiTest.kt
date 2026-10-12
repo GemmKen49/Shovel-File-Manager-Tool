@@ -11,7 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.transfer.LanTransferState
 import com.shovel.filemanager.transfer.LanTransferStatus
 import com.shovel.filemanager.transfer.NearbyGroupController
@@ -26,7 +26,7 @@ class NearbyGroupManageUiTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun organizerCanReachDeviceManagementAndRemovalConfirmation() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = androidx.lifecycle.ViewModelStore()
         val organizer = NearbyPairing.create("192.168.1.10", 30010, "11111111", "Organizer")
         val member = NearbyPairing.create("192.168.1.11", 30011, "22222222", "Peer phone")

@@ -10,7 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class AfDocumentsProviderTest {
+class ShovelDocumentsProviderTest {
     @Test
     fun providerPublishesAtLeastOneWritableStorageRoot() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -30,7 +30,7 @@ class AfDocumentsProviderTest {
             null,
         ).use { cursor ->
             requireNotNull(cursor)
-            assertTrue("AF DocumentsProvider exposes no storage roots", cursor.moveToFirst())
+            assertTrue("Shovel DocumentsProvider exposes no storage roots", cursor.moveToFirst())
             assertTrue(cursor.getString(cursor.getColumnIndexOrThrow(Root.COLUMN_ROOT_ID)).isNotBlank())
             assertTrue(cursor.getString(cursor.getColumnIndexOrThrow(Root.COLUMN_DOCUMENT_ID)).isNotBlank())
             assertTrue(cursor.getString(cursor.getColumnIndexOrThrow(Root.COLUMN_TITLE)).isNotBlank())

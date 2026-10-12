@@ -2,7 +2,7 @@ package com.shovel.filemanager.transfer
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
@@ -15,7 +15,7 @@ import java.util.UUID
 @RunWith(AndroidJUnit4::class)
 class NearbySourcePreparerTest {
     @Test fun cancellationDuringTheReturnHandoffRemovesTheUndeliveredCopy() = runBlocking {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val source = File(app.cacheDir, "cancel-share-${UUID.randomUUID()}.txt").apply { writeText("cancel fixture") }
         val stageRoot = File(app.cacheDir, "nearby-send-staging")
         val before = stageRoot.listFiles().orEmpty().map(File::getName).toSet()
@@ -47,7 +47,7 @@ class NearbySourcePreparerTest {
     }
     @Test
     fun emptyDirectoryRemainsARealTransferItem() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(application.cacheDir, "nearby-empty-${UUID.randomUUID()}").apply { mkdirs() }
         try {
             val prepared = application.graph.nearbySources.prepareLocalPaths(listOf(root.absolutePath)).getOrThrow()
@@ -62,7 +62,7 @@ class NearbySourcePreparerTest {
 
     @Test
     fun systemDocumentIsStreamedDirectlyWithoutASecondLargeCacheCopy() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val source = File(application.cacheDir, "direct-video-${UUID.randomUUID()}.mp4")
         val stageRoot = File(application.cacheDir, "nearby-send-staging")
         val before = stageRoot.listFiles().orEmpty().map(File::getName).toSet()
@@ -87,11 +87,11 @@ class NearbySourcePreparerTest {
 
     @Test
     fun selectedLocalFileAndInstalledAppRemainInOneTransferBasket() = runBlocking {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val source = File(app.cacheDir, "selected-${UUID.randomUUID()}.txt").apply { writeText("local file") }
         val applicationInfo = app.packageManager.getApplicationInfo(app.packageName, 0)
         val installed = app.graph.localFiles.toEntry(File(applicationInfo.sourceDir)).copy(
-            name = "AF File Manager",
+            name = "Shovel",
             packageName = app.packageName,
         )
         var prepared: PreparedNearbyTransfer? = null

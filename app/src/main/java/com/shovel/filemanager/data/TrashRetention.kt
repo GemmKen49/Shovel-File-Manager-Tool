@@ -55,7 +55,7 @@ class TrashRetentionScheduler(context: Context) {
     }
 
     private companion object {
-        const val WORK_NAME = "af-file-manager-trash-retention"
+        const val WORK_NAME = "shovel-trash-retention"
     }
 }
 

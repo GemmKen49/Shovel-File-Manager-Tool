@@ -65,7 +65,7 @@ import java.util.zip.ZipOutputStream
 @RunWith(AndroidJUnit4::class)
 class FilePreviewLifecycleTest {
     @Test fun readableSystemAudioOutsideTheProviderPlaysWithoutRootAndKeepsItsOriginal() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val vm = ViewModelProvider(compose.activity)[MainViewModel::class.java]
         val access = app.graph.advancedAccess
         val previousMode = access.state.value.selectedMode
@@ -102,12 +102,12 @@ class FilePreviewLifecycleTest {
 
     @Test fun actualShizukuOnlyAudioIsStagedPrivatelyPlayedAndCleanedOnClose() {
         check(android.os.Build.MODEL.contains("sdk")) { "This Shizuku fixture is emulator-only" }
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val vm = ViewModelProvider(compose.activity)[MainViewModel::class.java]
         val access = app.graph.advancedAccess
         val previousMode = access.state.value.selectedMode
         val fixture = File(app.getExternalFilesDir("shizuku-validation"), "shizuku-fixture-${System.nanoTime()}.wav").also(::createWaveAudio)
-        val remoteRoot = "/storage/emulated/0/Android/data/moe.shizuku.privileged.api/files/af-preview-validation"
+        val remoteRoot = "/storage/emulated/0/Android/data/moe.shizuku.privileged.api/files/shovel-preview-validation"
         val remote = "$remoteRoot/${fixture.name}"
         var staged: File? = null
         try {
@@ -153,7 +153,7 @@ class FilePreviewLifecycleTest {
     val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun imageSwipeNavigatesAtFitButZoomedDragOnlyPans() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.getExternalFilesDir("preview-gestures"), "images").apply { mkdirs() }
         val model = ViewModelProvider(compose.activity)[MainViewModel::class.java]
         try {
@@ -179,7 +179,7 @@ class FilePreviewLifecycleTest {
     }
 
     @Test fun downwardArtworkGestureMinimizesOnlyAfterRealBackgroundPlayerStarts() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.getExternalFilesDir("preview-gestures"), "audio").apply { mkdirs() }
         val model = ViewModelProvider(compose.activity)[MainViewModel::class.java]
         try {
@@ -198,7 +198,7 @@ class FilePreviewLifecycleTest {
     }
 
     @Test fun appPrivateCachedAudioUsesAContentDescriptorForPlayback() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "privileged-media-test").apply {
             deleteRecursively()
             require(mkdirs())
@@ -222,7 +222,7 @@ class FilePreviewLifecycleTest {
     }
 
     @Test fun videoControlsHideAfterSevenSecondsAndTapRestoresWithoutRestartingPlayback() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val video = File(app.getExternalFilesDir("validation"), "video-gesture.mp4")
         check(video.isFile) { "Push the documented platform MP4 test fixture to the disposable emulator first" }
         val model = ViewModelProvider(compose.activity)[MainViewModel::class.java]
@@ -244,7 +244,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun pngAndPdfCanBeOpenedAndClosedRepeatedlyWithoutRecycledBitmapCrash() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("preview-lifecycle")), "current")
         fixtureRoot.deleteRecursively()
         require(fixtureRoot.mkdirs())
@@ -276,7 +276,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun exifDateAndMetadataFollowTheSelectedLanguageWithoutRawColonDate() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureBase = requireNotNull(application.getExternalFilesDir("preview-exif"))
         val fixtureRoot = File(fixtureBase, "current")
         fixtureRoot.deleteRecursively()
@@ -342,7 +342,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun imageZoomControlsAndContinuousPdfPagesAreInteractive() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("preview-interaction")), "current")
         fixtureRoot.deleteRecursively()
         require(fixtureRoot.mkdirs())
@@ -484,11 +484,11 @@ class FilePreviewLifecycleTest {
             }
             compose.waitUntil(timeoutMillis = 10_000) {
                 runCatching {
-                    pdfPage.fetchSemanticsNode().config[PdfTextSelectionSemanticsKey].text == "AF"
+                    pdfPage.fetchSemanticsNode().config[PdfTextSelectionSemanticsKey].text == "Shovel"
                 }.getOrDefault(false)
             }
             val initialSelection = pdfPage.fetchSemanticsNode().config[PdfTextSelectionSemanticsKey]
-            assertEquals("AF", initialSelection.text)
+            assertEquals("Shovel", initialSelection.text)
             pdfPage.performTouchInput {
                 val destination = Offset(
                     pdfPageSize.width * (285f / 595f),
@@ -504,7 +504,7 @@ class FilePreviewLifecycleTest {
                 }.getOrDefault(false)
             }
             val extendedSelection = pdfPage.fetchSemanticsNode().config[PdfTextSelectionSemanticsKey]
-            assertTrue(extendedSelection.text.startsWith("AF File Manager"))
+            assertTrue(extendedSelection.text.startsWith("Shovel"))
             compose.onNodeWithTag("pdf-copy-selection").assertIsDisplayed().performClick()
             val clipboard = application.getSystemService(ClipboardManager::class.java)
             compose.waitUntil(timeoutMillis = 5_000) {
@@ -522,7 +522,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun pdfSignatureUsesAPrivateCopyUntilExplicitSave() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("pdf-signature")), "current")
         fixtureRoot.deleteRecursively()
         require(fixtureRoot.mkdirs())
@@ -635,8 +635,8 @@ class FilePreviewLifecycleTest {
     }
 
     @Test
-    fun audioPreviewUsesAfSeekAndPlaybackControls() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+    fun audioPreviewUsesShovelSeekAndPlaybackControls() {
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("preview-audio")), "current")
         fixtureRoot.deleteRecursively()
         require(fixtureRoot.mkdirs())
@@ -665,7 +665,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun backgroundPlaybackCanBeStoppedInsideTheAppAfterClosingPreview() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(application.cacheDir, "background-stop-regression").apply { mkdirs() }
         val audio = File(fixtureRoot, "stop-me.wav")
         val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
@@ -695,7 +695,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun archivePreviewNavigatesFoldersWithoutShowingDescendantPathsAtRoot() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("archive-navigation")), "current")
         fixtureRoot.deleteRecursively()
         require(fixtureRoot.mkdirs())
@@ -747,7 +747,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun actionViewContentUriOpensInternallyAndManifestAdvertisesFileTypes() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixture = File(requireNotNull(application.getExternalFilesDir("incoming-view")), "incoming.png")
         try {
             fixture.parentFile?.mkdirs()
@@ -783,10 +783,10 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun removableStoragePathsCanBeSharedAndUsbAttachmentCanLaunchAf() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         listOf(
-            File("/storage/AF_REMOVABLE_TEST/example.mp4"),
-            File("/mnt/media_rw/AF_REMOVABLE_TEST/example.mp4"),
+            File("/storage/SHOVEL_REMOVABLE_TEST/example.mp4"),
+            File("/mnt/media_rw/SHOVEL_REMOVABLE_TEST/example.mp4"),
         ).forEach { removableFile ->
             val uri = FileProvider.getUriForFile(application, "${application.packageName}.files", removableFile)
             assertEquals("content", uri.scheme)
@@ -799,7 +799,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun malformedPngShowsAnErrorInsteadOfCrashingTheProcess() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixture = File(requireNotNull(application.getExternalFilesDir("preview-lifecycle")), "broken-${System.nanoTime()}.png")
         try {
             fixture.parentFile?.mkdirs()
@@ -820,7 +820,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun textEditorUsesWorkingCopyAndRequiresExplicitConflictResolution() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("edit-session")), "current")
         fixtureRoot.deleteRecursively()
         require(fixtureRoot.mkdirs())
@@ -832,8 +832,8 @@ class FilePreviewLifecycleTest {
             compose.waitUntil(timeoutMillis = 10_000) {
                 compose.onAllNodesWithTag("full-text-editor", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
             }
-            replaceEditorText("edited in AF")
-            compose.waitUntil(timeoutMillis = 10_000) { viewModel.fileEditState.value.text == "edited in AF" }
+            replaceEditorText("edited in Shovel")
+            compose.waitUntil(timeoutMillis = 10_000) { viewModel.fileEditState.value.text == "edited in Shovel" }
             compose.runOnIdle { assertEquals("original", source.readText()) }
             compose.waitForIdle()
             captureRoot(File(validationRoot, "preview-text-editor.png"))
@@ -844,7 +844,7 @@ class FilePreviewLifecycleTest {
             compose.runOnIdle { assertEquals("changed by another app", source.readText()) }
             captureRoot(File(validationRoot, "preview-edit-conflict.png"))
             compose.onNodeWithTag("overwrite-edit-conflict").performClick()
-            compose.waitUntil(timeoutMillis = 10_000) { source.readText() == "edited in AF" }
+            compose.waitUntil(timeoutMillis = 10_000) { source.readText() == "edited in Shovel" }
             compose.runOnUiThread { viewModel.closePreview() }
             compose.waitUntil(timeoutMillis = 10_000) {
                 compose.onAllNodesWithTag("file-preview-dialog", useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
@@ -856,13 +856,13 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun textEditorSaveAsRebasesSubsequentSavesToTheChosenPhoneFile() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("edit-save-as")), "current")
         fixtureRoot.deleteRecursively()
         val sourceDirectory = File(fixtureRoot, "source").apply { mkdirs() }
         val destinationDirectory = File(
             android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
-            "AFSaveAs-${java.util.UUID.randomUUID()}",
+            "ShovelSaveAs-${java.util.UUID.randomUUID()}",
         ).apply { check(mkdirs()) }
         val source = File(sourceDirectory, "original.txt").apply { writeText("original") }
         val destination = File(destinationDirectory, "renamed.txt")
@@ -911,7 +911,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun fullTextEditorRendersItsPrimaryControls() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("editor-smoke")), "current")
         fixtureRoot.deleteRecursively()
         require(fixtureRoot.mkdirs())
@@ -937,7 +937,7 @@ class FilePreviewLifecycleTest {
 
     @Test
     fun closingEditorRemovesItsPrivateWorkingCopy() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("editor-cleanup")), "current")
         fixtureRoot.deleteRecursively()
         require(fixtureRoot.mkdirs())
@@ -1065,7 +1065,7 @@ class FilePreviewLifecycleTest {
             bitmap.recycle()
         }
         ExifInterface(file).apply {
-            setAttribute(ExifInterface.TAG_MAKE, "AF Test Camera")
+            setAttribute(ExifInterface.TAG_MAKE, "Shovel Test Camera")
             setAttribute(ExifInterface.TAG_MODEL, "Metadata Fixture")
             setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, "2025:08:09 13:05:06")
             setAttribute(ExifInterface.TAG_OFFSET_TIME_ORIGINAL, "+02:00")
@@ -1080,7 +1080,7 @@ class FilePreviewLifecycleTest {
                 val page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, index + 1).create())
                 page.canvas.drawColor(Color.WHITE)
                 page.canvas.drawText(
-                    "AF File Manager PDF page ${index + 1}",
+                    "Shovel PDF page ${index + 1}",
                     48f,
                     120f,
                     Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0, 96, 100); textSize = 32f },

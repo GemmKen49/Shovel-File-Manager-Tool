@@ -34,7 +34,7 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalTextStyle
@@ -48,7 +48,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
-import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -75,7 +75,7 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.DialogProperties
-import com.shovel.filemanager.ui.theme.AfDialog
+import com.shovel.filemanager.ui.theme.ShovelDialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -114,7 +114,7 @@ private val destinations = listOf(
 )
 
 @Composable
-fun AFFileManagerApp(
+fun ShovelApp(
     viewModel: MainViewModel = viewModel(),
     incomingViewRequest: IncomingViewRequest? = null,
     onIncomingViewRequestConsumed: () -> Unit = {},
@@ -349,7 +349,7 @@ fun AFFileManagerApp(
                                 if (enabled) {
                                     authenticate(
                                         context = context,
-                                        title = UiTranslator.translate("Įjungti AF File Manager užraktą", interfaceLanguage),
+                                        title = UiTranslator.translate("Įjungti Shovel užraktą", interfaceLanguage),
                                         onSuccess = { viewModel.setAppLockEnabled(true); unlocked = true },
                                         onError = { text ->
                                             scope.launch {
@@ -362,7 +362,7 @@ fun AFFileManagerApp(
                                 } else {
                                     authenticate(
                                         context = context,
-                                        title = UiTranslator.translate("Išjungti AF File Manager užraktą", interfaceLanguage),
+                                        title = UiTranslator.translate("Išjungti Shovel užraktą", interfaceLanguage),
                                         onSuccess = { viewModel.setAppLockEnabled(false); unlocked = true },
                                         onError = { text ->
                                             scope.launch {
@@ -479,7 +479,7 @@ fun AFFileManagerApp(
             onUnlock = {
                 authenticate(
                     context = context,
-                    title = UiTranslator.translate("Atrakinti AF File Manager", interfaceLanguage),
+                    title = UiTranslator.translate("Atrakinti Shovel", interfaceLanguage),
                     onSuccess = { unlocked = true },
                     onError = { text ->
                         scope.launch {
@@ -511,7 +511,7 @@ private fun sameNormalizedPath(first: String, second: String): Boolean = runCatc
 
 @Composable
 internal fun AppLockOverlay(onUnlock: () -> Unit, onCancel: (() -> Unit)? = null, message: String? = null) {
-    AfDialog(
+    ShovelDialog(
         onDismissRequest = { onCancel?.invoke() },
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = onCancel != null, dismissOnClickOutside = false),
     ) {
@@ -522,7 +522,7 @@ internal fun AppLockOverlay(onUnlock: () -> Unit, onCancel: (() -> Unit)? = null
                 verticalArrangement = Arrangement.Center,
             ) {
                 Icon(Icons.Rounded.Fingerprint, contentDescription = null, modifier = Modifier.size(84.dp), tint = MaterialTheme.colorScheme.primary)
-                LText("AF File Manager užrakinta", style = MaterialTheme.typography.headlineSmall)
+                LText("Shovel užrakinta", style = MaterialTheme.typography.headlineSmall)
                 message?.let { LText(it, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error) }
                 Button(onClick = onUnlock, modifier = Modifier.padding(top = 18.dp)) { LText("Atrakinti") }
                 onCancel?.let { TextButton(onClick = it) { LText("Atšaukti") } }

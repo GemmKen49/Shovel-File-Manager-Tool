@@ -21,7 +21,7 @@ import java.io.File
 class LocalFileIntegrationTest {
     @Test
     fun sizeSortCalculatesNestedDirectorySizesWithoutChangingFolderFirst() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val base = requireNotNull(application.getExternalFilesDir("instrumentation"))
         val root = File(base, "size-sort-${System.nanoTime()}").apply { mkdirs() }
         try {
@@ -49,7 +49,7 @@ class LocalFileIntegrationTest {
 
     @Test
     fun createAtomicEditCopyTrashAndRestoreOnAndroidStorage() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val base = requireNotNull(application.getExternalFilesDir("instrumentation"))
         val root = File(base, "run-${System.nanoTime()}")
         require(root.mkdirs())

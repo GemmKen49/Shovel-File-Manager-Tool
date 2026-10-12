@@ -71,7 +71,7 @@ class TerminalFlowTest {
     @Test
     fun terminalSurvivesBackgroundingAndViewModelDisposal() {
         val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
-        val application = compose.activity.application as AFFileManagerApplication
+        val application = compose.activity.application as ShovelApplication
         val directory = File(compose.activity.getExternalFilesDir(null), "terminal-background-${System.nanoTime()}").apply { mkdirs() }
         try {
             compose.runOnUiThread {
@@ -216,10 +216,10 @@ class TerminalFlowTest {
     @Test
     fun terminalOffersTextSelectionAndCopiesTheLastOutput() {
         val viewModel = ViewModelProvider(compose.activity)[MainViewModel::class.java]
-        val application = compose.activity.application as AFFileManagerApplication
+        val application = compose.activity.application as ShovelApplication
         val clipboard = compose.activity.getSystemService(ClipboardManager::class.java)
         val directory = File(compose.activity.getExternalFilesDir(null), "terminal-copy-${System.nanoTime()}").apply { mkdirs() }
-        val marker = "AF_LAST_OUTPUT_${System.nanoTime()}"
+        val marker = "SHOVEL_LAST_OUTPUT_${System.nanoTime()}"
         try {
             compose.runOnUiThread {
                 viewModel.navigate(PanelId.LEFT, directory.absolutePath)

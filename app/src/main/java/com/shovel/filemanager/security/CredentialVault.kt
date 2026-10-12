@@ -13,7 +13,7 @@ import javax.crypto.spec.GCMParameterSpec
 class CredentialVault {
     companion object {
         private const val KEYSTORE = "AndroidKeyStore"
-        private const val KEY_ALIAS = "af-file-manager-credentials-v1"
+        private const val KEY_ALIAS = "shovel-credentials-v1"
         private const val GCM_TAG_BITS = 128
         private const val IV_BYTES = 12
         private const val VERSION: Byte = 1

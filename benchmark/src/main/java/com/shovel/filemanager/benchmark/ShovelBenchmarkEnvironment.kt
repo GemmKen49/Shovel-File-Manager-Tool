@@ -25,10 +25,10 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
-internal object AfBenchmarkEnvironment {
+internal object ShovelBenchmarkEnvironment {
     const val PACKAGE_NAME = "com.shovel.filemanager"
     const val SETUP_READY = "BENCHMARK_READY"
-    const val REMOTE_PROFILE_ID = "af-benchmark-ftp"
+    const val REMOTE_PROFILE_ID = "shovel-benchmark-ftp"
     const val FTP_PORT = 21210
 
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
@@ -53,9 +53,9 @@ internal object AfBenchmarkEnvironment {
         device.waitForIdle()
     }
 
-    fun localIntent(dataset: String) = mainIntent().putExtra("af_benchmark_dataset", dataset)
+    fun localIntent(dataset: String) = mainIntent().putExtra("shovel_benchmark_dataset", dataset)
 
-    fun remoteIntent() = mainIntent().putExtra("af_benchmark_remote_profile", REMOTE_PROFILE_ID)
+    fun remoteIntent() = mainIntent().putExtra("shovel_benchmark_remote_profile", REMOTE_PROFILE_ID)
 
     fun mainIntent() = Intent(Intent.ACTION_MAIN).apply {
         component = ComponentName(PACKAGE_NAME, "$PACKAGE_NAME.MainActivity")
@@ -109,7 +109,7 @@ internal class LoopbackFtpServer : Closeable {
     private val running = AtomicBoolean(false)
     private val clients = CopyOnWriteArrayList<Socket>()
     private val workers = Executors.newCachedThreadPool { runnable ->
-        Thread(runnable, "af-benchmark-ftp-client").apply { isDaemon = true }
+        Thread(runnable, "shovel-benchmark-ftp-client").apply { isDaemon = true }
     }
     private var server: ServerSocket? = null
     private var acceptThread: Thread? = null
@@ -136,17 +136,17 @@ internal class LoopbackFtpServer : Closeable {
         if (!running.compareAndSet(false, true)) return
         val listener = ServerSocket().apply {
             reuseAddress = true
-            bind(java.net.InetSocketAddress(ipv4Loopback, AfBenchmarkEnvironment.FTP_PORT))
+            bind(java.net.InetSocketAddress(ipv4Loopback, ShovelBenchmarkEnvironment.FTP_PORT))
         }
         server = listener
-        Log.i(LOG_TAG, "Listening on 127.0.0.1:${AfBenchmarkEnvironment.FTP_PORT}")
+        Log.i(LOG_TAG, "Listening on 127.0.0.1:${ShovelBenchmarkEnvironment.FTP_PORT}")
         acceptThread = Thread({
             while (running.get()) {
                 val socket = runCatching { listener.accept() }.getOrNull() ?: break
                 clients += socket
                 workers.execute { handle(socket) }
             }
-        }, "af-benchmark-ftp-accept").apply {
+        }, "shovel-benchmark-ftp-accept").apply {
             isDaemon = true
             start()
         }
@@ -171,7 +171,7 @@ internal class LoopbackFtpServer : Closeable {
                 else reply("227 Entering Passive Mode (127,0,0,1,${port / 256},${port % 256})")
             }
 
-            reply("220 AF benchmark FTP ready")
+            reply("220 Shovel benchmark FTP ready")
             while (running.get()) {
                 val raw = reader.readLine() ?: break
                 val command = raw.substringBefore(' ').uppercase()
@@ -231,6 +231,6 @@ internal class LoopbackFtpServer : Closeable {
     }
 
     private companion object {
-        const val LOG_TAG = "AfBenchmarkFtp"
+        const val LOG_TAG = "ShovelBenchmarkFtp"
     }
 }

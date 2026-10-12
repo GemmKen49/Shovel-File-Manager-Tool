@@ -39,19 +39,19 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.Share
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
-import com.shovel.filemanager.ui.theme.AfCard as Card
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -78,7 +78,7 @@ import com.shovel.filemanager.model.FileEntry
 import com.shovel.filemanager.model.SortMode
 import com.shovel.filemanager.ui.FileCategoryUiState
 import com.shovel.filemanager.ui.MainViewModel
-import com.shovel.filemanager.ui.components.AfPullToRefresh
+import com.shovel.filemanager.ui.components.ShovelPullToRefresh
 import com.shovel.filemanager.ui.components.DirectoryBrowserToolbar
 import com.shovel.filemanager.ui.components.DirectoryDisplayMenuItems
 import com.shovel.filemanager.ui.components.DirectoryDisplaySettingsDialog
@@ -421,7 +421,7 @@ private fun FileCategoryBrowserContent(state: FileCategoryUiState, viewModel: Ma
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                AfPullToRefresh(
+                ShovelPullToRefresh(
                     isRefreshing = state.loading,
                     onRefresh = viewModel::refreshFileCategory,
                     modifier = Modifier.weight(1f),

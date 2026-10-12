@@ -12,7 +12,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.model.DirectoryContentUsage
 import com.shovel.filemanager.model.DirectoryContentsUsage
 import com.shovel.filemanager.model.DirectoryUsage
@@ -188,7 +188,7 @@ class CleanupReviewDialogTest {
         compose.onNodeWithTag("cleanup_folder_browser").assertIsDisplayed()
         assertEquals(0, externallyOpened.get())
         assertEquals(0, dismissed.get())
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val artifact = File(requireNotNull(application.getExternalFilesDir("validation")), "cleanup-folder-browser.png")
         artifact.outputStream().use { output ->
             assertTrue(

@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.data.FileSelectionSummary
 import com.shovel.filemanager.ui.localization.LText
-import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
 
 @Composable
 internal fun DeleteConfirmationDialog(
@@ -39,7 +39,7 @@ internal fun DeleteConfirmationDialog(
     title: String = if (permanent) "Ištrinti visam laikui?" else "Perkelti į šiukšlinę?",
     confirmLabel: String = if (permanent) "Ištrinti visam laikui" else "Perkelti",
     explanation: String = if (permanent) "Šio veiksmo nebus galima atšaukti." else
-        "Elementus bus galima atkurti iš AF File Manager šiukšlinės.",
+        "Elementus bus galima atkurti iš Shovel šiukšlinės.",
     fallbackFiles: Int = 0,
     fallbackFolders: Int = 0,
     fallbackBytes: Long = 0,
@@ -56,7 +56,7 @@ internal fun DeleteConfirmationDialog(
         loadSummary().fold(onSuccess = { summary = it }, onFailure = { summaryError = it.message ?: "Informacijos apskaičiuoti nepavyko" })
         loading = false
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = title,
         icon = if (permanent) Icons.Rounded.DeleteForever else Icons.Rounded.DeleteOutline,
         onDismissRequest = onDismiss,

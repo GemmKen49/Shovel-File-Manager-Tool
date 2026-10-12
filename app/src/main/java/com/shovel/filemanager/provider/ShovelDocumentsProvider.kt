@@ -15,7 +15,7 @@ import android.webkit.MimeTypeMap
 import java.io.File
 import java.io.FileNotFoundException
 
-class AfDocumentsProvider : DocumentsProvider() {
+class ShovelDocumentsProvider : DocumentsProvider() {
     companion object {
         private const val MAX_CHILDREN = 50_000
         private val ROOT_PROJECTION = arrayOf(
@@ -47,9 +47,9 @@ class AfDocumentsProvider : DocumentsProvider() {
         roots().forEach { root ->
             val row = cursor.newRow()
             put(row, cursor, Root.COLUMN_ROOT_ID, root.id)
-            put(row, cursor, Root.COLUMN_DOCUMENT_ID, AfDocumentIdRules.root(root.id))
+            put(row, cursor, Root.COLUMN_DOCUMENT_ID, ShovelDocumentIdRules.root(root.id))
             put(row, cursor, Root.COLUMN_TITLE, root.title)
-            put(row, cursor, Root.COLUMN_SUMMARY, "AF File Manager")
+            put(row, cursor, Root.COLUMN_SUMMARY, "Shovel")
             put(
                 row,
                 cursor,
@@ -77,15 +77,15 @@ class AfDocumentsProvider : DocumentsProvider() {
         val cursor = MatrixCursor(projection?.let(::copyProjection) ?: DOCUMENT_PROJECTION)
         val parent = resolve(parentDocumentId)
         if (!parent.isDirectory) throw FileNotFoundException("Not a directory")
-        val parsed = AfDocumentIdRules.parse(parentDocumentId)
+        val parsed = ShovelDocumentIdRules.parse(parentDocumentId)
         val exportedRoot = root(parsed.rootId)
         parent.listFiles().orEmpty().asSequence()
-            .filter { child -> runCatching { AfDocumentIdRules.relative(exportedRoot.directory, child) }.isSuccess }
+            .filter { child -> runCatching { ShovelDocumentIdRules.relative(exportedRoot.directory, child) }.isSuccess }
             .sortedWith(compareByDescending<File> { it.isDirectory }.thenBy { it.name.lowercase() })
             .take(MAX_CHILDREN)
             .forEach { child ->
-                val relative = AfDocumentIdRules.relative(exportedRoot.directory, child)
-                includeDocument(cursor, AfDocumentIdRules.encode(exportedRoot.id, relative), child)
+                val relative = ShovelDocumentIdRules.relative(exportedRoot.directory, child)
+                includeDocument(cursor, ShovelDocumentIdRules.encode(exportedRoot.id, relative), child)
             }
         return cursor
     }
@@ -121,8 +121,8 @@ class AfDocumentsProvider : DocumentsProvider() {
     }
 
     override fun isChildDocument(parentDocumentId: String, documentId: String): Boolean = runCatching {
-        val parentParsed = AfDocumentIdRules.parse(parentDocumentId)
-        val childParsed = AfDocumentIdRules.parse(documentId)
+        val parentParsed = ShovelDocumentIdRules.parse(parentDocumentId)
+        val childParsed = ShovelDocumentIdRules.parse(documentId)
         if (parentParsed.rootId != childParsed.rootId) return@runCatching false
         val parent = resolve(parentDocumentId).canonicalFile
         val child = resolve(documentId).canonicalFile
@@ -133,7 +133,7 @@ class AfDocumentsProvider : DocumentsProvider() {
         if (!file.exists()) throw FileNotFoundException("Document not found")
         val row = cursor.newRow()
         put(row, cursor, Document.COLUMN_DOCUMENT_ID, documentId)
-        put(row, cursor, Document.COLUMN_DISPLAY_NAME, file.name.ifEmpty { root(AfDocumentIdRules.parse(documentId).rootId).title })
+        put(row, cursor, Document.COLUMN_DISPLAY_NAME, file.name.ifEmpty { root(ShovelDocumentIdRules.parse(documentId).rootId).title })
         put(row, cursor, Document.COLUMN_MIME_TYPE, mimeType(file))
         put(row, cursor, Document.COLUMN_SIZE, if (file.isFile) file.length().coerceAtLeast(0L) else null)
         put(row, cursor, Document.COLUMN_LAST_MODIFIED, file.lastModified().takeIf { it > 0L })
@@ -145,17 +145,17 @@ class AfDocumentsProvider : DocumentsProvider() {
     }
 
     private fun resolve(documentId: String): File {
-        val parsed = runCatching { AfDocumentIdRules.parse(documentId) }
+        val parsed = runCatching { ShovelDocumentIdRules.parse(documentId) }
             .getOrElse { throw FileNotFoundException("Invalid document ID") }
         val exportedRoot = root(parsed.rootId)
-        return runCatching { AfDocumentIdRules.resolve(exportedRoot.directory, documentId) }
+        return runCatching { ShovelDocumentIdRules.resolve(exportedRoot.directory, documentId) }
             .getOrElse { throw FileNotFoundException(it.message) }
     }
 
     private fun idFor(referenceDocumentId: String, file: File): String {
-        val parsed = AfDocumentIdRules.parse(referenceDocumentId)
+        val parsed = ShovelDocumentIdRules.parse(referenceDocumentId)
         val exportedRoot = root(parsed.rootId)
-        return AfDocumentIdRules.encode(exportedRoot.id, AfDocumentIdRules.relative(exportedRoot.directory, file))
+        return ShovelDocumentIdRules.encode(exportedRoot.id, ShovelDocumentIdRules.relative(exportedRoot.directory, file))
     }
 
     private fun roots(): List<ExportedRoot> {

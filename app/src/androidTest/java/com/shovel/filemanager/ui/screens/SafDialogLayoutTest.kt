@@ -23,7 +23,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.data.SafLocation
 import org.junit.Assert.*
 import org.junit.Rule
@@ -102,7 +102,7 @@ class SafDialogLayoutTest {
         var dismissed = false
         lateinit var dialogView: android.view.View
         compose.setContent { MaterialTheme {
-            AfModalDialog(
+            ShovelModalDialog(
                 title = "List", translateTitle = false, icon = Icons.Rounded.Folder,
                 onDismissRequest = { dismissed = true }, expandedContent = true,
                 modifier = Modifier.testTag("bounded_dialog"),

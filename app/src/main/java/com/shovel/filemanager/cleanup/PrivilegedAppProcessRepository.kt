@@ -56,7 +56,7 @@ class PrivilegedAppProcessRepository(
 
     suspend fun forceStop(packageName: String) = withContext(Dispatchers.IO) {
         PrivilegedAppProcessTools.requireValidPackageName(packageName)
-        require(packageName != application.packageName) { "AF File Manager negali sustabdyti savęs" }
+        require(packageName != application.packageName) { "Shovel negali sustabdyti savęs" }
         val info = runCatching { application.packageManager.getApplicationInfoCompat(packageName) }
             .getOrNull()
             ?.takeIf(::isUserApplication)

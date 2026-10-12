@@ -49,7 +49,7 @@ class FileCategoryRepositoryPagingTest {
         } else {
             resolver.delete(imageCollection(), "${MediaStore.MediaColumns.DATA} LIKE ?", arrayOf("${directory.absolutePath}/%"))
         }
-        check(directory.parentFile?.name == "Pictures" && directory.name.startsWith("af-", ignoreCase = true))
+        check(directory.parentFile?.name == "Pictures" && directory.name.startsWith("shovel-", ignoreCase = true))
         directory.deleteRecursively()
     }
 
@@ -79,7 +79,7 @@ class FileCategoryRepositoryPagingTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val resolver = context.contentResolver
         val collection = imageCollection()
-        val marker = "af-scope-${System.nanoTime()}"
+        val marker = "shovel-scope-${System.nanoTime()}"
         val relativePath = "Pictures/$marker/"
         val uri = resolver.insert(collection, imageValues("$marker.jpg", relativePath))
         assertNotNull(uri)
@@ -105,7 +105,7 @@ class FileCategoryRepositoryPagingTest {
     @Test fun legacyAndroidFolderViewUsesIndexedFilesWithoutWalkingTheStorageTree() = runBlocking {
         org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT < 30)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val marker = "af-legacy-folder-${System.nanoTime()}"
+        val marker = "shovel-legacy-folder-${System.nanoTime()}"
         val directory = File(android.os.Environment.getExternalStorageDirectory(), "Pictures/$marker")
         assertTrue(directory.mkdirs())
         val image = File(directory, "sample.jpg")
@@ -135,7 +135,7 @@ class FileCategoryRepositoryPagingTest {
 
     @Test fun failedPageRequestCanBeRetriedWithoutPoisoningTheNextResult() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val application = context.applicationContext as com.shovel.filemanager.AFFileManagerApplication
+        val application = context.applicationContext as com.shovel.filemanager.ShovelApplication
         val store = androidx.lifecycle.ViewModelStore()
         val viewModel = com.shovel.filemanager.ui.MainViewModel(application)
         store.put("retry-test", viewModel)
@@ -143,7 +143,7 @@ class FileCategoryRepositoryPagingTest {
             val failed = viewModel.loadNearbyTransferCategoryPage(FileCategory.IMAGES, -240)
             assertTrue(failed.exceptionOrNull() is IllegalArgumentException)
             val retried = viewModel.loadNearbyTransferCategoryPage(FileCategory.IMAGES, 0,
-                query = "af-no-match-${System.nanoTime()}")
+                query = "shovel-no-match-${System.nanoTime()}")
             assertTrue(retried.isSuccess)
             assertTrue(retried.getOrThrow().entries.isEmpty())
             assertEquals(null, retried.getOrThrow().nextOffset)
@@ -176,7 +176,7 @@ class FileCategoryRepositoryPagingTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val resolver = context.contentResolver
         val collection = imageCollection()
-        val prefix = "af-complete-${System.nanoTime()}"
+        val prefix = "shovel-complete-${System.nanoTime()}"
         val relativePath = "Pictures/$prefix/"
         val fixtureCount = 10_205
         val repository = FileCategoryRepository(context, LocalFileRepository(context))
@@ -287,10 +287,10 @@ class FileCategoryRepositoryPagingTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val resolver = context.contentResolver
         val collection = imageCollection()
-        val relativePath = "Pictures/af-paging-${System.nanoTime()}/"
+        val relativePath = "Pictures/shovel-paging-${System.nanoTime()}/"
         val fixtureCount = 360
         val values = Array(fixtureCount) { index ->
-            imageValues("af-page-${index.toString().padStart(4, '0')}.jpg", relativePath)
+            imageValues("shovel-page-${index.toString().padStart(4, '0')}.jpg", relativePath)
         }
         try {
             assertEquals(fixtureCount, resolver.bulkInsert(collection, values))

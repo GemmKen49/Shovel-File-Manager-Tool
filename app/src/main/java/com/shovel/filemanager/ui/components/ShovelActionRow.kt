@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 
 /** Keep translated actions at their natural width; move whole buttons onto another line. */
 @Composable
-fun AfActionRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun ShovelActionRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     FlowRow(
         modifier = Modifier.fillMaxWidth().then(modifier),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

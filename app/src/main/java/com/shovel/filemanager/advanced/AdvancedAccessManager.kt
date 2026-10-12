@@ -96,10 +96,10 @@ class AdvancedAccessManager(context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val shizukuArgs = Shizuku.UserServiceArgs(ComponentName(appContext, ShizukuFileService::class.java))
         .daemon(false)
-        .tag("af_privileged_files_v1")
+        .tag("shovel_privileged_files_v1")
         .version(BuildConfig.VERSION_CODE)
         .debuggable(BuildConfig.DEBUG)
-        .processNameSuffix("af_privileged")
+        .processNameSuffix("shovel_privileged")
 
     private val _state = MutableStateFlow(
         AdvancedAccessState(selectedMode = loadMode()),

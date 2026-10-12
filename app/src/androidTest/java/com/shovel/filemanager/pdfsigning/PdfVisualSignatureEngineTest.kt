@@ -6,7 +6,7 @@ import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
@@ -21,7 +21,7 @@ import java.security.MessageDigest
 class PdfVisualSignatureEngineTest {
     @Test
     fun visibleSignatureIsAddedOnlyToTheSelectedPageAndSourceStaysUntouched() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(application.cacheDir, "pdf-signature-engine-test-${System.nanoTime()}")
         require(root.mkdirs())
         val source = File(root, "source.pdf")

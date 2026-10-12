@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shovel.filemanager.transfer.TransferDiagnostics
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.uiText
 import kotlinx.coroutines.launch
@@ -51,7 +51,7 @@ internal fun TransferDiagnosticsDialog(onDismiss: () -> Unit, onExport: ((File) 
             busy = false
         }
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Perdavimo diagnostika", icon = Icons.Rounded.Info,
         onDismissRequest = onDismiss, modifier = Modifier.testTag("transfer_diagnostics_dialog"),
         actions = {

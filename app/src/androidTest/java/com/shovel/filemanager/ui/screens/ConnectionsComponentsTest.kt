@@ -77,7 +77,7 @@ class ConnectionsComponentsTest {
         val openRequests = AtomicInteger()
         val downloadRequests = AtomicInteger()
         compose.setContent {
-            com.shovel.filemanager.ui.theme.AFFileManagerTheme(com.shovel.filemanager.ui.theme.AppearanceSettings(
+            com.shovel.filemanager.ui.theme.ShovelTheme(com.shovel.filemanager.ui.theme.AppearanceSettings(
                 colorPalette = com.shovel.filemanager.ui.theme.AppColorPalette.CUSTOM,
                 customColors = com.shovel.filemanager.ui.theme.CustomThemeColors(background = 0xff181820.toInt(),
                     surface = 0xffeeeecc.toInt(), popup = 0xffff5aaf.toInt(), controls = 0xff55edbb.toInt()),

@@ -1,7 +1,7 @@
 package com.shovel.filemanager.transfer
 
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 class NearbyTransferEndToEndTest {
     @Test fun groupSendsOnePrivateStageToTwoReceiversAndCleansItOnlyAfterBothFinish() = runBlocking {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "nearby-group-${UUID.randomUUID()}").apply { check(mkdir()) }
         val source = File(root, "group.bin").apply { writeBytes(ByteArray(2 * 1024 * 1024) { (it * 17).toByte() }) }
         val firstRoot = File(root, "first").apply { check(mkdir()) }
@@ -64,7 +64,7 @@ class NearbyTransferEndToEndTest {
         }
     }
     @Test fun emptyPreparedBatchAuthenticatesAndPairsWithoutSendingFiles() = runBlocking {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "nearby-pair-${UUID.randomUUID()}").apply { check(mkdir()) }
         val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
             .first { it is Inet4Address && it.isSiteLocalAddress }
@@ -95,7 +95,7 @@ class NearbyTransferEndToEndTest {
     }
 
     @Test fun largeDocumentUriStreamsToReceiverWithoutStoppingOrKeepingAPartialFile() = runBlocking {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "nearby-large-${UUID.randomUUID()}").apply { check(mkdir()) }
         val source = File(root, "source.mp4")
         val destination = File(root, "destination").apply { check(mkdir()) }
@@ -131,7 +131,7 @@ class NearbyTransferEndToEndTest {
     }
 
     @Test fun senderStillWorksWithAnOlderReceiverWithoutTheMetadataEndpoint() = runBlocking {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val source = File(app.cacheDir, "legacy-${UUID.randomUUID()}.txt").apply { writeText("legacy-compatible") }
         val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
             .first { it is Inet4Address && it.isSiteLocalAddress }
@@ -161,7 +161,7 @@ class NearbyTransferEndToEndTest {
                         }
                         if (route == "/upload") assertEquals(source.readText(), String(body))
                         val status = if (route == "/nearby/manifest") "404 Not Found" else "200 OK"
-                        val cookie = if (route == "/login") "Set-Cookie: af_session=fixture; HttpOnly\r\n" else ""
+                        val cookie = if (route == "/login") "Set-Cookie: shovel_session=fixture; HttpOnly\r\n" else ""
                         socket.getOutputStream().write("HTTP/1.1 $status\r\n${cookie}Content-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
                     }
                 }
@@ -184,11 +184,11 @@ class NearbyTransferEndToEndTest {
     }
 
     @Test fun servicePublishesBothFileListsAndPreservesExistingDestination() = runBlocking {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "nearby-e2e-${UUID.randomUUID()}").apply { mkdirs() }
         val source = File(root, "source").apply { mkdir() }
         val destination = File(root, "destination").apply { mkdir() }
-        val text = File(source, "hello.txt").apply { writeText("AF test content") }
+        val text = File(source, "hello.txt").apply { writeText("Shovel test content") }
         val empty = File(source, "empty.txt").apply { createNewFile() }
         File(destination, text.name).writeText("keep me")
         val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }

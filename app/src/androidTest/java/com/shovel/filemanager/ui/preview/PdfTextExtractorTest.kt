@@ -5,7 +5,7 @@ import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.data.LocalFileRepository
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 class PdfTextExtractorTest {
     @Test
     fun extractsOnlyTheRequestedPageAndLeavesNoScratchDirectory() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(application.cacheDir, "pdf-text-test-${System.nanoTime()}").apply { mkdirs() }
         val pdf = File(root, "selectable.pdf")
         createPdf(pdf, listOf("First selectable page", "Second selectable page"))
@@ -44,7 +44,7 @@ class PdfTextExtractorTest {
 
     @Test
     fun nativePointSelectionStartsWithAWordAndExtendsFromItsBoundary() {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(application.cacheDir, "pdf-point-selection-${System.nanoTime()}").apply { mkdirs() }
         val pdf = File(root, "selectable.pdf")
         createPdf(pdf, listOf("First selectable page"))

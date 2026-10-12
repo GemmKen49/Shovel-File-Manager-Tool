@@ -25,7 +25,7 @@ class LocalPtyBackendTest {
             temporaryDirectory = File(root, "tmp"),
         )
         try {
-            val marker = "AF_PTY_OUTPUT_${System.nanoTime()}"
+            val marker = "SHOVEL_PTY_OUTPUT_${System.nanoTime()}"
             backend.write("pwd; printf '$marker\\n'; exit\n".toByteArray())
             val output = ByteArrayOutputStream()
             val buffer = ByteArray(8 * 1_024)
@@ -55,7 +55,7 @@ class LocalPtyBackendTest {
         val root = File(context.cacheDir, "pty-multiline-${System.nanoTime()}").apply { mkdirs() }
         val working = File(root, "working").apply { mkdirs() }
         val outputFile = File(working, "pasted-lines.txt")
-        val marker = "AF_PTY_MULTILINE_${System.nanoTime()}"
+        val marker = "SHOVEL_PTY_MULTILINE_${System.nanoTime()}"
         val expected = "first\nsecond\nthird\nfourth\n"
         val backend = LocalPtyBackend.open(
             workingDirectory = working,

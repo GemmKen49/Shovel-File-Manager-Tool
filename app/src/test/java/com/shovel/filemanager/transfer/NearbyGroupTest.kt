@@ -26,7 +26,7 @@ class NearbyGroupTest {
                         accepted.countDown()
                         check(release.await(3, java.util.concurrent.TimeUnit.SECONDS))
                         socket.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n" +
-                            "Set-Cookie: af_session=private-test; Path=/\r\nConnection: close\r\n\r\nOK").toByteArray())
+                            "Set-Cookie: shovel_session=private-test; Path=/\r\nConnection: close\r\n\r\nOK").toByteArray())
                         socket.getOutputStream().flush()
                     }
                     server.soTimeout = 500

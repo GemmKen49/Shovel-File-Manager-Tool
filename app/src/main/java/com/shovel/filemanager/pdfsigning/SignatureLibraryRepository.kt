@@ -15,7 +15,7 @@ data class SavedSignature(
     val createdAtMillis: Long,
 )
 
-/** Persists only bounded vector drawings inside AF File Manager's private files directory. */
+/** Persists only bounded vector drawings inside Shovel's private files directory. */
 class SignatureLibraryRepository(
     private val directory: File,
     private val clock: () -> Long = System::currentTimeMillis,

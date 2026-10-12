@@ -20,7 +20,7 @@ import org.junit.runner.RunWith
 @OptIn(ExperimentalMetricApi::class)
 @LargeTest
 @RunWith(AndroidJUnit4::class)
-class AfMacrobenchmark {
+class ShovelMacrobenchmark {
     @get:Rule
     val benchmarkRule = MacrobenchmarkRule()
 
@@ -28,7 +28,7 @@ class AfMacrobenchmark {
 
     @Before
     fun prepare() {
-        AfBenchmarkEnvironment.resetTargetData()
+        ShovelBenchmarkEnvironment.resetTargetData()
         ftp = LoopbackFtpServer().also { it.start() }
     }
 
@@ -40,7 +40,7 @@ class AfMacrobenchmark {
 
     @Test
     fun coldStartAndFirstPaint() = benchmarkRule.measureRepeated(
-        packageName = AfBenchmarkEnvironment.PACKAGE_NAME,
+        packageName = ShovelBenchmarkEnvironment.PACKAGE_NAME,
         metrics = listOf(
             StartupTimingMetric(),
             MemoryUsageMetric(MemoryUsageMetric.Mode.Max),
@@ -50,12 +50,12 @@ class AfMacrobenchmark {
         iterations = 7,
         setupBlock = { prepareTargetForColdStart() },
     ) {
-        startActivityAndWait(AfBenchmarkEnvironment.mainIntent())
+        startActivityAndWait(ShovelBenchmarkEnvironment.mainIntent())
     }
 
     @Test
     fun largeDirectoryFirstContent() = benchmarkRule.measureRepeated(
-        packageName = AfBenchmarkEnvironment.PACKAGE_NAME,
+        packageName = ShovelBenchmarkEnvironment.PACKAGE_NAME,
         metrics = listOf(
             StartupTimingMetric(),
             MemoryUsageMetric(MemoryUsageMetric.Mode.Max),
@@ -65,8 +65,8 @@ class AfMacrobenchmark {
         iterations = 7,
         setupBlock = { prepareTargetForColdStart() },
     ) {
-        startActivityAndWait(AfBenchmarkEnvironment.localIntent("large"))
-        AfBenchmarkEnvironment.run { awaitObject("file_list_content_LEFT") }
+        startActivityAndWait(ShovelBenchmarkEnvironment.localIntent("large"))
+        ShovelBenchmarkEnvironment.run { awaitObject("file_list_content_LEFT") }
     }
 
     @Test
@@ -77,7 +77,7 @@ class AfMacrobenchmark {
 
     @Test
     fun remoteListAndScroll() = benchmarkRule.measureRepeated(
-        packageName = AfBenchmarkEnvironment.PACKAGE_NAME,
+        packageName = ShovelBenchmarkEnvironment.PACKAGE_NAME,
         metrics = listOf(
             StartupTimingMetric(),
             FrameTimingMetric(),
@@ -88,8 +88,8 @@ class AfMacrobenchmark {
         iterations = 7,
         setupBlock = { prepareTargetForColdStart() },
     ) {
-        startActivityAndWait(AfBenchmarkEnvironment.remoteIntent())
-        AfBenchmarkEnvironment.run {
+        startActivityAndWait(ShovelBenchmarkEnvironment.remoteIntent())
+        ShovelBenchmarkEnvironment.run {
             awaitObject("remote_list_ready")
             fling("remote_list", Direction.DOWN, times = 4)
             fling("remote_list", Direction.UP, times = 2)
@@ -97,7 +97,7 @@ class AfMacrobenchmark {
     }
 
     private fun scrollBenchmark(dataset: String, resourceName: String) = benchmarkRule.measureRepeated(
-        packageName = AfBenchmarkEnvironment.PACKAGE_NAME,
+        packageName = ShovelBenchmarkEnvironment.PACKAGE_NAME,
         metrics = listOf(
             FrameTimingMetric(),
             MemoryUsageMetric(MemoryUsageMetric.Mode.Max),
@@ -106,13 +106,13 @@ class AfMacrobenchmark {
         startupMode = StartupMode.WARM,
         iterations = 7,
         setupBlock = {
-            AfBenchmarkEnvironment.prepareTarget(device)
-            startActivityAndWait(AfBenchmarkEnvironment.localIntent(dataset))
-            AfBenchmarkEnvironment.run { awaitObject(resourceName.contentTag()) }
+            ShovelBenchmarkEnvironment.prepareTarget(device)
+            startActivityAndWait(ShovelBenchmarkEnvironment.localIntent(dataset))
+            ShovelBenchmarkEnvironment.run { awaitObject(resourceName.contentTag()) }
             device.waitForIdle()
         },
     ) {
-        AfBenchmarkEnvironment.run {
+        ShovelBenchmarkEnvironment.run {
             fling(resourceName, Direction.DOWN, times = 4)
             fling(resourceName, Direction.UP, times = 2)
         }
@@ -124,7 +124,7 @@ class AfMacrobenchmark {
         "${substringBeforeLast('_')}_content_${substringAfterLast('_')}"
 
     private fun androidx.benchmark.macro.MacrobenchmarkScope.prepareTargetForColdStart() {
-        AfBenchmarkEnvironment.prepareTarget(device)
+        ShovelBenchmarkEnvironment.prepareTarget(device)
         killProcess()
         pressHome()
     }

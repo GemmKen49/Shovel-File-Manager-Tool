@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 class MainViewModelLifecycleTest {
     @Test
     fun clearingTheScreenFinishesItsApplicationScopedPersistenceWorkers() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val applicationJob = requireNotNull(application.graph.applicationScope.coroutineContext[Job])
         val store = ViewModelStore()

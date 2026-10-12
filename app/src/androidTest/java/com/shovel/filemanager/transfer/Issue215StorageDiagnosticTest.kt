@@ -5,7 +5,7 @@ import android.os.Environment
 import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -26,10 +26,10 @@ class Issue215StorageDiagnosticTest {
         val arguments = InstrumentationRegistry.getArguments()
         val mode = arguments.getString("issue215StorageMode")
         assumeTrue("Opt-in owned emulator fixture in three separate permission-mode runs", mode != null)
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val id = requireNotNull(arguments.getString("issue215StorageFixture"))
         require(UUID.fromString(id).toString() == id)
-        val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "AFIssue215-$id")
+        val root = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "ShovelIssue215-$id")
         val source = File(app.cacheDir, "issue215-storage-$id.mp4")
         if (mode == "granted") {
             assertTrue(Environment.isExternalStorageManager())
@@ -47,7 +47,7 @@ class Issue215StorageDiagnosticTest {
             if (restricted.exists()) assertEquals(before, digest(restricted))
             assertFalse(root.listFiles().orEmpty().any { it.name.endsWith(".partial") })
             Log.i("Issue215Diagnostic", "shared_downloads_access restored=true originals_unchanged=true restrictedOutputExists=${restricted.exists()}")
-            check(root.name == "AFIssue215-$id" && root.parentFile!!.canonicalFile == Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).canonicalFile)
+            check(root.name == "ShovelIssue215-$id" && root.parentFile!!.canonicalFile == Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).canonicalFile)
             root.deleteRecursively(); source.delete()
             return@runBlocking
         }

@@ -1,7 +1,7 @@
 package com.shovel.filemanager.transfer
 
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 class NearbyBidirectionalTransferTest {
     @Test fun twoReceiversExchangeMoreBatchesWithoutReusingTheOneTimeLogin() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val root = File(app.cacheDir, "nearby-duplex-${UUID.randomUUID()}").apply { check(mkdir()) }
         val address = NetworkInterface.getNetworkInterfaces().toList().flatMap { it.inetAddresses.toList() }
             .first { it is Inet4Address && it.isSiteLocalAddress }

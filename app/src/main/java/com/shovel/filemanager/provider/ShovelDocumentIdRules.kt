@@ -4,9 +4,9 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
-internal data class AfDocumentId(val rootId: String, val relativePath: String)
+internal data class ShovelDocumentId(val rootId: String, val relativePath: String)
 
-internal object AfDocumentIdRules {
+internal object ShovelDocumentIdRules {
     private const val SEPARATOR = ':'
     internal const val MAX_PATH_SEGMENTS = 64
     internal const val MAX_RELATIVE_PATH_BYTES = 8 * 1024
@@ -29,7 +29,7 @@ internal object AfDocumentIdRules {
         }
     }
 
-    fun parse(documentId: String): AfDocumentId {
+    fun parse(documentId: String): ShovelDocumentId {
         require(documentId.length <= MAX_DOCUMENT_ID_CHARS) { "Document ID is too long" }
         val split = documentId.indexOf(SEPARATOR)
         require(split in 1 until documentId.length + 1) { "Invalid document ID" }
@@ -40,7 +40,7 @@ internal object AfDocumentIdRules {
             Base64.getUrlDecoder().decode(encoded),
             StandardCharsets.UTF_8,
         )
-        return AfDocumentId(rootId, normalizeRelative(relative))
+        return ShovelDocumentId(rootId, normalizeRelative(relative))
     }
 
     fun resolve(root: File, documentId: String): File {

@@ -22,11 +22,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import com.shovel.filemanager.ui.theme.AfButton as Button
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -42,7 +42,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.model.FileEntry
 import com.shovel.filemanager.model.SortDirection
 import com.shovel.filemanager.model.SortMode
@@ -52,7 +52,7 @@ import com.shovel.filemanager.ui.authenticate
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.UiTranslator
 import com.shovel.filemanager.ui.screens.LocalUploadDialog
-import com.shovel.filemanager.ui.theme.AFFileManagerTheme
+import com.shovel.filemanager.ui.theme.ShovelTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -64,7 +64,7 @@ import java.util.Locale
 
 /** Returns user-selected local content, not the app's browsing state, credentials or private files. */
 class FilePickerActivity : AppCompatActivity() {
-    private val graph get() = (application as AFFileManagerApplication).graph
+    private val graph get() = (application as ShovelApplication).graph
     private var unlocked by mutableStateOf(false)
     private var hasAccess by mutableStateOf(false)
     private var boundary by mutableStateOf<FilePickerBoundary?>(null)
@@ -86,12 +86,12 @@ class FilePickerActivity : AppCompatActivity() {
             val appearance by graph.appearance.settings.collectAsState()
             val lockEnabled by graph.appLock.enabled.collectAsState()
             val featureVisibility = graph.uiPreferences.loadFeatureVisibility()
-            AFFileManagerTheme(settings = appearance) {
+            ShovelTheme(settings = appearance) {
                 CompositionLocalProvider(LocalFeatureVisibility provides featureVisibility) {
                 Box(Modifier.fillMaxSize()) {
                     if (lockEnabled && !unlocked) {
                         AppLockOverlay(onUnlock = {
-                            authenticate(this@FilePickerActivity, translated("Atrakinti AF File Manager"), { unlocked = true }) { error = it }
+                            authenticate(this@FilePickerActivity, translated("Atrakinti Shovel"), { unlocked = true }) { error = it }
                         }, onCancel = { finish() }, message = error)
                     } else {
                         PickerContent(request)
@@ -147,7 +147,7 @@ class FilePickerActivity : AppCompatActivity() {
                 initiallySelected = emptySet(),
                 loadDirectory = { path -> loadDirectory(path, allowed, request) },
                 onDismiss = { finish() }, onCopy = { paths -> confirm(paths, allowed, request) },
-                title = "AF File Manager", confirmLabel = "Pasirinkti",
+                title = "Shovel", confirmLabel = "Pasirinkti",
                 filesOnly = true, allowMultiple = request.allowMultiple, selectionLimit = request.selectionLimit,
                 parentDirectory = allowed::parent, message = error ?: warning, confirming = confirming,
             )
@@ -216,7 +216,7 @@ class FilePickerActivity : AppCompatActivity() {
                     }
                     Intent().apply {
                         data = uris.first()
-                        clipData = ClipData.newUri(contentResolver, "AF File Manager", uris.first()).also { clip ->
+                        clipData = ClipData.newUri(contentResolver, "Shovel", uris.first()).also { clip ->
                             uris.drop(1).forEach { clip.addItem(ClipData.Item(it)) }
                         }
                         flags = Intent.FLAG_GRANT_READ_URI_PERMISSION

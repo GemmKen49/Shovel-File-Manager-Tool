@@ -8,29 +8,29 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
-class AfPreflightFingerprintTest {
+class ShovelPreflightFingerprintTest {
     @Test
     fun fingerprintIsStableForTheSamePreviewButChangesWithSourceContent() = runTest {
-        val storage = FakeAfStorage()
+        val storage = FakeShovelStorage()
         val source = storage.file("/phone/rule.txt", "first", "phone")
         val destination = storage.directory("/server", "server")
-        val plan = AfPlanDefinition(
+        val plan = ShovelPlanDefinition(
             id = "automation-plan",
             name = "Automation",
-            sources = listOf(AfSourceRef(source, "rule.txt")),
-            destinations = listOf(AfDestinationRef(destination)),
+            sources = listOf(ShovelSourceRef(source, "rule.txt")),
+            destinations = listOf(ShovelDestinationRef(destination)),
             conflictPolicy = ConflictPolicy.KEEP_BOTH,
             verification = TransferVerification.SHA256,
             failurePolicy = TransferFailurePolicy.STOP,
         )
-        val firstPreview = AfPlanPreflight().preview(plan, storage, nowMillis = 100)
-        val firstFingerprint = AfPreflightFingerprint.create(firstPreview)
+        val firstPreview = ShovelPlanPreflight().preview(plan, storage, nowMillis = 100)
+        val firstFingerprint = ShovelPreflightFingerprint.create(firstPreview)
 
-        assertEquals(firstFingerprint, AfPreflightFingerprint.create(firstPreview))
+        assertEquals(firstFingerprint, ShovelPreflightFingerprint.create(firstPreview))
 
         storage.file("/phone/rule.txt", "other", "phone")
-        val changedPreview = AfPlanPreflight().preview(plan, storage, nowMillis = 200)
+        val changedPreview = ShovelPlanPreflight().preview(plan, storage, nowMillis = 200)
 
-        assertNotEquals(firstFingerprint, AfPreflightFingerprint.create(changedPreview))
+        assertNotEquals(firstFingerprint, ShovelPreflightFingerprint.create(changedPreview))
     }
 }

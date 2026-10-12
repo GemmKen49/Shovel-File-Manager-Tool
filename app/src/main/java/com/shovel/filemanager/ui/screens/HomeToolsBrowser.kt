@@ -92,16 +92,16 @@ import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material.icons.rounded.Visibility
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
 import androidx.compose.material3.AssistChip
-import com.shovel.filemanager.ui.theme.AfButton as Button
-import com.shovel.filemanager.ui.theme.AfCard as Card
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import com.shovel.filemanager.ui.theme.AfElevatedCard as ElevatedCard
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelElevatedCard as ElevatedCard
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -111,7 +111,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -184,8 +184,8 @@ import com.shovel.filemanager.ui.PanelComparisonStatus
 import com.shovel.filemanager.ui.PanelId
 import com.shovel.filemanager.ui.PanelUiState
 import com.shovel.filemanager.ui.ProgressiveScrollRules
-import com.shovel.filemanager.ui.components.AfModalDialog
-import com.shovel.filemanager.ui.components.AfPullToRefresh
+import com.shovel.filemanager.ui.components.ShovelModalDialog
+import com.shovel.filemanager.ui.components.ShovelPullToRefresh
 import com.shovel.filemanager.ui.components.DirectoryBrowserToolbar
 import com.shovel.filemanager.ui.components.DirectoryDisplayMenuItems
 import com.shovel.filemanager.ui.components.DirectoryDisplaySettingsDialog
@@ -304,7 +304,7 @@ internal fun FilesHome(
                 )
             }
         }
-        AfPullToRefresh(
+        ShovelPullToRefresh(
             isRefreshing = recentFilesLoading,
             onRefresh = onRefreshRecent,
             modifier = Modifier.fillMaxWidth().weight(1f),
@@ -386,7 +386,7 @@ internal fun FilesHome(
     }
 
     if (showCloudLocations) {
-        AfModalDialog(
+        ShovelModalDialog(
             title = "Debesija ir teikėjų vietos",
             icon = Icons.Rounded.Cloud,
             onDismissRequest = { showCloudLocations = false },
@@ -404,7 +404,7 @@ internal fun FilesHome(
                 ) {
                     LText("Teikėjo vietų dar nepridėta")
                     LText(
-                        "Android suteikia AF prieigą tik prie čia pasirinkto teikėjo aplanko. Visai Google Drive paskyrai reikalingas atskiras Google prisijungimas.",
+                        "Android suteikia Shovel prieigą tik prie čia pasirinkto teikėjo aplanko. Visai Google Drive paskyrai reikalingas atskiras Google prisijungimas.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Button(onClick = onAddSafLocation, modifier = Modifier.padding(top = 12.dp)) {
@@ -507,7 +507,7 @@ internal fun FilesHome(
     }
 
     if (showBookmarks) {
-        AfModalDialog(
+        ShovelModalDialog(
             title = "Žymelės",
             icon = Icons.Rounded.Bookmark,
             onDismissRequest = { showBookmarks = false },
@@ -591,7 +591,7 @@ internal fun RecentFilesDialog(
     val selectedEntries = selectedPaths.mapNotNull(knownEntries::get)
     LaunchedEffect(knownEntries) { selectedPaths = selectedPaths.intersect(knownEntries.keys) }
 
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Naujausi failai",
         icon = Icons.Rounded.History,
         onDismissRequest = onDismiss,
@@ -600,7 +600,7 @@ internal fun RecentFilesDialog(
         expandedContent = true,
         actions = {},
     ) {
-        AfPullToRefresh(
+        ShovelPullToRefresh(
             isRefreshing = loading,
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize(),
@@ -1070,7 +1070,7 @@ internal fun HomeCustomizationDialog(
         } + (HomeCustomizationRules.ROOT_STORAGE_ID to "Root")
         HomeCustomizationRules.orderedStorageIds(customization, labels.keys).mapNotNull { id -> labels[id]?.let { id to it } }
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Tvarkyti pradžios ekraną",
         icon = Icons.Rounded.Edit,
         onDismissRequest = onDismiss,
@@ -1279,7 +1279,7 @@ private fun HomeOrderRow(
 
 private fun homeToolTitle(id: String): String = when (id) {
     "trash" -> "Šiukšlinė"
-    "plans" -> "AF planai"
+    "plans" -> "Shovel planai"
     "cloud" -> "Debesija"
     "bookmarks" -> "Žymelės"
     else -> id

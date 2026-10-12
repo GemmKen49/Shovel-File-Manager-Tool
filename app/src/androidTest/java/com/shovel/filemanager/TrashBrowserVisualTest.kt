@@ -37,7 +37,7 @@ class TrashBrowserVisualTest {
 
     @Test
     fun longTrashGridNamesKeepCardsAndActionsAligned() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("trash-grid-source")), "run-${System.nanoTime()}")
         val short = File(fixtureRoot, "short").apply { mkdirs() }
         val long = File(fixtureRoot, "this-is-a-very-long-trash-folder-name-that-must-not-change-the-card-height").apply { mkdirs() }
@@ -83,9 +83,9 @@ class TrashBrowserVisualTest {
 
     @Test
     fun trashOpensAsFolderNavigatesWithSystemBackAndCanEmptyAll() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixtureRoot = File(requireNotNull(application.getExternalFilesDir("trash-ui-source")), "run-${System.nanoTime()}")
-        val deletedDirectory = File(fixtureRoot, "AFTrashVisual")
+        val deletedDirectory = File(fixtureRoot, "ShovelTrashVisual")
         val nestedDirectory = File(deletedDirectory, "Vidinis katalogas")
         require(nestedDirectory.mkdirs())
         File(deletedDirectory, "tik-pirmame-lygyje.txt").writeText("pirmas")
@@ -105,7 +105,7 @@ class TrashBrowserVisualTest {
             }
 
             compose.onNodeWithText("Open trash").performClick()
-            compose.onNodeWithText("AFTrashVisual").assertIsDisplayed()
+            compose.onNodeWithText("ShovelTrashVisual").assertIsDisplayed()
             // The view choice survives app restarts and previous test runs. Start
             // this toggle check from icons without relying on a fresh install.
             compose.runOnUiThread {
@@ -116,7 +116,7 @@ class TrashBrowserVisualTest {
             compose.onNodeWithTag("directory_layout_trash").assertIsDisplayed()
             compose.onNodeWithContentDescription("Folder actions").performClick()
             compose.onNodeWithText("Show thumbnails").assertIsDisplayed().performClick()
-            compose.onNodeWithText("AFTrashVisual").performClick()
+            compose.onNodeWithText("ShovelTrashVisual").performClick()
             compose.onNodeWithText("Vidinis katalogas").assertIsDisplayed()
             compose.onNodeWithText("tik-pirmame-lygyje.txt").assertIsDisplayed()
             assertTrue(compose.onAllNodesWithText("tik-viduje.txt").fetchSemanticsNodes().isEmpty())
@@ -136,7 +136,7 @@ class TrashBrowserVisualTest {
             compose.onNodeWithText("tik-pirmame-lygyje.txt").assertIsDisplayed()
             assertTrue(compose.onAllNodesWithText("tik-viduje.txt").fetchSemanticsNodes().isEmpty())
             compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
-            compose.onNodeWithContentDescription("Restore AFTrashVisual").assertIsDisplayed()
+            compose.onNodeWithContentDescription("Restore ShovelTrashVisual").assertIsDisplayed()
 
             compose.onNodeWithContentDescription("Folder actions").performClick()
             compose.onNodeWithText("Empty trash").performClick()
@@ -155,7 +155,7 @@ class TrashBrowserVisualTest {
 
     @Test
     fun orphanOnlyTrashCanStillBeEmptiedFromTheMenu() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val repository = application.graph.trash
         val trashRoot = requireNotNull(application.getExternalFilesDir("trash"))
         val orphan = File(trashRoot, "ui-orphan-${System.nanoTime()}.partial")

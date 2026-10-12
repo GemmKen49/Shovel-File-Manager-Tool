@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.FileEntry
 import kotlinx.coroutines.runBlocking
@@ -20,7 +20,7 @@ import java.io.File
 class FileVisualLoaderTest {
     @Test
     fun realImageProducesBoundedThumbnail() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val imageFile = File(application.cacheDir, "thumbnail-${System.nanoTime()}.png")
         try {
             val source = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888).apply {
@@ -44,7 +44,7 @@ class FileVisualLoaderTest {
 
     @Test
     fun iconsModeDoesNotReturnImageContentAsAThumbnail() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val imageFile = File(application.cacheDir, "icon-mode-${System.nanoTime()}.png")
         try {
             val source = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).apply {
@@ -69,7 +69,7 @@ class FileVisualLoaderTest {
 
     @Test
     fun installedTargetApkProvidesItsRealApplicationIcon() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val apk = File(application.applicationInfo.sourceDir)
 
         val visual = FileVisualLoader.loadLocal(application, fileEntry(apk, EntryKind.APK), 96, 96, showThumbnails = false)
@@ -83,7 +83,7 @@ class FileVisualLoaderTest {
 
     @Test
     fun installedPackageDirectoryCanLoadItsApplicationIcon() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
 
         val visual = FileVisualLoader.loadInstalledApp(
             context = application,
@@ -101,7 +101,7 @@ class FileVisualLoaderTest {
 
     @Test
     fun xmlAndZipUseBuiltInTypeIconsInsteadOfAnAssociatedApplicationIcon() = runBlocking {
-        val application = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val application = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val xml = File(application.cacheDir, "type-${System.nanoTime()}.xml").apply { writeText("<root />") }
         val zip = File(application.cacheDir, "type-${System.nanoTime()}.zip").apply { writeBytes(byteArrayOf()) }
         try {

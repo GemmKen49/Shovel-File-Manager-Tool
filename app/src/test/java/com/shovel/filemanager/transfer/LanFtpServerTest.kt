@@ -61,7 +61,7 @@ class LanFtpServerTest {
 
                 writer.print("PWD\r\n"); writer.flush()
                 assertTrue(reader.readLine().startsWith("530"))
-                writer.print("USER af\r\n"); writer.flush()
+                writer.print("USER shovel\r\n"); writer.flush()
                 assertTrue(reader.readLine().startsWith("331"))
                 writer.print("PASS 12345678\r\n"); writer.flush()
                 assertTrue(reader.readLine().startsWith("230"))
@@ -145,18 +145,18 @@ class LanFtpServerTest {
                 val writer = PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8)
                 assertTrue(reader.readLine().startsWith("220"))
                 repeat(LanFtpServer.MAX_AUTH_FAILURES) {
-                    command(writer, "USER af")
+                    command(writer, "USER shovel")
                     assertTrue(reader.readLine().startsWith("331"))
                     command(writer, "PASS 00000000")
                     assertTrue(reader.readLine().startsWith("530"))
                 }
-                command(writer, "USER af")
+                command(writer, "USER shovel")
                 assertTrue(reader.readLine().startsWith("331"))
                 command(writer, "PASS 12345678")
                 assertTrue(reader.readLine().startsWith("530"))
 
                 now += LanFtpServer.AUTH_LOCK_MILLIS + 1
-                command(writer, "USER af")
+                command(writer, "USER shovel")
                 assertTrue(reader.readLine().startsWith("331"))
                 command(writer, "PASS 12345678")
                 assertTrue(reader.readLine().startsWith("230"))
@@ -224,7 +224,7 @@ class LanFtpServerTest {
     }
 
     private fun login(reader: BufferedReader, writer: PrintWriter) {
-        command(writer, "USER af")
+        command(writer, "USER shovel")
         assertTrue(reader.readLine().startsWith("331"))
         command(writer, "PASS 12345678")
         assertTrue(reader.readLine().startsWith("230"))

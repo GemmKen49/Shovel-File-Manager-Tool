@@ -2,7 +2,7 @@ package com.shovel.filemanager.transfer
 
 import android.system.Os
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 
 class NearbyStagingCleanupAndroidTest {
     @Test fun concurrentCancellationKeepsOriginalsAndDoesNotFollowRealSymlinks() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val fixture = File(app.cacheDir, "cleanup-boundary-${UUID.randomUUID()}").apply { check(mkdir()) }
         val root = File(fixture, "staging").apply { check(mkdir()) }
         val originals = File(fixture, "originals").apply { check(mkdir()) }

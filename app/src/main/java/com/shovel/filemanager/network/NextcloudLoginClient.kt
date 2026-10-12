@@ -136,7 +136,7 @@ class NextcloudLoginClient(
         private const val POLL_INTERVAL_MILLIS = 1_000L
         private const val MAX_RESPONSE_BYTES = 64 * 1_024
         private const val MAX_TOKEN_LENGTH = 4_096
-        private const val USER_AGENT = "AF File Manager/${BuildConfig.VERSION_NAME}"
+        private const val USER_AGENT = "Shovel/${BuildConfig.VERSION_NAME}"
     }
 
     suspend fun begin(serverInput: String): NextcloudLoginStart = withContext(Dispatchers.IO) {

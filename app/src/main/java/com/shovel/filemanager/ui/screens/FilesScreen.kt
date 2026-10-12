@@ -84,16 +84,16 @@ import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.Apps
-import com.shovel.filemanager.ui.theme.AfAlertDialog as AlertDialog
+import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
 import androidx.compose.material3.AssistChip
-import com.shovel.filemanager.ui.theme.AfButton as Button
-import com.shovel.filemanager.ui.theme.AfCard as Card
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import com.shovel.filemanager.ui.theme.AfElevatedCard as ElevatedCard
-import com.shovel.filemanager.ui.theme.AfFilterChip as FilterChip
+import com.shovel.filemanager.ui.theme.ShovelElevatedCard as ElevatedCard
+import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.VerticalDivider
@@ -106,7 +106,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -176,8 +176,8 @@ import com.shovel.filemanager.ui.PanelUiState
 import com.shovel.filemanager.ui.PanelComparisonStatus
 import com.shovel.filemanager.ui.ProgressiveScrollRules
 import com.shovel.filemanager.ui.components.LocalFileVisual
-import com.shovel.filemanager.ui.components.AfModalDialog
-import com.shovel.filemanager.ui.components.AfPullToRefresh
+import com.shovel.filemanager.ui.components.ShovelModalDialog
+import com.shovel.filemanager.ui.components.ShovelPullToRefresh
 import com.shovel.filemanager.ui.components.DirectoryGridItemContent
 import com.shovel.filemanager.ui.components.DirectoryDisplayMenuItems
 import com.shovel.filemanager.ui.components.DirectoryEntryFilter
@@ -908,7 +908,7 @@ private fun FilePanel(
             }
         }
 
-        AfPullToRefresh(
+        ShovelPullToRefresh(
             isRefreshing = state.loading,
             onRefresh = { viewModel.refreshPanel(panelId, scrollToTop = true) },
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -1106,7 +1106,7 @@ private fun ViewingHistoryDialog(
     onClear: () -> Unit,
 ) {
     val dateFormat = rememberLocalizedDateTimeFormat(DateFormat.SHORT, DateFormat.SHORT)
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Peržiūrų istorija",
         icon = Icons.Rounded.History,
         onDismissRequest = onDismiss,
@@ -1875,7 +1875,7 @@ internal fun CreateItemDialog(
         CreateItemType.FILE -> Icons.Rounded.Description
         CreateItemType.ARCHIVE -> Icons.Rounded.Archive
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = title,
         icon = icon,
         onDismissRequest = onDismiss,
@@ -1959,7 +1959,7 @@ private fun TextInputDialog(
     onConfirm: (String) -> Unit,
 ) {
     var value by remember(initial) { mutableStateOf(initial) }
-    AfModalDialog(
+    ShovelModalDialog(
         title = title,
         icon = Icons.Rounded.Edit,
         onDismissRequest = onDismiss,
@@ -2001,7 +2001,7 @@ private fun ArchiveDialog(
     val selectionSummary by produceState<FileSelectionSummary?>(initialValue = null, sourcePaths) {
         value = loadSummary(sourcePaths).getOrNull()
     }
-    AfModalDialog(
+    ShovelModalDialog(
         title = "Sukurti archyvą",
         icon = Icons.Rounded.Archive,
         onDismissRequest = onDismiss,
@@ -2116,7 +2116,7 @@ private fun TransferOptionsDialog(
         ConflictPolicy.SKIP to "Praleisti sutampančius",
         ConflictPolicy.MERGE to "Sujungti aplankus",
     )
-    AfModalDialog(
+    ShovelModalDialog(
         title = if (moving) "Patikimai perkelti" else "Patikimai kopijuoti",
         icon = if (moving) Icons.Rounded.ContentCut else Icons.Rounded.ContentCopy,
         onDismissRequest = onDismiss,

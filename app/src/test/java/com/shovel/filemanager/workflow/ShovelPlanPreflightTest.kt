@@ -10,17 +10,17 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class AfPlanPreflightTest {
+class ShovelPlanPreflightTest {
     @Test
     fun keepBothReservesUniqueNamesForSourcesFromDifferentServers() = runTest {
-        val storage = FakeAfStorage()
+        val storage = FakeShovelStorage()
         val first = storage.file("/one/report.txt", "one", "one")
         val second = storage.file("/two/report.txt", "two", "two")
         val destination = storage.directory("/inbox", "target")
-        val preview = AfPlanPreflight().preview(
+        val preview = ShovelPlanPreflight().preview(
             plan(
                 sources = listOf(source(first, "report.txt"), source(second, "report.txt")),
-                destinations = listOf(AfDestinationRef(destination)),
+                destinations = listOf(ShovelDestinationRef(destination)),
             ),
             storage,
         )
@@ -33,17 +33,17 @@ class AfPlanPreflightTest {
 
     @Test
     fun nestedDifferentFileBlocksFolderMergeDuringPreview() = runTest {
-        val storage = FakeAfStorage()
+        val storage = FakeShovelStorage()
         val sourceRoot = storage.directory("/source", "one")
         storage.file("/source/readme.txt", "new", "one")
         val destination = storage.directory("/target", "two")
         storage.directory("/target/source", "two")
         storage.file("/target/source/readme.txt", "old", "two")
 
-        val preview = AfPlanPreflight().preview(
+        val preview = ShovelPlanPreflight().preview(
             plan(
                 sources = listOf(source(sourceRoot, "source")),
-                destinations = listOf(AfDestinationRef(destination)),
+                destinations = listOf(ShovelDestinationRef(destination)),
                 conflict = ConflictPolicy.MERGE,
                 verification = TransferVerification.SHA256,
             ),
@@ -56,17 +56,17 @@ class AfPlanPreflightTest {
 
     @Test
     fun overlappingSourceTreesAndDestinationTreesAreRejected() = runTest {
-        val storage = FakeAfStorage()
+        val storage = FakeShovelStorage()
         val parent = storage.directory("/source")
         val child = storage.directory("/source/child")
         storage.file("/source/child/a.txt", "a")
         val destination = storage.directory("/target")
         val nestedDestination = storage.directory("/target/nested")
 
-        val preview = AfPlanPreflight().preview(
+        val preview = ShovelPlanPreflight().preview(
             plan(
                 sources = listOf(source(parent, "source"), source(child, "child")),
-                destinations = listOf(AfDestinationRef(destination), AfDestinationRef(nestedDestination)),
+                destinations = listOf(ShovelDestinationRef(destination), ShovelDestinationRef(nestedDestination)),
             ),
             storage,
         )
@@ -78,15 +78,15 @@ class AfPlanPreflightTest {
 
     @Test
     fun aFileAlreadyIdenticalAtEveryRequiredDestinationCanStillBeSafelyMoved() = runTest {
-        val storage = FakeAfStorage()
+        val storage = FakeShovelStorage()
         val source = storage.file("/out/report.txt", "same", "phone")
         val destination = storage.directory("/in", "server")
         storage.file("/in/report.txt", "same", "server")
 
-        val preview = AfPlanPreflight().preview(
+        val preview = ShovelPlanPreflight().preview(
             plan(
                 sources = listOf(source(source, "report.txt")),
-                destinations = listOf(AfDestinationRef(destination)),
+                destinations = listOf(ShovelDestinationRef(destination)),
                 verification = TransferVerification.SHA256,
                 deleteSources = true,
             ),
@@ -95,14 +95,14 @@ class AfPlanPreflightTest {
 
         assertTrue(preview.blockers.toString(), preview.canRun)
         assertEquals(0, preview.readyCopies)
-        assertEquals(AfPreflightDisposition.VERIFIED_IDENTICAL, preview.projections.single().disposition)
+        assertEquals(ShovelPreflightDisposition.VERIFIED_IDENTICAL, preview.projections.single().disposition)
     }
 
     @Test
     fun replacingDataCannotUseSkipAndContinue() {
         val invalid = plan(
-            sources = listOf(AfSourceRef(FakeAfStorage().location("/a"), "a")),
-            destinations = listOf(AfDestinationRef(FakeAfStorage().location("/b"))),
+            sources = listOf(ShovelSourceRef(FakeShovelStorage().location("/a"), "a")),
+            destinations = listOf(ShovelDestinationRef(FakeShovelStorage().location("/b"))),
             conflict = ConflictPolicy.REPLACE,
             failure = TransferFailurePolicy.SKIP_AND_CONTINUE,
         )
@@ -112,17 +112,17 @@ class AfPlanPreflightTest {
 
     @Test
     fun tenThousandFileFolderProducesABoundedRunnablePreview() = runTest {
-        val storage = FakeAfStorage()
+        val storage = FakeShovelStorage()
         val sourceRoot = storage.directory("/large", "phone")
         repeat(10_000) { index ->
             storage.file("/large/file-${index.toString().padStart(5, '0')}.txt", byteArrayOf((index % 251).toByte()), "phone")
         }
         val destination = storage.directory("/backup", "server")
 
-        val preview = AfPlanPreflight().preview(
+        val preview = ShovelPlanPreflight().preview(
             plan(
                 sources = listOf(source(sourceRoot, "large")),
-                destinations = listOf(AfDestinationRef(destination)),
+                destinations = listOf(ShovelDestinationRef(destination)),
             ),
             storage,
         )
@@ -136,16 +136,16 @@ class AfPlanPreflightTest {
 
     @Test
     fun insufficientPrivateStagingSpaceBlocksBeforeCopyStarts() = runTest {
-        val storage = FakeAfStorage().apply {
-            stagingBytes = AfWorkflowLimits.MIN_STAGING_RESERVE_BYTES + 3L
+        val storage = FakeShovelStorage().apply {
+            stagingBytes = ShovelWorkflowLimits.MIN_STAGING_RESERVE_BYTES + 3L
         }
         val source = storage.file("/out/video.bin", ByteArray(4), "phone")
         val destination = storage.directory("/backup", "server")
 
-        val preview = AfPlanPreflight().preview(
+        val preview = ShovelPlanPreflight().preview(
             plan(
                 sources = listOf(source(source, "video.bin")),
-                destinations = listOf(AfDestinationRef(destination)),
+                destinations = listOf(ShovelDestinationRef(destination)),
             ),
             storage,
         )
@@ -156,13 +156,13 @@ class AfPlanPreflightTest {
     }
 
     private fun plan(
-        sources: List<AfSourceRef>,
-        destinations: List<AfDestinationRef>,
+        sources: List<ShovelSourceRef>,
+        destinations: List<ShovelDestinationRef>,
         conflict: ConflictPolicy = ConflictPolicy.KEEP_BOTH,
         verification: TransferVerification = TransferVerification.SIZE,
         failure: TransferFailurePolicy = TransferFailurePolicy.STOP,
         deleteSources: Boolean = false,
-    ) = AfPlanDefinition(
+    ) = ShovelPlanDefinition(
         id = "test-plan",
         name = "Test",
         sources = sources,
@@ -173,5 +173,5 @@ class AfPlanPreflightTest {
         deleteSourcesAfterVerifiedCopies = deleteSources,
     )
 
-    private fun source(location: AfLocationRef, name: String) = AfSourceRef(location, name)
+    private fun source(location: ShovelLocationRef, name: String) = ShovelSourceRef(location, name)
 }

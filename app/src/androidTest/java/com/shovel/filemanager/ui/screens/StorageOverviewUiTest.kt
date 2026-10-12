@@ -22,7 +22,7 @@ import org.junit.Test
 class StorageOverviewUiTest {
     @get:Rule val compose = createComposeRule()
     private val internal = StorageRoot("primary", "Internal", "/storage/emulated/0", 1_000L, 400L, false, StorageRootKind.INTERNAL)
-    private val usb = StorageRoot("usb", "USB fixture", "/storage/AF_USB", 2_000L, 1_000L, true, StorageRootKind.USB_STORAGE)
+    private val usb = StorageRoot("usb", "USB fixture", "/storage/SHOVEL_USB", 2_000L, 1_000L, true, StorageRootKind.USB_STORAGE)
 
     @Test fun mountedVolumesAppearAndDisappearTogetherWithTheAllStorageAction() {
         val mounted = mutableStateOf(listOf(internal))

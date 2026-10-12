@@ -12,7 +12,7 @@ import android.provider.OpenableColumns
 import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.R
 import com.shovel.filemanager.advanced.AdvancedAccessMode
 import com.shovel.filemanager.advanced.AdvancedAccessBackend
@@ -107,18 +107,18 @@ import com.shovel.filemanager.operations.TransferVerification
 import com.shovel.filemanager.pdfsigning.PdfSignaturePlacement
 import com.shovel.filemanager.pdfsigning.SavedSignature
 import com.shovel.filemanager.pdfsigning.SignatureDrawing
-import com.shovel.filemanager.workflow.AfAutomationRule
-import com.shovel.filemanager.workflow.AfAutomationSchedule
-import com.shovel.filemanager.workflow.AfDestinationRef
-import com.shovel.filemanager.workflow.AfLocationKind
-import com.shovel.filemanager.workflow.AfLocationRef
-import com.shovel.filemanager.workflow.AfOperationReceipt
-import com.shovel.filemanager.workflow.AfPlanDefinition
-import com.shovel.filemanager.workflow.AfPreflightSummary
-import com.shovel.filemanager.workflow.AfSourceRef
-import com.shovel.filemanager.workflow.AfSourceKind
-import com.shovel.filemanager.workflow.AfUndoPreview
-import com.shovel.filemanager.workflow.AfWorkflowLimits
+import com.shovel.filemanager.workflow.ShovelAutomationRule
+import com.shovel.filemanager.workflow.ShovelAutomationSchedule
+import com.shovel.filemanager.workflow.ShovelDestinationRef
+import com.shovel.filemanager.workflow.ShovelLocationKind
+import com.shovel.filemanager.workflow.ShovelLocationRef
+import com.shovel.filemanager.workflow.ShovelOperationReceipt
+import com.shovel.filemanager.workflow.ShovelPlanDefinition
+import com.shovel.filemanager.workflow.ShovelPreflightSummary
+import com.shovel.filemanager.workflow.ShovelSourceRef
+import com.shovel.filemanager.workflow.ShovelSourceKind
+import com.shovel.filemanager.workflow.ShovelUndoPreview
+import com.shovel.filemanager.workflow.ShovelWorkflowLimits
 import com.shovel.filemanager.workflow.identityKey
 import com.shovel.filemanager.ui.preview.RemotePreviewCache
 import com.shovel.filemanager.ui.preview.MediaNavigationRules
@@ -358,8 +358,8 @@ data class RemoteClipboardState(
     val entries: List<RemoteEntry>,
 )
 
-data class AfClipboardState(
-    val sources: List<AfSourceRef>,
+data class ShovelClipboardState(
+    val sources: List<ShovelSourceRef>,
     val moveAfterVerifiedCopies: Boolean = false,
 )
 
@@ -481,7 +481,7 @@ data class UiMessage(
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-    private val graph = (application as AFFileManagerApplication).graph
+    private val graph = (application as ShovelApplication).graph
     private val nextcloudLoginClient = NextcloudLoginClient()
     private var nextcloudLoginJob: Job? = null
     private val legacyFilesHomeDisplayIdentity = "virtual:files-home"
@@ -614,8 +614,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _remoteClipboard = MutableStateFlow<RemoteClipboardState?>(null)
     val remoteClipboard: StateFlow<RemoteClipboardState?> = _remoteClipboard.asStateFlow()
 
-    private val _afClipboard = MutableStateFlow<AfClipboardState?>(null)
-    val afClipboard: StateFlow<AfClipboardState?> = _afClipboard.asStateFlow()
+    private val _shovelClipboard = MutableStateFlow<ShovelClipboardState?>(null)
+    val shovelClipboard: StateFlow<ShovelClipboardState?> = _shovelClipboard.asStateFlow()
 
 
     private val _searchState = MutableStateFlow(SearchUiState())
@@ -1025,7 +1025,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             mode = if (move) ClipboardMode.MOVE else ClipboardMode.COPY,
             source = ClipboardSource.PRIVILEGED,
         )
-        _afClipboard.value = null
+        _shovelClipboard.value = null
         _remoteClipboard.value = null
         clearAdvancedSelection()
         message(
@@ -1957,13 +1957,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (normalized.isEmpty()) return false
         val mode = if (move) ClipboardMode.MOVE else ClipboardMode.COPY
         val additional = normalized.map { path ->
-            AfSourceRef(
-                location = AfLocationRef.local(path),
+            ShovelSourceRef(
+                location = ShovelLocationRef.local(path),
                 displayName = File(path).name.ifBlank { path },
             ).normalized()
         }
         val existing = if (append) {
-            val current = _afClipboard.value
+            val current = _shovelClipboard.value
             if (current == null) {
                 message("Nėra kopijavimo rinkinio, kurį būtų galima papildyti", true)
                 return false
@@ -1979,11 +1979,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val merged = ClipboardMergeRules.merge(
             existing = existing,
             additional = additional,
-            maximum = AfWorkflowLimits.MAX_SOURCE_ROOTS,
+            maximum = ShovelWorkflowLimits.MAX_SOURCE_ROOTS,
             key = { source -> "${source.kind}:${source.location.identityKey()}:${source.archiveEntryPath.orEmpty()}" },
         )
-        _afClipboard.value = AfClipboardState(merged.items, moveAfterVerifiedCopies = move)
-        val allLocal = merged.items.all { it.kind == com.shovel.filemanager.workflow.AfSourceKind.FILE_SYSTEM && it.location.kind == AfLocationKind.LOCAL }
+        _shovelClipboard.value = ShovelClipboardState(merged.items, moveAfterVerifiedCopies = move)
+        val allLocal = merged.items.all { it.kind == com.shovel.filemanager.workflow.ShovelSourceKind.FILE_SYSTEM && it.location.kind == ShovelLocationKind.LOCAL }
         _clipboard.value = if (allLocal) {
             ClipboardState(merged.items.map { it.location.path }, mode, ClipboardSource.LOCAL)
         } else {
@@ -2002,7 +2002,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             message(if (move) "Paruošta perkelti: ${merged.items.size}" else "Nukopijuota į rinkinį: ${merged.items.size}")
         }
         if (merged.limitReached) {
-            message("Pasiekta kopijavimo rinkinio riba: ${AfWorkflowLimits.MAX_SOURCE_ROOTS} elementų", true)
+            message("Pasiekta kopijavimo rinkinio riba: ${ShovelWorkflowLimits.MAX_SOURCE_ROOTS} elementų", true)
         }
         return true
     }
@@ -2499,7 +2499,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 note("Nukopijuota: ${result.copiedRoots} · praleista: ${result.skippedRoots}")
                 if (moving && result.skippedRoots == 0) {
                     _clipboard.value = null
-                    _afClipboard.value = null
+                    _shovelClipboard.value = null
                 }
                 refreshPanel(panel)
                 refreshRecentFiles()
@@ -2518,7 +2518,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ).onSuccess {
                 if (moving) {
                     _clipboard.value = null
-                    _afClipboard.value = null
+                    _shovelClipboard.value = null
                 }
                 message("Patvarus planas išsaugotas ir įtrauktas į operacijų eilę")
             }.onFailure { message(it.message ?: "Operacijos plano sukurti nepavyko", true) }
@@ -3481,31 +3481,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun clearAfClipboard() {
-        _afClipboard.value = null
+    fun clearShovelClipboard() {
+        _shovelClipboard.value = null
         _clipboard.value = null
         _remoteClipboard.value = null
     }
 
     fun copyArchiveEntryToSet(entryPath: String) {
         val target = _preview.value as? PreviewTarget.Archive ?: run {
-            message("Į AF planą galima pridėti tik vietinio archyvo įrašą", true)
+            message("Į Shovel planą galima pridėti tik vietinio archyvo įrašą", true)
             return
         }
         val source = runCatching {
-            AfSourceRef(
-                location = AfLocationRef.local(target.file.absolutePath),
+            ShovelSourceRef(
+                location = ShovelLocationRef.local(target.file.absolutePath),
                 displayName = entryPath.trim('/').substringAfterLast('/').ifBlank {
                     target.file.name.substringBeforeLast('.', target.file.name)
                 },
-                kind = AfSourceKind.ARCHIVE_ENTRY,
+                kind = ShovelSourceKind.ARCHIVE_ENTRY,
                 archiveEntryPath = entryPath,
             ).normalized()
         }.getOrElse { error ->
             message(error.message ?: "Archyvo įrašo pridėti nepavyko", true)
             return
         }
-        val existing = _afClipboard.value
+        val existing = _shovelClipboard.value
         if (existing?.moveAfterVerifiedCopies == true) {
             message("Archyvo įrašų negalima pridėti prie iškirpimo rinkinio", true)
             return
@@ -3513,10 +3513,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val merged = ClipboardMergeRules.merge(
             existing = existing?.sources.orEmpty(),
             additional = listOf(source),
-            maximum = AfWorkflowLimits.MAX_SOURCE_ROOTS,
+            maximum = ShovelWorkflowLimits.MAX_SOURCE_ROOTS,
             key = { item -> "${item.kind}:${item.location.identityKey()}:${item.archiveEntryPath.orEmpty()}" },
         )
-        _afClipboard.value = AfClipboardState(merged.items)
+        _shovelClipboard.value = ShovelClipboardState(merged.items)
         _clipboard.value = null
         _remoteClipboard.value = null
         message(if (merged.addedCount > 0) "Archyvo įrašas pridėtas prie kopijavimo rinkinio" else "Archyvo įrašas jau yra kopijavimo rinkinyje")
@@ -3582,7 +3582,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val destination = FileSystemRules.keepBothTarget(
             File(destinationRoot, ArchiveMutationRules.extractionBaseName(file.name, fallbackName)),
         )
-        val staging = File(destinationRoot, ".af-extract-${UUID.randomUUID()}")
+        val staging = File(destinationRoot, ".shovel-extract-${UUID.randomUUID()}")
         graph.operationManager.submit("Išpakuojamas ${file.name}") {
             try {
                 graph.archives.extract(
@@ -4323,10 +4323,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         val sources = runCatching {
             ArchiveMutationRules.normalizeSelection(entryPaths).map { entryPath ->
-                AfSourceRef(
-                    location = AfLocationRef.local(target.file.absolutePath),
+                ShovelSourceRef(
+                    location = ShovelLocationRef.local(target.file.absolutePath),
                     displayName = entryPath.substringAfterLast('/'),
-                    kind = AfSourceKind.ARCHIVE_ENTRY,
+                    kind = ShovelSourceKind.ARCHIVE_ENTRY,
                     archiveEntryPath = entryPath,
                 ).normalized()
             }
@@ -4334,7 +4334,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             message(error.message ?: "Archyvo įrašų pridėti nepavyko", true)
             return
         }
-        val existing = _afClipboard.value
+        val existing = _shovelClipboard.value
         if (existing?.moveAfterVerifiedCopies == true) {
             message("Archyvo įrašų negalima pridėti prie iškirpimo rinkinio", true)
             return
@@ -4342,10 +4342,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val merged = ClipboardMergeRules.merge(
             existing = existing?.sources.orEmpty(),
             additional = sources,
-            maximum = AfWorkflowLimits.MAX_SOURCE_ROOTS,
+            maximum = ShovelWorkflowLimits.MAX_SOURCE_ROOTS,
             key = { item -> "${item.kind}:${item.location.identityKey()}:${item.archiveEntryPath.orEmpty()}" },
         )
-        _afClipboard.value = AfClipboardState(merged.items)
+        _shovelClipboard.value = ShovelClipboardState(merged.items)
         _clipboard.value = null
         _remoteClipboard.value = null
         message(if (merged.addedCount > 0) "Archyvo įrašai pridėti prie kopijavimo rinkinio: ${merged.addedCount}" else "Pasirinkti archyvo įrašai jau yra kopijavimo rinkinyje")
@@ -4412,7 +4412,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         val archiveBaseName = ArchiveMutationRules.extractionBaseName(archive.name, "extracted")
         val destination = FileSystemRules.keepBothTarget(File(destinationParent, archiveBaseName))
-        val staging = File(destinationParent, ".af-extract-${UUID.randomUUID()}")
+        val staging = File(destinationParent, ".shovel-extract-${UUID.randomUUID()}")
         graph.operationManager.submit("Išpakuojami pasirinkti archyvo įrašai") {
             try {
                 graph.archives.extractEntries(archive, entryPaths, staging, this, password)
@@ -4707,7 +4707,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         if (graph.advancedAccess.state.value.activeBackend == AdvancedAccessBackend.SHIZUKU_SHELL) {
             message(
-                "Sistemos šaknis / atveriama tik su Root arba Shizuku root prieiga. Tai nėra įprastas Android leidimas ir AF File Manager jo neapeina.",
+                "Sistemos šaknis / atveriama tik su Root arba Shizuku root prieiga. Tai nėra įprastas Android leidimas ir Shovel jo neapeina.",
                 true,
             )
             return
@@ -5455,13 +5455,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun setRemoteClipboard(entries: List<RemoteEntry>, append: Boolean = false) {
         val profile = _networkState.value.connectedProfile ?: return
         val additional = entries.map { entry ->
-            AfSourceRef(
-                location = AfLocationRef.remote(profile.id, profile.name, entry.path),
+            ShovelSourceRef(
+                location = ShovelLocationRef.remote(profile.id, profile.name, entry.path),
                 displayName = entry.name,
             ).normalized()
         }
         val existing = if (append) {
-            val current = _afClipboard.value
+            val current = _shovelClipboard.value
             if (current == null) {
                 message("Nėra kopijavimo rinkinio, kurį būtų galima papildyti", true)
                 return
@@ -5477,14 +5477,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val merged = ClipboardMergeRules.merge(
             existing = existing,
             additional = additional,
-            maximum = AfWorkflowLimits.MAX_SOURCE_ROOTS,
+            maximum = ShovelWorkflowLimits.MAX_SOURCE_ROOTS,
             key = { source -> "${source.kind}:${source.location.identityKey()}:${source.archiveEntryPath.orEmpty()}" },
         )
         if (merged.items.isEmpty()) return
-        _afClipboard.value = AfClipboardState(merged.items)
+        _shovelClipboard.value = ShovelClipboardState(merged.items)
         val onlyThisProfile = merged.items.all {
-            it.kind == com.shovel.filemanager.workflow.AfSourceKind.FILE_SYSTEM &&
-                it.location.kind == AfLocationKind.REMOTE &&
+            it.kind == com.shovel.filemanager.workflow.ShovelSourceKind.FILE_SYSTEM &&
+                it.location.kind == ShovelLocationKind.REMOTE &&
                 it.location.profileId == profile.id
         }
         _remoteClipboard.value = if (onlyThisProfile) {
@@ -5517,7 +5517,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             message("Nukopijuota iš serverio: ${merged.items.size}")
         }
         if (merged.limitReached) {
-            message("Pasiekta kopijavimo rinkinio riba: ${AfWorkflowLimits.MAX_SOURCE_ROOTS} elementų", true)
+            message("Pasiekta kopijavimo rinkinio riba: ${ShovelWorkflowLimits.MAX_SOURCE_ROOTS} elementų", true)
         }
     }
 

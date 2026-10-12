@@ -13,13 +13,13 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.data.FeatureVisibility
 import com.shovel.filemanager.data.OptionalFeature
 import com.shovel.filemanager.ui.MainViewModel
 import com.shovel.filemanager.ui.components.DirectoryBrowserToolbar
 import com.shovel.filemanager.ui.components.LocalFeatureVisibility
-import com.shovel.filemanager.ui.theme.AFFileManagerTheme
+import com.shovel.filemanager.ui.theme.ShovelTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +31,7 @@ class FeatureVisibilityUiTest {
         val settings = mutableStateOf(FeatureVisibility())
         val activeSearch = mutableStateOf(false)
         compose.setContent {
-            AFFileManagerTheme {
+            ShovelTheme {
                 CompositionLocalProvider(LocalFeatureVisibility provides settings.value) {
                     DirectoryBrowserToolbar("Folder", "/path", true, true, true, activeSearch.value, false, "test",
                         {}, {}, {}, {}, {}, {}, actions = {
@@ -56,11 +56,11 @@ class FeatureVisibilityUiTest {
     }
 
     @Test fun settingsStartCollapsedAndKeepTheRequestedSectionOrder() {
-        val app = ApplicationProvider.getApplicationContext<AFFileManagerApplication>()
+        val app = ApplicationProvider.getApplicationContext<ShovelApplication>()
         val store = ViewModelStore()
         val vm = MainViewModel(app).also { store.put("settings-test", it) }
         try {
-            compose.setContent { AFFileManagerTheme { ToolsScreen(vm, PaddingValues(), {}, {}) } }
+            compose.setContent { ShovelTheme { ToolsScreen(vm, PaddingValues(), {}, {}) } }
             val appearance = compose.onNodeWithTag("settings_section_appearance").fetchSemanticsNode().boundsInRoot.top
             val actions = compose.onNodeWithTag("settings_section_actions").fetchSemanticsNode().boundsInRoot.top
             val background = compose.onNodeWithTag("settings_section_background").fetchSemanticsNode().boundsInRoot.top

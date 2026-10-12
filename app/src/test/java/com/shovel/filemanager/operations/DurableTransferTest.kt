@@ -35,7 +35,7 @@ class DurableTransferTest {
         assertEquals(DurableTransferStatus.COMPLETED, state.status)
         assertTrue(source.exists())
         assertArrayEquals(source.readBytes(), File(destination, source.name).readBytes())
-        assertFalse(destination.listFiles().orEmpty().any { it.name.contains(".af-") })
+        assertFalse(destination.listFiles().orEmpty().any { it.name.contains(".shovel-") })
     }
 
     @Test

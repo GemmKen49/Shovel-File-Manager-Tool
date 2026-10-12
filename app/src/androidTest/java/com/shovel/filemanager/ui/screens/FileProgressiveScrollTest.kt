@@ -7,7 +7,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
-import com.shovel.filemanager.AFFileManagerApplication
+import com.shovel.filemanager.ShovelApplication
 import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.FileEntry
 import com.shovel.filemanager.ui.FileScrollKey
@@ -34,7 +34,7 @@ class FileProgressiveScrollTest {
     private fun entry(name: String) = FileEntry("/scroll-fixture/$name", name, EntryKind.DIRECTORY, 0, 1, false, true, true)
 
     private fun checkProgressiveTop(grid: Boolean, refresh: Boolean) {
-        val vm = MainViewModel(ApplicationProvider.getApplicationContext<AFFileManagerApplication>())
+        val vm = MainViewModel(ApplicationProvider.getApplicationContext<ShovelApplication>())
         store.put("test", vm)
         val key = FileScrollKey("test", "/scroll-fixture", grid)
         val android = entry("Android")
@@ -55,7 +55,7 @@ class FileProgressiveScrollTest {
     }
 
     private fun checkHistory(grid: Boolean) {
-        val vm = MainViewModel(ApplicationProvider.getApplicationContext<AFFileManagerApplication>())
+        val vm = MainViewModel(ApplicationProvider.getApplicationContext<ShovelApplication>())
         store.put("test", vm)
         val key = FileScrollKey("history", "/scroll-fixture", grid)
         vm.saveFileScrollPosition(key, 18, 0)

@@ -11,10 +11,10 @@ internal object RefreshRequestRules {
     fun canStart(isRefreshing: Boolean): Boolean = !isRefreshing
 }
 
-/** A shared top-only refresh gesture for every AF browser surface. */
+/** A shared top-only refresh gesture for every Shovel browser surface. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AfPullToRefresh(
+fun ShovelPullToRefresh(
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,

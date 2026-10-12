@@ -38,10 +38,10 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileUpload
-import com.shovel.filemanager.ui.theme.AfButton as Button
-import com.shovel.filemanager.ui.theme.AfCard as Card
+import com.shovel.filemanager.ui.theme.ShovelButton as Button
+import com.shovel.filemanager.ui.theme.ShovelCard as Card
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.AfDropdownMenu as DropdownMenu
+import com.shovel.filemanager.ui.theme.ShovelDropdownMenu as DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -50,7 +50,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import com.shovel.filemanager.ui.theme.AfSurface as Surface
+import com.shovel.filemanager.ui.theme.ShovelSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -66,7 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import com.shovel.filemanager.ui.theme.AfDialog
+import com.shovel.filemanager.ui.theme.ShovelDialog
 import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.data.SafEntry
 import com.shovel.filemanager.data.DirectoryDisplaySettings
@@ -86,8 +86,8 @@ import com.shovel.filemanager.ui.components.DirectoryDisplaySettingsDialog
 import com.shovel.filemanager.ui.components.SafFileVisual
 import com.shovel.filemanager.ui.components.DirectoryQuickSearchField
 import com.shovel.filemanager.ui.components.DirectorySearchButton
-import com.shovel.filemanager.ui.components.AfPullToRefresh
-import com.shovel.filemanager.ui.components.AfModalDialog
+import com.shovel.filemanager.ui.components.ShovelPullToRefresh
+import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.ui.components.LazyListFastScroller
 import com.shovel.filemanager.ui.components.LazyGridFastScroller
 import com.shovel.filemanager.ui.components.DeleteConfirmationDialog
@@ -138,7 +138,7 @@ fun SafBrowserDialog(
     }
 
     val navigateBack: () -> Unit = { if (!viewModel.navigateSafBack()) onDismiss() }
-    AfDialog(onDismissRequest = navigateBack, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    ShovelDialog(onDismissRequest = navigateBack, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         com.shovel.filemanager.ui.theme.AppearancePage(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().padding(WindowInsets.safeDrawing.asPaddingValues())) {
                 DirectoryBrowserToolbar(
@@ -216,7 +216,7 @@ fun SafBrowserDialog(
                         LText(error, modifier = Modifier.padding(14.dp), color = MaterialTheme.colorScheme.error)
                     }
                 }
-                AfPullToRefresh(
+                ShovelPullToRefresh(
                     isRefreshing = state.loading,
                     onRefresh = viewModel::refreshSafBrowser,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -314,7 +314,7 @@ fun SafBrowserDialog(
             onConfirm = { viewModel.deleteSafEntry(entry); delete = null },
             loadSummary = { viewModel.loadSafSelectionInfo(listOf(entry.uri)) },
             confirmLabel = "Ištrinti",
-            explanation = "Elementas bus trinamas per Android dokumentų teikėją ir nepateks į AF File Manager šiukšlinę.",
+            explanation = "Elementas bus trinamas per Android dokumentų teikėją ir nepateks į Shovel šiukšlinę.",
         )
     }
     if (showDisplaySettings) {
@@ -523,7 +523,7 @@ private fun orderSafEntries(
 @Composable
 internal fun SafInfoDialog(entry: SafEntry, onDismiss: () -> Unit) {
     val dateFormat = rememberLocalizedDateTimeFormat(DateFormat.MEDIUM, DateFormat.SHORT)
-    AfModalDialog(
+    ShovelModalDialog(
         onDismissRequest = onDismiss,
         icon = Icons.Rounded.Info,
         title = entry.name,
@@ -552,7 +552,7 @@ private fun SafInfoLine(label: String, value: String) {
 @Composable
 internal fun SafCreateDialog(onDismiss: () -> Unit, onFolder: (String) -> Unit, onFile: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
-    AfModalDialog(
+    ShovelModalDialog(
         onDismissRequest = onDismiss,
         icon = Icons.Rounded.CreateNewFolder,
         title = "Sukurti",
@@ -579,7 +579,7 @@ internal fun SafNameDialog(
     onConfirm: (String) -> Unit,
 ) {
     var name by remember(initial) { mutableStateOf(initial) }
-    AfModalDialog(
+    ShovelModalDialog(
         onDismissRequest = onDismiss,
         title = title,
         icon = Icons.Rounded.Edit,

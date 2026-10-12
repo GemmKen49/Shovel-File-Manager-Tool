@@ -7,7 +7,7 @@ import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Formats interface dates with the locale selected for AF File Manager, not the device fallback. */
+/** Formats interface dates with the locale selected for Shovel, not the device fallback. */
 @Composable
 fun rememberLocalizedDateTimeFormat(
     dateStyle: Int = DateFormat.MEDIUM,
