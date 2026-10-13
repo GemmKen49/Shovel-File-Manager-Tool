@@ -24,6 +24,51 @@ import com.shovel.filemanager.data.RecentFileItem
 import com.shovel.filemanager.ui.MainViewModel
 import java.util.Locale
 
+enum class RecentFilesTab {
+    ADDED,
+    OPENED
+}
+
+enum class RecentFilesSort {
+    RECENT,
+    NAME
+}
+
+enum class RecentFilesDateRange {
+    ALL
+}
+
+object RecentFilesViewRules {
+    fun apply(
+        items: List<RecentFileItem>,
+        query: String,
+        sort: RecentFilesSort,
+        ascending: Boolean,
+        dateRange: RecentFilesDateRange
+    ): List<RecentFileItem> {
+        val normalizedQuery = query.trim().lowercase(Locale.ROOT)
+
+        val filtered = items.filter { item ->
+            val nameMatches = normalizedQuery.isEmpty() ||
+                item.entry.name.lowercase(Locale.ROOT).contains(normalizedQuery) ||
+                item.entry.absolutePath.lowercase(Locale.ROOT).contains(normalizedQuery)
+
+            val dateMatches = when (dateRange) {
+                RecentFilesDateRange.ALL -> true
+            }
+
+            nameMatches && dateMatches
+        }
+
+        val sorted = when (sort) {
+            RecentFilesSort.RECENT -> filtered.sortedByDescending { it.recentAtMillis }
+            RecentFilesSort.NAME -> filtered.sortedBy { it.entry.name.lowercase(Locale.ROOT) }
+        }
+
+        return if (ascending) sorted.asReversed() else sorted
+    }
+}
+
 @Composable
 fun RecentFilesScreen(
     viewModel: MainViewModel,
@@ -33,7 +78,6 @@ fun RecentFilesScreen(
     onReveal: (RecentFileItem) -> Unit = {},
     onBack: () -> Unit = {},
 ) {
-    // State from the view model
     val recentState by viewModel.recentFiles.collectAsState()
     var tab by remember { mutableStateOf(RecentFilesTab.ADDED) }
     var sort by remember { mutableStateOf(RecentFilesSort.RECENT) }
@@ -44,25 +88,32 @@ fun RecentFilesScreen(
     var sortMenu by remember { mutableStateOf(false) }
     var dateMenu by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { viewModel.refreshRecentFiles() } // initial load
+    LaunchedEffect(Unit) {
+        viewModel.refreshRecentFiles()
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Naujausi failai") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.Rounded.ArrowDownward, contentDescription = "Back") }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Rounded.ArrowDownward, contentDescription = "Back")
+                    }
                 },
                 actions = {
-                    IconButton(onClick = { searchVisible = !searchVisible }) { Icon(Icons.Rounded.Search, contentDescription = "Search") }
+                    IconButton(onClick = { searchVisible = !searchVisible }) {
+                        Icon(Icons.Rounded.Search, contentDescription = "Search")
+                    }
                 }
             )
         },
         content = { padding ->
             Column(modifier = modifier.fillMaxSize().padding(padding)) {
-                // Filters & controls
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -77,34 +128,60 @@ fun RecentFilesScreen(
                         label = { Text("Neseniai atidaryti") }
                     )
 
-                    // Sort direction toggle + menu
                     IconButton(onClick = { ascending = !ascending }) {
-                        Icon(if (ascending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward, contentDescription = "Toggle sort")
+                        Icon(
+                            if (ascending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
+                            contentDescription = "Toggle sort"
+                        )
                     }
+
                     Box {
-                        IconButton(onClick = { sortMenu = true }) { Text(sort.name.lowercase(Locale.ROOT)) }
-                        DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                        IconButton(onClick = { sortMenu = true }) {
+                            Text(sort.name.lowercase(Locale.ROOT))
+                        }
+                        DropdownMenu(
+                            expanded = sortMenu,
+                            onDismissRequest = { sortMenu = false }
+                        ) {
                             RecentFilesSort.values().forEach { option ->
                                 DropdownMenuItem(
                                     text = { Text(option.name.lowercase(Locale.ROOT)) },
-                                    onClick = { sort = option; sortMenu = false }
+                                    onClick = {
+                                        sort = option
+                                        sortMenu = false
+                                    }
                                 )
                             }
                         }
                     }
+
                     Box {
-                        IconButton(onClick = { dateMenu = true }) { Icon(Icons.Rounded.CalendarMonth, contentDescription = "Date filter") }
-                        DropdownMenu(expanded = dateMenu, onDismissRequest = { dateMenu = false }) {
+                        IconButton(onClick = { dateMenu = true }) {
+                            Icon(Icons.Rounded.CalendarMonth, contentDescription = "Date filter")
+                        }
+                        DropdownMenu(
+                            expanded = dateMenu,
+                            onDismissRequest = { dateMenu = false }
+                        ) {
                             RecentFilesDateRange.values().forEach { option ->
-                                DropdownMenuItem(text = { Text(option.name.lowercase(Locale.ROOT)) }, onClick = { dateRange = option; dateMenu = false })
+                                DropdownMenuItem(
+                                    text = { Text(option.name.lowercase(Locale.ROOT)) },
+                                    onClick = {
+                                        dateRange = option
+                                        dateMenu = false
+                                    }
+                                )
                             }
                         }
                     }
+
                     if (searchVisible) {
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
-                            modifier = Modifier.fillMaxWidth().padding(start = 8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 8.dp)
                         )
                     }
                 }
@@ -122,14 +199,19 @@ fun RecentFilesScreen(
                         RecentFilesTab.ADDED -> recentState.addedItems
                         RecentFilesTab.OPENED -> recentState.openedItems
                     }
-                    // Apply view rules (the repo has RecentFilesViewRules.apply)
+
                     val filtered = remember(items, query, sort, ascending, dateRange) {
                         RecentFilesViewRules.apply(items, query, sort, ascending, dateRange)
                     }
 
-                    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
                         items(filtered, key = { it.entry.absolutePath }) { item ->
-                            RecentFileRow(item = item,
+                            RecentFileRow(
+                                item = item,
                                 onOpen = { onOpen(item) },
                                 onReveal = { onReveal(item) },
                                 onShare = { onShare(listOf(item)) }
