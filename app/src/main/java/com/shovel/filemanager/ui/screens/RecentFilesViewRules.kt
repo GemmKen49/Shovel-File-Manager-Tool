@@ -22,7 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.shovel.filemanager.data.RecentFileItem
 import com.shovel.filemanager.ui.MainViewModel
+import java.io.File
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 enum class RecentFilesTab {
     ADDED,
@@ -31,11 +33,16 @@ enum class RecentFilesTab {
 
 enum class RecentFilesSort {
     RECENT,
-    NAME
+    NAME,
+    SIZE,
+    TYPE
 }
 
 enum class RecentFilesDateRange {
-    ALL
+    ALL,
+    TODAY,
+    LAST_7_DAYS,
+    LAST_30_DAYS
 }
 
 object RecentFilesViewRules {
@@ -46,7 +53,15 @@ object RecentFilesViewRules {
         ascending: Boolean,
         dateRange: RecentFilesDateRange
     ): List<RecentFileItem> {
+        val now = System.currentTimeMillis()
         val normalizedQuery = query.trim().lowercase(Locale.ROOT)
+
+        val threshold = when (dateRange) {
+            RecentFilesDateRange.ALL -> Long.MIN_VALUE
+            RecentFilesDateRange.TODAY -> now - TimeUnit.DAYS.toMillis(1)
+            RecentFilesDateRange.LAST_7_DAYS -> now - TimeUnit.DAYS.toMillis(7)
+            RecentFilesDateRange.LAST_30_DAYS -> now - TimeUnit.DAYS.toMillis(30)
+        }
 
         val filtered = items.filter { item ->
             val nameMatches = normalizedQuery.isEmpty() ||
@@ -55,6 +70,7 @@ object RecentFilesViewRules {
 
             val dateMatches = when (dateRange) {
                 RecentFilesDateRange.ALL -> true
+                else -> item.recentAtMillis >= threshold
             }
 
             nameMatches && dateMatches
@@ -63,12 +79,27 @@ object RecentFilesViewRules {
         val sorted = when (sort) {
             RecentFilesSort.RECENT -> filtered.sortedByDescending { it.recentAtMillis }
             RecentFilesSort.NAME -> filtered.sortedBy { it.entry.name.lowercase(Locale.ROOT) }
+            RecentFilesSort.SIZE -> filtered.sortedByDescending { item ->
+                // Derive size from the actual file on disk. This avoids relying on model internals.
+                // If the file is missing, we treat its size as 0.
+                try {
+                    File(item.entry.absolutePath).length()
+                } catch (_: Throwable) {
+                    0L
+                }
+            }
+            RecentFilesSort.TYPE -> filtered.sortedBy { item ->
+                // Sort by file extension (fallback to name if no extension).
+                val ext = item.entry.name.substringAfterLast('.', "").lowercase(Locale.ROOT)
+                if (ext.isEmpty()) item.entry.name.lowercase(Locale.ROOT) else ext
+            }
         }
 
         return if (ascending) sorted.asReversed() else sorted
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecentFilesScreen(
     viewModel: MainViewModel,
@@ -78,6 +109,7 @@ fun RecentFilesScreen(
     onReveal: (RecentFileItem) -> Unit = {},
     onBack: () -> Unit = {},
 ) {
+    // State from the view model
     val recentState by viewModel.recentFiles.collectAsState()
     var tab by remember { mutableStateOf(RecentFilesTab.ADDED) }
     var sort by remember { mutableStateOf(RecentFilesSort.RECENT) }
@@ -88,32 +120,25 @@ fun RecentFilesScreen(
     var sortMenu by remember { mutableStateOf(false) }
     var dateMenu by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        viewModel.refreshRecentFiles()
-    }
+    LaunchedEffect(Unit) { viewModel.refreshRecentFiles() } // initial load
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Naujausi failai") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Rounded.ArrowDownward, contentDescription = "Back")
-                    }
+                    IconButton(onClick = onBack) { Icon(Icons.Rounded.ArrowDownward, contentDescription = "Back") }
                 },
                 actions = {
-                    IconButton(onClick = { searchVisible = !searchVisible }) {
-                        Icon(Icons.Rounded.Search, contentDescription = "Search")
-                    }
+                    IconButton(onClick = { searchVisible = !searchVisible }) { Icon(Icons.Rounded.Search, contentDescription = "Search") }
                 }
             )
         },
         content = { padding ->
             Column(modifier = modifier.fillMaxSize().padding(padding)) {
+                // Filters & controls
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -128,53 +153,29 @@ fun RecentFilesScreen(
                         label = { Text("Neseniai atidaryti") }
                     )
 
+                    // Sort direction toggle + menu
                     IconButton(onClick = { ascending = !ascending }) {
-                        Icon(
-                            if (ascending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
-                            contentDescription = "Toggle sort"
-                        )
+                        Icon(if (ascending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward, contentDescription = "Toggle sort")
                     }
-
                     Box {
-                        IconButton(onClick = { sortMenu = true }) {
-                            Text(sort.name.lowercase(Locale.ROOT))
-                        }
-                        DropdownMenu(
-                            expanded = sortMenu,
-                            onDismissRequest = { sortMenu = false }
-                        ) {
+                        IconButton(onClick = { sortMenu = true }) { Text(sort.name.lowercase(Locale.ROOT)) }
+                        DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
                             RecentFilesSort.values().forEach { option ->
                                 DropdownMenuItem(
                                     text = { Text(option.name.lowercase(Locale.ROOT)) },
-                                    onClick = {
-                                        sort = option
-                                        sortMenu = false
-                                    }
+                                    onClick = { sort = option; sortMenu = false }
                                 )
                             }
                         }
                     }
-
                     Box {
-                        IconButton(onClick = { dateMenu = true }) {
-                            Icon(Icons.Rounded.CalendarMonth, contentDescription = "Date filter")
-                        }
-                        DropdownMenu(
-                            expanded = dateMenu,
-                            onDismissRequest = { dateMenu = false }
-                        ) {
+                        IconButton(onClick = { dateMenu = true }) { Icon(Icons.Rounded.CalendarMonth, contentDescription = "Date filter") }
+                        DropdownMenu(expanded = dateMenu, onDismissRequest = { dateMenu = false }) {
                             RecentFilesDateRange.values().forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option.name.lowercase(Locale.ROOT)) },
-                                    onClick = {
-                                        dateRange = option
-                                        dateMenu = false
-                                    }
-                                )
+                                DropdownMenuItem(text = { Text(option.name.lowercase(Locale.ROOT)) }, onClick = { dateRange = option; dateMenu = false })
                             }
                         }
                     }
-
                     if (searchVisible) {
                         OutlinedTextField(
                             value = query,
