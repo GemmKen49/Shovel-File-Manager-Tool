@@ -84,7 +84,7 @@ fun RecentFilesScreen(
                     Box {
                         IconButton(onClick = { sortMenu = true }) { Text(sort.name.lowercase(Locale.ROOT)) }
                         DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
-                            for (option in RecentFilesSort.values()) {
+                            RecentFilesSort.values().forEach { option ->
                                 DropdownMenuItem(
                                     text = { Text(option.name.lowercase(Locale.ROOT)) },
                                     onClick = { sort = option; sortMenu = false }
@@ -95,11 +95,8 @@ fun RecentFilesScreen(
                     Box {
                         IconButton(onClick = { dateMenu = true }) { Icon(Icons.Rounded.CalendarMonth, contentDescription = "Date filter") }
                         DropdownMenu(expanded = dateMenu, onDismissRequest = { dateMenu = false }) {
-                            for (option in RecentFilesDateRange.values()) {
-                                DropdownMenuItem(
-                                    text = { Text(option.name.lowercase(Locale.ROOT)) },
-                                    onClick = { dateRange = option; dateMenu = false }
-                                )
+                            RecentFilesDateRange.values().forEach { option ->
+                                DropdownMenuItem(text = { Text(option.name.lowercase(Locale.ROOT)) }, onClick = { dateRange = option; dateMenu = false })
                             }
                         }
                     }
@@ -132,8 +129,7 @@ fun RecentFilesScreen(
 
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
                         items(filtered, key = { it.entry.absolutePath }) { item ->
-                            RecentFileRow(
-                                item = item,
+                            RecentFileRow(item = item,
                                 onOpen = { onOpen(item) },
                                 onReveal = { onReveal(item) },
                                 onShare = { onShare(listOf(item)) }
