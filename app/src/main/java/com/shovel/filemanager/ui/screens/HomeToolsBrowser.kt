@@ -1266,7 +1266,7 @@ private fun HomeOrderRow(
 ) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Switch(checked = visible, onCheckedChange = onVisibleChange)
-        LText(title, modifier = Modifier.weight(1f))
+        LText(title, modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
         IconButton(onClick = onMoveUp, enabled = canMoveUp) {
             Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Perkelti aukštyn"))
         }

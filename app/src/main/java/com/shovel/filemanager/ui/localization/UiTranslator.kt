@@ -419,6 +419,7 @@ object UiTranslator {
         "Failai pirmiausia atveriami peržiūrai; jie nešalinami automatiškai." to "Files are opened for review first; they are not removed automatically.",
         "Tvarkyti saugyklas ir pradžios ekraną" to "Manage storage locations and the home screen",
         "Pridėti žymelę" to "Add bookmark",
+        "Pašalinti žymelę" to "Remove bookmark",
         "Žymelės" to "Bookmarks",
         "Debesija" to "Cloud",
         "Debesija ir teikėjų vietos" to "Cloud and provider locations",

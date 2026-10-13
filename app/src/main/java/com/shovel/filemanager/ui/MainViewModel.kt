@@ -4449,26 +4449,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun bookmarkPath(path: String) = bookmarkPaths(listOf(path))
 
+    /** Adds the paths to bookmarks, or removes them when every one is already bookmarked. */
     private fun bookmarkPaths(paths: Collection<String>) {
         runCatching {
-            val existingPaths = _homeCustomization.value.shortcuts.mapTo(mutableSetOf(), HomeShortcut::path)
-            val candidates = paths.asSequence().distinct().map(::File).filter(File::exists)
-                .filterNot { it.absolutePath in existingPaths }.toList()
-            require(candidates.isNotEmpty()) { "Pasirinktos vietos jau pažymėtos" }
-            val updated = candidates.fold(_homeCustomization.value) { current, file ->
-                HomeCustomizationRules.addShortcut(
-                    current,
-                    HomeShortcut(
-                        id = "custom.${UUID.randomUUID()}",
-                        title = file.name.ifBlank { file.absolutePath },
-                        path = file.absolutePath,
-                    ),
-                )
+            val current = _homeCustomization.value
+            val normalized = paths.asSequence().distinct().map { File(it).absolutePath }.toList()
+            val shortcutsByPath = current.shortcuts.groupBy(HomeShortcut::path)
+            if (normalized.isNotEmpty() && normalized.all { it in shortcutsByPath }) {
+                val updated = normalized.flatMap { shortcutsByPath.getValue(it) }.fold(current) { value, shortcut ->
+                    HomeCustomizationRules.removeShortcut(value, shortcut.id)
+                }
+                graph.navigation.setHomeCustomization(updated, homeBuiltInShortcuts) to false
+            } else {
+                val candidates = normalized.map(::File).filter(File::exists)
+                    .filterNot { it.absolutePath in shortcutsByPath }
+                require(candidates.isNotEmpty()) { "Pasirinktos vietos jau pažymėtos" }
+                val updated = candidates.fold(current) { value, file ->
+                    HomeCustomizationRules.addShortcut(
+                        value,
+                        HomeShortcut(
+                            id = "custom.${UUID.randomUUID()}",
+                            title = file.name.ifBlank { file.absolutePath },
+                            path = file.absolutePath,
+                        ),
+                    )
+                }
+                graph.navigation.setHomeCustomization(updated, homeBuiltInShortcuts) to true
             }
-            graph.navigation.setHomeCustomization(updated, homeBuiltInShortcuts)
-        }.onSuccess { updated ->
+        }.onSuccess { (updated, added) ->
             _homeCustomization.value = updated
-            message("Pridėta prie žymelių")
+            message(if (added) "Pridėta prie žymelių" else "Pašalinta iš žymelių")
         }.onFailure { message(it.message ?: "Žymelės pridėti nepavyko", true) }
     }
 

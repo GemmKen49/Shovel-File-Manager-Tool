@@ -79,6 +79,7 @@ import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.VideoLibrary
@@ -322,9 +323,6 @@ fun FilesScreen(
                     }
                     event.isCtrlPressed && event.key == Key.W -> {
                         viewModel.closeActiveTab(activePanel); true
-                    }
-                    event.isCtrlPressed && event.isShiftPressed && event.key == Key.C -> {
-                        viewModel.addSelectionToClipboard(activePanel); true
                     }
                     event.isCtrlPressed && event.key == Key.C -> {
                         viewModel.copySelection(activePanel, move = false); true
@@ -922,23 +920,20 @@ private fun FilePanel(
                 else -> FileList(panelId, displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
             }
             if (state.selectedPaths.isNotEmpty()) {
+                val bookmarkedPaths = viewModel.homeCustomization.collectAsStateWithLifecycle().value.shortcuts.mapTo(hashSetOf()) { it.path }
+                val selectionBookmarked = state.selectedPaths.all { it in bookmarkedPaths }
                 SelectionActionDock(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
                     IconButton(onClick = { viewModel.copySelection(panelId, move = false) }) {
                         Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
-                    }
-                    if (localClipboard?.mode == ClipboardMode.COPY) {
-                        IconButton(
-                            onClick = { viewModel.addSelectionToClipboard(panelId) },
-                            modifier = Modifier.testTag("copy-more-local"),
-                        ) {
-                            Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = uiText("Kopijuoti daugiau"))
-                        }
                     }
                     IconButton(
                         onClick = { viewModel.bookmarkSelection(panelId) },
                         modifier = Modifier.testTag("selection_bookmark_local"),
                     ) {
-                        Icon(Icons.Rounded.BookmarkAdd, contentDescription = uiText("Pridėti žymelę"))
+                        Icon(
+                            if (selectionBookmarked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkAdd,
+                            contentDescription = uiText(if (selectionBookmarked) "Pašalinti žymelę" else "Pridėti žymelę"),
+                        )
                     }
                     IconButton(
                         onClick = { viewModel.shareSelection(panelId) },
@@ -1250,6 +1245,7 @@ internal fun FileList(
     onArchive: (FileEntry) -> Unit,
 ) {
     val context = LocalContext.current
+    val bookmarkedPaths = viewModel.homeCustomization.collectAsStateWithLifecycle().value.shortcuts.mapTo(hashSetOf()) { it.path }
     val interfaceLanguage = LocalConfiguration.current.locales[0].language
     val chooserError = uiText("Programų pasirinkiklio atidaryti nepavyko")
     val dateFormat = rememberLocalizedDateTimeFormat(DateFormat.SHORT, DateFormat.SHORT)
@@ -1382,6 +1378,7 @@ internal fun FileList(
                     onCopy = { viewModel.copyEntry(panel, entry.absolutePath, move = false) },
                     onMove = { viewModel.copyEntry(panel, entry.absolutePath, move = true) },
                     onBookmark = { viewModel.bookmarkPath(entry.absolutePath) },
+                    bookmarked = entry.absolutePath in bookmarkedPaths,
                     onShare = { viewModel.shareEntry(entry.absolutePath) },
                 )
             }
@@ -1404,6 +1401,7 @@ internal fun FileGrid(
     onArchive: (FileEntry) -> Unit,
 ) {
     val context = LocalContext.current
+    val bookmarkedPaths = viewModel.homeCustomization.collectAsStateWithLifecycle().value.shortcuts.mapTo(hashSetOf()) { it.path }
     val interfaceLanguage = LocalConfiguration.current.locales[0].language
     val chooserError = uiText("Programų pasirinkiklio atidaryti nepavyko")
     val largestSizeBytes = remember(state.entries, state.sortMode) {
@@ -1534,6 +1532,7 @@ internal fun FileGrid(
                     onCopy = { viewModel.copyEntry(panel, entry.absolutePath, move = false) },
                     onMove = { viewModel.copyEntry(panel, entry.absolutePath, move = true) },
                     onBookmark = { viewModel.bookmarkPath(entry.absolutePath) },
+                    bookmarked = entry.absolutePath in bookmarkedPaths,
                     onShare = { viewModel.shareEntry(entry.absolutePath) },
                 )
             }
@@ -1572,6 +1571,7 @@ private fun FileRow(
     onCopy: () -> Unit,
     onMove: () -> Unit,
     onBookmark: () -> Unit,
+    bookmarked: Boolean,
     onShare: () -> Unit,
 ) {
     val selectionShape = RoundedCornerShape(8.dp)
@@ -1620,7 +1620,7 @@ private fun FileRow(
             }
         }
         if (!entry.isReadable) LText("Neprieinama", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-        EntryActionsButton(entry, onPreview, onOpenWith, onSelect, onRename, onInfo, onTrash, onArchive, onAnalyze, onCopy, onMove, onBookmark, onShare)
+        EntryActionsButton(entry, onPreview, onOpenWith, onSelect, onRename, onInfo, onTrash, onArchive, onAnalyze, onCopy, onMove, onBookmark, onShare, bookmarked)
     }
     }
     HorizontalDivider(
@@ -1652,6 +1652,7 @@ private fun FileTile(
     onCopy: () -> Unit,
     onMove: () -> Unit,
     onBookmark: () -> Unit,
+    bookmarked: Boolean,
     onShare: () -> Unit,
 ) {
     val selectionShape = RoundedCornerShape(12.dp)
@@ -1697,7 +1698,7 @@ private fun FileTile(
                 )
             },
             actions = {
-                EntryActionsButton(entry, onPreview, onOpenWith, onSelect, onRename, onInfo, onTrash, onArchive, onAnalyze, onCopy, onMove, onBookmark, onShare)
+                EntryActionsButton(entry, onPreview, onOpenWith, onSelect, onRename, onInfo, onTrash, onArchive, onAnalyze, onCopy, onMove, onBookmark, onShare, bookmarked)
             },
             extraContent = {
                 if (largestSizeBytes != null && entry.metadataComplete) {
@@ -1732,6 +1733,7 @@ private fun EntryActionsButton(
     onMove: () -> Unit,
     onBookmark: () -> Unit,
     onShare: () -> Unit,
+    bookmarked: Boolean,
 ) {
     var expanded by remember(entry.absolutePath) { mutableStateOf(false) }
     Box {
@@ -1817,8 +1819,8 @@ private fun EntryActionsButton(
                 onClick = { expanded = false; onInfo() },
             )
             DropdownMenuItem(
-                text = { LText("Pridėti žymelę") },
-                leadingIcon = { Icon(Icons.Rounded.BookmarkAdd, contentDescription = null) },
+                text = { LText(if (bookmarked) "Pašalinti žymelę" else "Pridėti žymelę") },
+                leadingIcon = { Icon(if (bookmarked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkAdd, contentDescription = null) },
                 onClick = { expanded = false; onBookmark() },
                 modifier = Modifier.testTag("bookmark_entry_action"),
             )

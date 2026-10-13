@@ -240,11 +240,6 @@ fun AdvancedStorageBrowserDialog(
                         IconButton(onClick = { viewModel.copyAdvancedSelection(move = false) }) {
                             Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
                         }
-                        if (clipboard?.source == ClipboardSource.PRIVILEGED && clipboard.mode == ClipboardMode.COPY) {
-                            IconButton(onClick = { viewModel.copyAdvancedSelection(move = false, append = true) }) {
-                                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = uiText("Kopijuoti daugiau"))
-                            }
-                        }
                         IconButton(onClick = { viewModel.copyAdvancedSelection(move = true) }) {
                             Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti"))
                         }

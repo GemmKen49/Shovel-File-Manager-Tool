@@ -1186,12 +1186,6 @@ private fun SearchSelectionToolbar(
         modifier = modifier,
     ) {
             IconButton(onClick = onCopy) { Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti")) }
-            if (canAddToClipboard) {
-                TextButton(onClick = onAddToClipboard, modifier = Modifier.testTag("copy-more-search")) {
-                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = uiText("Įtraukti į iškarpinę"))
-                    LText("Kopijuoti daugiau", modifier = Modifier.padding(start = 5.dp))
-                }
-            }
             IconButton(onClick = onMove) { Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti")) }
             if (featureVisible(OptionalFeature.BATCH_RENAME)) IconButton(onClick = onBatchRename) {
                 Icon(Icons.Rounded.Edit, contentDescription = uiText("Masinis pervadinimas"))

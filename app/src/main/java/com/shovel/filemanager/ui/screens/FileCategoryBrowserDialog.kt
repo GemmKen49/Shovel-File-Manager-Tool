@@ -250,9 +250,6 @@ private fun FileCategoryBrowserContent(state: FileCategoryUiState, viewModel: Ma
                             IconButton(onClick = { viewModel.copyFileCategorySelection(move = false) }) {
                                 Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
                             }
-                            IconButton(onClick = { viewModel.copyFileCategorySelection(move = false, append = true) }) {
-                                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = uiText("Kopijuoti daugiau"))
-                            }
                             IconButton(
                                 enabled = state.selectedPaths.size == 1,
                                 onClick = { infoTarget = state.entries.firstOrNull { it.absolutePath in state.selectedPaths } },

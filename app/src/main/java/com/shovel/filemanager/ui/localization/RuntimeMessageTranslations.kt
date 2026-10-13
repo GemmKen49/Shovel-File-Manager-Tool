@@ -141,6 +141,7 @@ internal object RuntimeMessageTranslations {
         "APK išsaugojimas atšauktas" to "APK export was cancelled",
         "Pasirinktos vietos jau pažymėtos" to "The selected locations are already bookmarked",
         "Pridėta prie žymelių" to "Added to bookmarks",
+        "Pašalinta iš žymelių" to "Removed from bookmarks",
         "Žymelės pridėti nepavyko" to "Could not add the bookmark",
         "WebDAV peradresavimo tęsti negalima" to "Cannot follow the WebDAV redirect",
         "Serveris pasiūlė nesaugų peradresavimą. Prisijungimo duomenys nebuvo persiųsti." to "The server requested an unsafe redirect. Credentials were not forwarded.",

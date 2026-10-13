@@ -677,15 +677,6 @@ internal fun RemoteBrowser(
                     IconButton(onClick = onCopySelected, enabled = !state.loading) {
                         Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
                     }
-                    if (canAddToRemoteClipboard) {
-                        IconButton(
-                            onClick = onAddToRemoteClipboard,
-                            enabled = !state.loading,
-                            modifier = Modifier.testTag("copy-more-remote"),
-                        ) {
-                            Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = uiText("Kopijuoti daugiau"))
-                        }
-                    }
                     IconButton(onClick = onDownloadSelected, enabled = !state.loading) {
                         Icon(Icons.Rounded.CloudDownload, contentDescription = uiText("Kopijuoti į aktyvų vietinį aplanką"))
                     }
