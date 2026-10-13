@@ -46,16 +46,19 @@ enum class RecentFilesDateRange {
 }
 
 object RecentFilesViewRules {
+    private fun fileSizeFor(item: RecentFileItem): Long = runCatching {
+        File(item.entry.absolutePath).length()
+    }.getOrDefault(0L)
+
     fun apply(
         items: List<RecentFileItem>,
         query: String,
         sort: RecentFilesSort,
         ascending: Boolean,
-        dateRange: RecentFilesDateRange
+        dateRange: RecentFilesDateRange,
     ): List<RecentFileItem> {
         val now = System.currentTimeMillis()
         val normalizedQuery = query.trim().lowercase(Locale.ROOT)
-
         val threshold = when (dateRange) {
             RecentFilesDateRange.ALL -> Long.MIN_VALUE
             RecentFilesDateRange.TODAY -> now - TimeUnit.DAYS.toMillis(1)
@@ -80,18 +83,12 @@ object RecentFilesViewRules {
             RecentFilesSort.RECENT -> filtered.sortedByDescending { it.recentAtMillis }
             RecentFilesSort.NAME -> filtered.sortedBy { it.entry.name.lowercase(Locale.ROOT) }
             RecentFilesSort.SIZE -> filtered.sortedByDescending { item ->
-                // Derive size from the actual file on disk. This avoids relying on model internals.
-                // If the file is missing, we treat its size as 0.
-                try {
-                    File(item.entry.absolutePath).length()
-                } catch (_: Throwable) {
-                    0L
-                }
+                fileSizeFor(item)
             }
             RecentFilesSort.TYPE -> filtered.sortedBy { item ->
-                // Sort by file extension (fallback to name if no extension).
-                val ext = item.entry.name.substringAfterLast('.', "").lowercase(Locale.ROOT)
-                if (ext.isEmpty()) item.entry.name.lowercase(Locale.ROOT) else ext
+                val name = item.entry.name
+                val type = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
+                if (type.isEmpty()) name.lowercase(Locale.ROOT) else type
             }
         }
 
@@ -109,7 +106,6 @@ fun RecentFilesScreen(
     onReveal: (RecentFileItem) -> Unit = {},
     onBack: () -> Unit = {},
 ) {
-    // State from the view model
     val recentState by viewModel.recentFiles.collectAsState()
     var tab by remember { mutableStateOf(RecentFilesTab.ADDED) }
     var sort by remember { mutableStateOf(RecentFilesSort.RECENT) }
@@ -120,7 +116,7 @@ fun RecentFilesScreen(
     var sortMenu by remember { mutableStateOf(false) }
     var dateMenu by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { viewModel.refreshRecentFiles() } // initial load
+    LaunchedEffect(Unit) { viewModel.refreshRecentFiles() }
 
     Scaffold(
         topBar = {
@@ -131,12 +127,11 @@ fun RecentFilesScreen(
                 },
                 actions = {
                     IconButton(onClick = { searchVisible = !searchVisible }) { Icon(Icons.Rounded.Search, contentDescription = "Search") }
-                }
+                },
             )
         },
         content = { padding ->
             Column(modifier = modifier.fillMaxSize().padding(padding)) {
-                // Filters & controls
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -145,17 +140,19 @@ fun RecentFilesScreen(
                     FilterChip(
                         selected = tab == RecentFilesTab.ADDED,
                         onClick = { tab = RecentFilesTab.ADDED },
-                        label = { Text("Neseniai pridėti") }
+                        label = { Text("Neseniai pridėti") },
                     )
                     FilterChip(
                         selected = tab == RecentFilesTab.OPENED,
                         onClick = { tab = RecentFilesTab.OPENED },
-                        label = { Text("Neseniai atidaryti") }
+                        label = { Text("Neseniai atidaryti") },
                     )
 
-                    // Sort direction toggle + menu
                     IconButton(onClick = { ascending = !ascending }) {
-                        Icon(if (ascending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward, contentDescription = "Toggle sort")
+                        Icon(
+                            if (ascending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
+                            contentDescription = "Toggle sort",
+                        )
                     }
                     Box {
                         IconButton(onClick = { sortMenu = true }) { Text(sort.name.lowercase(Locale.ROOT)) }
@@ -163,7 +160,7 @@ fun RecentFilesScreen(
                             RecentFilesSort.values().forEach { option ->
                                 DropdownMenuItem(
                                     text = { Text(option.name.lowercase(Locale.ROOT)) },
-                                    onClick = { sort = option; sortMenu = false }
+                                    onClick = { sort = option; sortMenu = false },
                                 )
                             }
                         }
@@ -172,7 +169,10 @@ fun RecentFilesScreen(
                         IconButton(onClick = { dateMenu = true }) { Icon(Icons.Rounded.CalendarMonth, contentDescription = "Date filter") }
                         DropdownMenu(expanded = dateMenu, onDismissRequest = { dateMenu = false }) {
                             RecentFilesDateRange.values().forEach { option ->
-                                DropdownMenuItem(text = { Text(option.name.lowercase(Locale.ROOT)) }, onClick = { dateRange = option; dateMenu = false })
+                                DropdownMenuItem(
+                                    text = { Text(option.name.lowercase(Locale.ROOT)) },
+                                    onClick = { dateRange = option; dateMenu = false },
+                                )
                             }
                         }
                     }
@@ -180,9 +180,7 @@ fun RecentFilesScreen(
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 8.dp)
+                            modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
                         )
                     }
                 }
@@ -206,23 +204,21 @@ fun RecentFilesScreen(
                     }
 
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
                         items(filtered, key = { it.entry.absolutePath }) { item ->
                             RecentFileRow(
                                 item = item,
                                 onOpen = { onOpen(item) },
                                 onReveal = { onReveal(item) },
-                                onShare = { onShare(listOf(item)) }
+                                onShare = { onShare(listOf(item)) },
                             )
                             Divider()
                         }
                     }
                 }
             }
-        }
+        },
     )
 }
 
@@ -231,7 +227,7 @@ private fun RecentFileRow(
     item: RecentFileItem,
     onOpen: () -> Unit,
     onReveal: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(item.entry.name) },
@@ -243,8 +239,6 @@ private fun RecentFileRow(
                 IconButton(onClick = onReveal) { Text("Reveal") }
             }
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onOpen)
+        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = onOpen),
     )
 }
