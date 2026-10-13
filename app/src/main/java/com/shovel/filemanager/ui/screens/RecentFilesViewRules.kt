@@ -1,6 +1,8 @@
 package com.shovel.filemanager.ui.screens
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -82,7 +84,7 @@ fun RecentFilesScreen(
                     Box {
                         IconButton(onClick = { sortMenu = true }) { Text(sort.name.lowercase(Locale.ROOT)) }
                         DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
-                            RecentFilesSort.values().forEach { option ->
+                            for (option in RecentFilesSort.values()) {
                                 DropdownMenuItem(
                                     text = { Text(option.name.lowercase(Locale.ROOT)) },
                                     onClick = { sort = option; sortMenu = false }
@@ -93,8 +95,11 @@ fun RecentFilesScreen(
                     Box {
                         IconButton(onClick = { dateMenu = true }) { Icon(Icons.Rounded.CalendarMonth, contentDescription = "Date filter") }
                         DropdownMenu(expanded = dateMenu, onDismissRequest = { dateMenu = false }) {
-                            RecentFilesDateRange.values().forEach { option ->
-                                DropdownMenuItem(text = { Text(option.name.lowercase(Locale.ROOT)) }, onClick = { dateRange = option; dateMenu = false })
+                            for (option in RecentFilesDateRange.values()) {
+                                DropdownMenuItem(
+                                    text = { Text(option.name.lowercase(Locale.ROOT)) },
+                                    onClick = { dateRange = option; dateMenu = false }
+                                )
                             }
                         }
                     }
@@ -127,7 +132,8 @@ fun RecentFilesScreen(
 
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
                         items(filtered, key = { it.entry.absolutePath }) { item ->
-                            RecentFileRow(item = item,
+                            RecentFileRow(
+                                item = item,
                                 onOpen = { onOpen(item) },
                                 onReveal = { onReveal(item) },
                                 onShare = { onShare(listOf(item)) }
@@ -149,8 +155,8 @@ private fun RecentFileRow(
     onShare: () -> Unit
 ) {
     ListItem(
-        headlineText = { Text(item.entry.name) },
-        supportingText = { Text(item.entry.absolutePath, maxLines = 1) },
+        headlineContent = { Text(item.entry.name) },
+        supportingContent = { Text(item.entry.absolutePath, maxLines = 1) },
         leadingContent = { /* optional icon or thumbnail */ },
         trailingContent = {
             Row {
