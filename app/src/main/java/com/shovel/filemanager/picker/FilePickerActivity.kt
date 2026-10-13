@@ -51,7 +51,6 @@ import com.shovel.filemanager.ui.components.LocalFeatureVisibility
 import com.shovel.filemanager.ui.authenticate
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.UiTranslator
-import com.shovel.filemanager.ui.screens.LocalUploadDialog
 import com.shovel.filemanager.ui.theme.ShovelTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -142,15 +141,25 @@ class FilePickerActivity : AppCompatActivity() {
         }
         val allowed = boundary
         if (hasAccess && allowed != null) {
-            LocalUploadDialog(
-                initialDirectoryPath = "", remotePath = "", initialEntries = rootEntries,
-                initiallySelected = emptySet(),
-                loadDirectory = { path -> loadDirectory(path, allowed, request) },
-                onDismiss = { finish() }, onCopy = { paths -> confirm(paths, allowed, request) },
-                title = "Shovel", confirmLabel = "Pasirinkti",
-                filesOnly = true, allowMultiple = request.allowMultiple, selectionLimit = request.selectionLimit,
-                parentDirectory = allowed::parent, message = error ?: warning, confirming = confirming,
-            )
+            // LocalUploadDialog removed — show a simple placeholder UI informing users the picker is unavailable
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(24.dp).widthIn(max = 480.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    tonalElevation = 6.dp,
+                    shadowElevation = 12.dp,
+                ) {
+                    Column(
+                        Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        LText("Failų pasirinkimo ekranas šiuo metu nepasiekiamas")
+                        Button(onClick = { finish() }) { LText("Uždaryti") }
+                        TextButton(onClick = { finish() }) { LText("Atšaukti") }
+                    }
+                }
+            }
         } else {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Surface(
