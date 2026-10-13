@@ -19,11 +19,7 @@ import com.shovel.filemanager.cleanup.PrivilegedAppProcessRepository
 import com.shovel.filemanager.data.FileCategoryRepository
 import com.shovel.filemanager.data.FileSelectionInfoScanner
 import com.shovel.filemanager.editing.EditSessionStore
-import com.shovel.filemanager.editing.RemoteEditSaver
 import com.shovel.filemanager.editing.ThreeWayTextMerge
-import com.shovel.filemanager.network.NetworkProfileStore
-import com.shovel.filemanager.network.RemoteClientFactory
-import com.shovel.filemanager.network.RemoteCopyEngine
 import com.shovel.filemanager.operations.FileOperationManager
 import com.shovel.filemanager.operations.FileOperationForegroundService
 import com.shovel.filemanager.operations.LocalFileOperator
@@ -34,7 +30,6 @@ import com.shovel.filemanager.pdfsigning.PdfVisualSignatureEngine
 import com.shovel.filemanager.pdfsigning.SignatureLibraryRepository
 import com.shovel.filemanager.search.FileSearchEngine
 import com.shovel.filemanager.search.SimilarImageEngine
-import com.shovel.filemanager.security.CredentialVault
 import com.shovel.filemanager.security.AppLockRepository
 import com.shovel.filemanager.sharing.LocalShareManager
 import com.shovel.filemanager.ui.theme.AppearanceRepository
@@ -82,7 +77,6 @@ class AppGraph(application: Application) {
     val signatureLibrary by lazy {
         SignatureLibraryRepository(java.io.File(application.filesDir, "saved-signatures"))
     }
-    val remoteEdits by lazy { RemoteEditSaver(editSessions) }
     val textMerge by lazy { ThreeWayTextMerge() }
     val localFileOperator by lazy { LocalFileOperator(onMutation = sharedStorageIndex::changed) }
     val batchRename by lazy { BatchRenameEngine(onMutation = sharedStorageIndex::changed) }
@@ -98,10 +92,6 @@ class AppGraph(application: Application) {
     val similarImages by lazy { SimilarImageEngine() }
     val archives = ArchiveEngine(onMutation = sharedStorageIndex::changed)
     val localShare by lazy { LocalShareManager(application, archives) }
-    val credentialVault = CredentialVault()
     val appLock = AppLockRepository(application)
-    val networkProfiles = NetworkProfileStore(application, credentialVault)
-    val remoteClients = RemoteClientFactory()
-    val remoteCopies by lazy { RemoteCopyEngine(sharedStorageIndex::changed) }
     val safFiles = SafFileRepository(application, sharedStorageIndex::changed)
 }

@@ -43,15 +43,6 @@ sealed interface EditOrigin {
         override val label: String = uri
     }
 
-    data class Remote(
-        val profileId: String,
-        val connectionName: String,
-        val path: String,
-    ) : EditOrigin {
-        override val label: String = "$connectionName · $path"
-        override val canWrite: Boolean = true
-    }
-
     data class Privileged(
         val path: String,
         override val canWrite: Boolean,
@@ -109,14 +100,6 @@ sealed interface EditDestination {
         override val label: String = uri
     }
 
-    data class Remote(
-        val profileId: String,
-        val connectionName: String,
-        val path: String,
-    ) : EditDestination {
-        override val label: String = "$connectionName · $path"
-        override val displayName: String = path.substringAfterLast('/')
-    }
 }
 
 data class EditDestinationSnapshot(

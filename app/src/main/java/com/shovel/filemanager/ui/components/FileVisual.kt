@@ -70,7 +70,6 @@ import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.FileEntry
 import com.shovel.filemanager.model.StorageRoot
 import com.shovel.filemanager.model.StorageRootKind
-import com.shovel.filemanager.network.RemoteEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -393,22 +392,6 @@ fun SafFileVisual(
         kind = entry.kind,
         extension = extension,
         visual = visual,
-        modifier = modifier,
-    )
-}
-
-/** Uses the same type icon and extension badge as local storage without downloading remote content. */
-@Composable
-fun RemoteFileVisual(
-    entry: RemoteEntry,
-    modifier: Modifier = Modifier,
-) {
-    val extension = entry.name.substringAfterLast('.', "").lowercase()
-    FileVisualFrame(
-        name = entry.name,
-        kind = FileSystemRules.detectKind(entry.name, mimeType = null, isDirectory = entry.directory),
-        extension = extension,
-        visual = null,
         modifier = modifier,
     )
 }

@@ -258,14 +258,11 @@ fun FilesScreen(
     val filesHomeVisible by viewModel.filesHomeVisible.collectAsStateWithLifecycle()
     val activePanel by viewModel.activePanel.collectAsStateWithLifecycle()
     val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
-    val remoteClipboard by viewModel.remoteClipboard.collectAsStateWithLifecycle()
     val renameUndo by viewModel.renameUndo.collectAsStateWithLifecycle()
     val panelComparison by viewModel.panelComparison.collectAsStateWithLifecycle()
     val trashItems by viewModel.trashItems.collectAsStateWithLifecycle()
     val advancedAccess by viewModel.advancedAccess.collectAsStateWithLifecycle()
     val fileCategory by viewModel.fileCategory.collectAsStateWithLifecycle()
-    val safLocations by viewModel.safLocations.collectAsStateWithLifecycle()
-    val networkState by viewModel.networkState.collectAsStateWithLifecycle()
 
     var createFor by remember { mutableStateOf<PanelId?>(null) }
     var renameTarget by remember { mutableStateOf<Pair<PanelId, FileEntry>?>(null) }
@@ -278,7 +275,7 @@ fun FilesScreen(
     var showHomeCustomization by remember { mutableStateOf(false) }
     var infoTargets by remember { mutableStateOf<List<FileEntry>?>(null) }
     var recentTrashEntries by remember { mutableStateOf<List<FileEntry>?>(null) }
-    val clipboardAvailable = clipboard != null || remoteClipboard != null
+    val clipboardAvailable = clipboard != null
 
     LaunchedEffect(clipboardAvailable) {
         if (!clipboardAvailable) pastePanel = null
@@ -377,7 +374,6 @@ fun FilesScreen(
             } else if (filesHomeVisible) {
                 FilesHome(
                     roots = roots,
-                    safLocations = safLocations,
                     recentFiles = recentFiles.items,
                     recentAddedFiles = recentFiles.addedItems,
                     recentOpenedFiles = recentFiles.openedItems,
@@ -405,17 +401,8 @@ fun FilesScreen(
                     onRefreshRecent = viewModel::refreshRecentFiles,
                     onToggleLayout = viewModel::toggleHomeDisplayLayout,
                     onConfigureLayout = { area -> homeDisplayArea = area },
-                    onAddSafLocation = onAddSafLocation,
-                    onAddNextcloud = viewModel::openNextcloudSetup,
-                    onOpenSafLocation = viewModel::openSafLocation,
-                    onRenameSafLocation = viewModel::renameSafLocation,
-                    onRemoveSafLocation = viewModel::removeSafLocation,
                     onOpenSystemFiles = onOpenSystemFiles,
                     onCustomizeHome = { showHomeCustomization = true },
-                    cloudProfiles = networkState.profiles.filter { it.provider == com.shovel.filemanager.network.NetworkProvider.NEXTCLOUD },
-                    onOpenCloudProfile = viewModel::openCloudProfile,
-                    onEditCloudProfile = viewModel::openNetworkProfileEditor,
-                    onRemoveCloudProfile = viewModel::removeNetworkProfile,
                 )
             } else if (dualPane) {
                 Row(modifier = Modifier.fillMaxSize()) {
@@ -580,25 +567,7 @@ fun FilesScreen(
         )
     }
     pastePanel?.let { panel ->
-        val remote = remoteClipboard
-        if (remote != null) {
-            val destination = if (panel == PanelId.LEFT) left.path else right.path
-            AlertDialog(
-                onDismissRequest = { pastePanel = null },
-                title = { LText("Įklijuoti iš serverio") },
-                text = {
-                    LText(
-                        "Iš serverio bus nukopijuota ${remote.entries.size} elementų į $destination. Esami vardai nebus perrašyti.",
-                    )
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        if (viewModel.pasteRemoteClipboard(panel)) pastePanel = null
-                    }) { LText("Įklijuoti") }
-                },
-                dismissButton = { TextButton(onClick = { pastePanel = null }) { LText("Atšaukti") } },
-            )
-        } else if (clipboard != null) {
+        if (clipboard != null) {
             TransferOptionsDialog(
                 moving = clipboard?.mode == ClipboardMode.MOVE,
                 onDismiss = { pastePanel = null },

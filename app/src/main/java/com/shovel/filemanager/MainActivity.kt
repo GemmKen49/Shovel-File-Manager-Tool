@@ -54,7 +54,6 @@ class MainActivity : AppCompatActivity() {
             val section = mainViewModel.section.collectAsStateWithLifecycle()
             val filesHomeVisible = mainViewModel.filesHomeVisible.collectAsStateWithLifecycle()
             val leftPanel = mainViewModel.leftPanel.collectAsStateWithLifecycle()
-            val network = mainViewModel.networkState.collectAsStateWithLifecycle()
             val storageRoots = mainViewModel.roots.collectAsStateWithLifecycle()
             LaunchedEffect(pendingStorageRefresh.value) {
                 if (pendingStorageRefresh.value) {
@@ -71,15 +70,12 @@ class MainActivity : AppCompatActivity() {
                 leftPanel.value.path,
                 leftPanel.value.loading,
                 leftPanel.value.entries.size,
-                network.value.loading,
-                network.value.entries.size,
             ) {
                 val homeReady = section.value == AppSection.FILES &&
                     filesHomeVisible.value &&
                     storageRoots.value.isNotEmpty()
                 val localReady = leftPanel.value.entries.isNotEmpty()
-                val remoteReady = network.value.connectedProfile != null && network.value.entries.isNotEmpty()
-                if (homeReady || localReady || remoteReady) reportFullyDrawn()
+                if (homeReady || localReady) reportFullyDrawn()
             }
             ShovelTheme(settings = appearance.value) {
                 CompositionLocalProvider(LocalStorageRoots provides storageRoots.value) {

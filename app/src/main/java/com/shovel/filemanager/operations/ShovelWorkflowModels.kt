@@ -1,7 +1,6 @@
 package com.shovel.filemanager.workflow
 
 import com.shovel.filemanager.model.ConflictPolicy
-import com.shovel.filemanager.network.RemotePath
 import com.shovel.filemanager.operations.TransferFailurePolicy
 import com.shovel.filemanager.operations.TransferVerification
 import java.io.File
@@ -28,7 +27,7 @@ object ShovelWorkflowLimits {
     const val MIN_STAGING_RESERVE_BYTES = 32L * 1_024 * 1_024
 }
 
-enum class ShovelLocationKind { LOCAL, REMOTE }
+enum class ShovelLocationKind { LOCAL }
 
 /** A location reference deliberately contains no credentials. */
 data class ShovelLocationRef(
@@ -40,7 +39,6 @@ data class ShovelLocationRef(
     val displayLabel: String
         get() = when (kind) {
             ShovelLocationKind.LOCAL -> path
-            ShovelLocationKind.REMOTE -> "${profileName.orEmpty().ifBlank { profileId.orEmpty() }} · $path"
         }
 
     fun normalized(): ShovelLocationRef = when (kind) {
@@ -49,26 +47,12 @@ data class ShovelLocationRef(
             profileId = null,
             profileName = null,
         )
-        ShovelLocationKind.REMOTE -> copy(
-            path = RemotePath.normalize(path),
-            profileId = requireNotNull(profileId).trim().also {
-                require(it.matches(SAFE_ID)) { "Invalid remote profile identifier" }
-            },
-            profileName = profileName.orEmpty().trim().take(ShovelWorkflowLimits.MAX_NAME_LENGTH),
-        )
     }
 
     companion object {
         private val SAFE_ID = Regex("[A-Za-z0-9_-]{1,120}")
 
         fun local(path: String): ShovelLocationRef = ShovelLocationRef(ShovelLocationKind.LOCAL, path).normalized()
-
-        fun remote(profileId: String, profileName: String, path: String): ShovelLocationRef = ShovelLocationRef(
-            kind = ShovelLocationKind.REMOTE,
-            path = path,
-            profileId = profileId,
-            profileName = profileName,
-        ).normalized()
     }
 }
 
@@ -176,7 +160,6 @@ data class ShovelPlanDefinition(
 
 fun ShovelLocationRef.identityKey(): String = when (kind) {
     ShovelLocationKind.LOCAL -> "local:${File(path).canonicalPath}"
-    ShovelLocationKind.REMOTE -> "remote:${profileId.orEmpty()}:${RemotePath.normalize(path)}"
 }
 
 enum class ShovelPreflightDisposition {

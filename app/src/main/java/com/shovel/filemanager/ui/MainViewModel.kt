@@ -82,19 +82,6 @@ import com.shovel.filemanager.model.StorageAnalysis
 import com.shovel.filemanager.model.StorageRoot
 import com.shovel.filemanager.model.StorageRootKind
 import com.shovel.filemanager.data.FileSelectionSummary
-import com.shovel.filemanager.network.NetworkProfile
-import com.shovel.filemanager.network.NetworkProfileRules
-import com.shovel.filemanager.network.NextcloudLoginClient
-import com.shovel.filemanager.network.NetworkProtocol
-import com.shovel.filemanager.network.RemoteClient
-import com.shovel.filemanager.network.RemoteEntry
-import com.shovel.filemanager.network.RemoteErrorInfo
-import com.shovel.filemanager.network.RemoteErrorPresenter
-import com.shovel.filemanager.network.RemoteOperation
-import com.shovel.filemanager.network.RemotePath
-import com.shovel.filemanager.network.ReconnectingRemoteClient
-import com.shovel.filemanager.network.RemoteCopyEngine
-import com.shovel.filemanager.network.RemoteSelectionInfoScanner
 import com.shovel.filemanager.operations.OperationStatus
 import com.shovel.filemanager.operations.OperationContext
 import com.shovel.filemanager.operations.BatchRenamePreview
@@ -119,7 +106,6 @@ import com.shovel.filemanager.workflow.ShovelSourceKind
 import com.shovel.filemanager.workflow.ShovelUndoPreview
 import com.shovel.filemanager.workflow.ShovelWorkflowLimits
 import com.shovel.filemanager.workflow.identityKey
-import com.shovel.filemanager.ui.preview.RemotePreviewCache
 import com.shovel.filemanager.ui.preview.MediaNavigationRules
 import com.shovel.filemanager.ui.preview.PreviewSource
 import com.shovel.filemanager.ui.preview.previewSource
@@ -160,7 +146,6 @@ private const val MAX_ARCHIVE_SHARE_FILES = 1_000
 enum class AppSection {
     FILES,
     ANALYZE,
-    CONNECTIONS,
     TOOLS,
 }
 
@@ -331,32 +316,6 @@ data class PanelComparisonUiState(
     val error: String? = null,
 )
 
-data class NetworkUiState(
-    val profiles: List<NetworkProfile> = emptyList(),
-    val connectedProfile: NetworkProfile? = null,
-    val path: String = "/",
-    val entries: List<RemoteEntry> = emptyList(),
-    val selectedPaths: Set<String> = emptySet(),
-    val backHistory: List<String> = emptyList(),
-    val forwardHistory: List<String> = emptyList(),
-    val includeHidden: Boolean = false,
-    val grid: Boolean = false,
-    val iconScalePercent: Int = 100,
-    val spacingScalePercent: Int = 100,
-    val gridColumns: Int = 3,
-    val gridStyle: DirectoryGridStyle = DirectoryGridStyle.CARDS,
-    val sortMode: SortMode = SortMode.NAME,
-    val sortDirection: SortDirection = SortDirection.ASCENDING,
-    val openingPath: String? = null,
-    val loading: Boolean = false,
-    val error: RemoteErrorInfo? = null,
-)
-
-data class RemoteClipboardState(
-    val profileId: String,
-    val entries: List<RemoteEntry>,
-)
-
 data class ShovelClipboardState(
     val sources: List<ShovelSourceRef>,
     val moveAfterVerifiedCopies: Boolean = false,
@@ -432,25 +391,12 @@ sealed interface PreviewTarget {
     data class LocalFile(val entry: FileEntry) : PreviewTarget
     data class TrashFile(val itemId: String, val entry: FileEntry) : PreviewTarget
     data class ContentFile(val entry: ContentFileEntry) : PreviewTarget
-    data class RemoteFile(
-        val remote: RemoteEntry,
-        val cachedFile: File,
-        val profileId: String,
-        val connectionName: String,
-    ) : PreviewTarget
     data class PrivilegedFile(
         val entry: FileEntry,
         val cachedFile: File,
         val localOrigin: Boolean = false,
     ) : PreviewTarget
     data class Archive(val file: FileEntry, val entries: List<ArchiveEntryInfo>) : PreviewTarget
-    data class RemoteArchive(
-        val remote: RemoteEntry,
-        val file: FileEntry,
-        val profileId: String,
-        val connectionName: String,
-        val entries: List<ArchiveEntryInfo>,
-    ) : PreviewTarget
     data class ArchiveEntry(val file: FileEntry) : PreviewTarget
 }
 
@@ -459,17 +405,6 @@ data class SignatureLibraryUiState(
     val loading: Boolean = false,
     val error: String? = null,
 )
-
-enum class NextcloudLoginPhase { IDLE, STARTING, WAITING_FOR_BROWSER, SAVING }
-
-data class NextcloudLoginUiState(
-    val open: Boolean = false,
-    val server: String = "",
-    val phase: NextcloudLoginPhase = NextcloudLoginPhase.IDLE,
-    val error: String? = null,
-) {
-    val running: Boolean get() = phase != NextcloudLoginPhase.IDLE
-}
 
 enum class UiMessageAction { UNDO_BATCH_RENAME }
 
@@ -481,10 +416,7 @@ data class UiMessage(
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val graph = (application as ShovelApplication).graph
-    private val nextcloudLoginClient = NextcloudLoginClient()
-    private var nextcloudLoginJob: Job? = null
     private val legacyFilesHomeDisplayIdentity = "virtual:files-home"
-    private val remotePreviewCache = RemotePreviewCache(application.cacheDir)
     private val archiveMaterializationMutex = Mutex()
     private var archiveReturnTarget: PreviewTarget? = null
     private var archiveMaterializationKey: String? = null
@@ -552,12 +484,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _clipboard = MutableStateFlow<ClipboardState?>(null)
     val clipboard: StateFlow<ClipboardState?> = _clipboard.asStateFlow()
 
-    private val _remoteClipboard = MutableStateFlow<RemoteClipboardState?>(null)
-    val remoteClipboard: StateFlow<RemoteClipboardState?> = _remoteClipboard.asStateFlow()
-
     private val _shovelClipboard = MutableStateFlow<ShovelClipboardState?>(null)
     val shovelClipboard: StateFlow<ShovelClipboardState?> = _shovelClipboard.asStateFlow()
-
 
     private val _searchState = MutableStateFlow(SearchUiState())
     val searchState: StateFlow<SearchUiState> = _searchState.asStateFlow()
@@ -598,12 +526,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _renameUndo = MutableStateFlow<BatchRenameUndo?>(null)
     val renameUndo: StateFlow<BatchRenameUndo?> = _renameUndo.asStateFlow()
 
-    private val _networkState = MutableStateFlow(NetworkUiState())
-    val networkState: StateFlow<NetworkUiState> = _networkState.asStateFlow()
-
-    private val _nextcloudLogin = MutableStateFlow(NextcloudLoginUiState())
-    val nextcloudLogin: StateFlow<NextcloudLoginUiState> = _nextcloudLogin.asStateFlow()
-
     private val _trashItems = MutableStateFlow<List<TrashItem>>(emptyList())
     val trashItems: StateFlow<List<TrashItem>> = _trashItems.asStateFlow()
 
@@ -638,7 +560,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _messages = MutableSharedFlow<UiMessage>(extraBufferCapacity = 16)
     val messages: SharedFlow<UiMessage> = _messages.asSharedFlow()
 
-    private var remoteClient: RemoteClient? = null
     private var searchJob: Job? = null
     private var analysisJob: Job? = null
     private var analysisRequestId = 0L
@@ -651,8 +572,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var categoryFolderReturnState: FileCategoryUiState? = null
     private var safBrowserJob: Job? = null
     private var batchRenamePreviewJob: Job? = null
-    private var remoteFileOpenJob: Job? = null
-    private var remoteFileOpenRequestId = 0L
     private var fileEditJob: Job? = null
     private var fileEditRequestId = 0L
     private var signatureLibraryJob: Job? = null
@@ -676,7 +595,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         refreshPermissionDependentState()
-        refreshProfiles()
         refreshTrash()
         refreshSafLocations()
         refreshNavigationState()
@@ -967,7 +885,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             source = ClipboardSource.PRIVILEGED,
         )
         _shovelClipboard.value = null
-        _remoteClipboard.value = null
         clearAdvancedSelection()
         message(
             if (append) "Į privilegijuotą iškarpinę įtraukta: ${merged.addedCount} · iš viso: ${merged.items.size}"
@@ -1242,10 +1159,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     sortMode = sortMode,
                     sortDirection = sortDirection,
                 )
-            }
-            _networkState.update {
-                it.withDirectoryDisplaySettings(normalized.copy(showThumbnails = false))
-                    .copy(sortMode = sortMode, sortDirection = sortDirection)
             }
             _leftTabs.update { workspace -> workspace.withGlobalDisplayDefaults(normalized, sortMode, sortDirection) }
             _rightTabs.update { workspace -> workspace.withGlobalDisplayDefaults(normalized, sortMode, sortDirection) }
@@ -1892,7 +1805,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             null
         }
-        _remoteClipboard.value = null
         if (append) {
             message(
                 if (merged.addedCount == 0) {
@@ -2611,7 +2523,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun canNavigatePreviewMedia(target: PreviewTarget): Boolean = when (target) {
         is PreviewTarget.LocalFile -> localMediaCandidates(target.entry).size > 1
-        is PreviewTarget.RemoteFile -> remoteMediaCandidates(target.remote).size > 1
         else -> false
     }
 
@@ -2639,15 +2550,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ) ?: return
                 open(next)
             }
-            is PreviewTarget.RemoteFile -> {
-                val next = MediaNavigationRules.next(
-                    remoteMediaCandidates(target.remote),
-                    target.remote.path,
-                    delta,
-                    RemoteEntry::path,
-                ) ?: return
-                openRemoteEntry(next)
-            }
             else -> Unit
         }
     }
@@ -2664,19 +2566,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun remoteMediaCandidates(current: RemoteEntry): List<RemoteEntry> {
-        val kind = FileSystemRules.detectKind(current.name, mimeType = null, isDirectory = false)
-        if (kind !in setOf(EntryKind.IMAGE, EntryKind.AUDIO, EntryKind.VIDEO)) return emptyList()
-        return visibleRemoteEntries(_networkState.value).filter { entry ->
-            !entry.directory && FileSystemRules.detectKind(entry.name, mimeType = null, isDirectory = false) == kind
-        }
-    }
-
     fun prepareFileEdit() {
         val target = _preview.value ?: return
         if (
             target is PreviewTarget.Archive ||
-            target is PreviewTarget.RemoteArchive ||
             target is PreviewTarget.ArchiveEntry
         ) return
         val source = target.previewSource()
@@ -2686,7 +2579,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val requestId = ++fileEditRequestId
         fileEditJob?.cancel()
         val previousSession = existing.session
-        val temporaryDownload = source is PreviewSource.Remote || source is PreviewSource.Privileged
+        val temporaryDownload = source is PreviewSource.Privileged
         _fileEditState.value = FileEditUiState(
             sourceKey = source.key,
             temporaryDownload = temporaryDownload,
@@ -2703,17 +2596,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     is PreviewTarget.LocalFile -> EditOrigin.Local(target.entry.absolutePath, target.entry.isWritable)
                     is PreviewTarget.TrashFile -> EditOrigin.Local(target.entry.absolutePath, target.entry.isWritable)
                     is PreviewTarget.ContentFile -> EditOrigin.Content(target.entry.uri, target.entry.isWritable)
-                    is PreviewTarget.RemoteFile -> EditOrigin.Remote(
-                        profileId = target.profileId,
-                        connectionName = target.connectionName,
-                        path = target.remote.path,
-                    )
                     is PreviewTarget.PrivilegedFile -> if (target.localOrigin) {
                         EditOrigin.Local(target.entry.absolutePath, target.entry.isWritable)
                     } else EditOrigin.Privileged(target.entry.absolutePath, target.entry.isWritable)
                     is PreviewTarget.ArchiveEntry,
                     is PreviewTarget.Archive,
-                    is PreviewTarget.RemoteArchive,
                     -> error("Šio peržiūros tipo tiesiogiai redaguoti negalima")
                 }
                 prepared = withContext(Dispatchers.IO) {
@@ -2758,10 +2645,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     stagedLineEnding = document?.lineEnding,
                     status = if (internalTextEditor) "Paruošta redaguoti" else "Redaguojama kopija paruošta",
                 )
-                if (source is PreviewSource.Remote) {
-                    val removed = withContext(Dispatchers.IO) { remotePreviewCache.discard(source.cachedFile) }
-                    if (!removed) message("Laikinos pradinio failo kopijos pašalinti nepavyko", true)
-                }
                 if (source is PreviewSource.Privileged) {
                     val removed = withContext(Dispatchers.IO) { graph.privilegedFiles.discardPreview(source.cachedFile) }
                     if (!removed) message("Laikinos pradinio failo kopijos pašalinti nepavyko", true)
@@ -2850,7 +2733,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     is EditOrigin.Content -> withContext(Dispatchers.IO) {
                         saveContentOrigin(session, forceOverwrite)
                     }
-                    is EditOrigin.Remote -> saveRemoteOrigin(session, forceOverwrite)
                     is EditOrigin.Privileged -> withContext(Dispatchers.IO) {
                         graph.privilegedFiles.saveOrigin(session, forceOverwrite)
                     }
@@ -2904,7 +2786,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 refreshPanel(PanelId.LEFT)
                                 refreshPanel(PanelId.RIGHT)
                             }
-                            is EditOrigin.Remote -> refreshRemote()
                             is EditOrigin.Privileged -> refreshAdvancedBrowser()
                             is EditOrigin.Content -> Unit
                         }
@@ -3008,30 +2889,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         saveFileEditAsDestination(destination, policy)
     }
 
-    fun saveFileEditAsRemote(
-        directoryPath: String,
-        requestedName: String,
-        policy: EditExistingPolicy = EditExistingPolicy.ASK,
-    ) {
-        val profile = _networkState.value.connectedProfile
-        if (profile == null || remoteClient == null) {
-            _fileEditState.update { it.copy(error = "Prieš išsaugodami serveryje prisijunkite prie serverio") }
-            return
-        }
-        val destination = runCatching {
-            val name = EditDestinationRules.validateFileName(requestedName)
-            EditDestination.Remote(
-                profileId = profile.id,
-                connectionName = profile.name,
-                path = RemotePath.join(directoryPath, name),
-            )
-        }.getOrElse { error ->
-            _fileEditState.update { it.copy(error = error.message ?: "Netinkamas failo vardas") }
-            return
-        }
-        saveFileEditAsDestination(destination, policy)
-    }
-
     fun resolveFileEditSaveAsConflict(policy: EditExistingPolicy) {
         require(policy != EditExistingPolicy.ASK) { "Choose replace or keep both" }
         val destination = _fileEditState.value.saveAsConflict?.destination ?: return
@@ -3041,11 +2898,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissFileEditSaveAsConflict() {
         _fileEditState.update { it.copy(saveAsConflict = null) }
-    }
-
-    suspend fun listRemoteDirectoryForEdit(path: String): Result<List<RemoteEntry>> {
-        val client = remoteClient ?: return Result.failure(IllegalStateException("Server connection is not active"))
-        return runCatching { graph.remoteEdits.listDirectories(client, path) }
     }
 
     private fun saveFileEditAsDestination(destination: EditDestination, policy: EditExistingPolicy) {
@@ -3084,22 +2936,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 graph.sharedStorageIndex.changed(listOf(File(actual.path)))
                             }
                         }
-                    }
-                    is EditDestination.Remote -> {
-                        val profile = _networkState.value.connectedProfile
-                        val client = remoteClient
-                        require(profile?.id == destination.profileId && client != null) {
-                            "Vėl prisijunkite prie ${destination.connectionName}"
-                        }
-                        graph.remoteEdits.saveAs(
-                            session = session,
-                            client = client,
-                            profileId = destination.profileId,
-                            connectionName = destination.connectionName,
-                            directoryPath = RemotePath.normalize("${destination.path}/.."),
-                            requestedName = destination.displayName,
-                            policy = policy,
-                        )
                     }
                     is EditDestination.Content -> error("Content destinations use the Android document picker")
                 }
@@ -3151,7 +2987,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 refreshPanel(PanelId.LEFT)
                                 refreshPanel(PanelId.RIGHT)
                             }
-                            is EditDestination.Remote -> refreshRemote()
                             is EditDestination.Content -> Unit
                         }
                         if (shouldClose) {
@@ -3327,67 +3162,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun mergeFileEditConflict() {
-        val snapshot = _fileEditState.value
-        val session = snapshot.session ?: return
-        val origin = session.origin as? EditOrigin.Remote ?: run {
-            message("Trijų versijų sujungimas dabar galimas nuotoliniams teksto failams", true)
-            return
-        }
-        if (!session.usesInternalTextEditor || snapshot.conflict == null || snapshot.saving || snapshot.modifyingPdf) return
-        val profile = _networkState.value.connectedProfile
-        val client = remoteClient
-        if (profile?.id != origin.profileId || client == null) {
-            message("Prieš sujungdami vėl prisijunkite prie ${origin.connectionName}", true)
-            return
-        }
-        val requestId = ++fileEditRequestId
-        fileEditJob?.cancel()
-        _fileEditState.update { it.copy(saving = true, status = "Lyginamos trys versijos…", error = null) }
-        fileEditJob = viewModelScope.launch {
-            try {
-                val encoding = snapshot.encoding ?: TextEncoding.UTF8
-                val base = withContext(Dispatchers.IO) { graph.editSessions.readBaseTextDocument(session, encoding) }
-                val yours = withContext(Dispatchers.IO) { graph.editSessions.readTextDocument(session, encoding) }
-                val current = graph.remoteEdits.readCurrentText(session, client, encoding)
-                    ?: throw IllegalStateException("The current remote file no longer exists")
-                val merge = withContext(Dispatchers.Default) {
-                    graph.textMerge.merge(base.text, yours.text, current.document.text)
-                }
-                val rebased = withContext(Dispatchers.IO) {
-                    graph.editSessions.rebaseAfterMerge(session, current.revision, current.document)
-                }
-                _fileEditState.update { state ->
-                    if (state.session?.id != session.id) state else state.copy(
-                        session = rebased,
-                        text = merge.text,
-                        textChanged = merge.text != yours.text,
-                        saving = false,
-                        conflict = null,
-                        status = if (merge.clean) {
-                            "Pakeitimai sujungti. Peržiūrėkite ir išsaugokite rezultatą."
-                        } else {
-                            "Redaktoriuje pažymėta konfliktų: ${merge.conflicts.size}. Išspręskite žymeklius ir išsaugokite."
-                        },
-                        error = null,
-                    )
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                _fileEditState.update {
-                    it.copy(saving = false, error = error.message ?: "Trijų versijų sujungimas nepavyko")
-                }
-            } finally {
-                if (fileEditRequestId == requestId) fileEditJob = null
-            }
-        }
-    }
-
     fun clearShovelClipboard() {
         _shovelClipboard.value = null
         _clipboard.value = null
-        _remoteClipboard.value = null
     }
 
     fun copyArchiveEntryToSet(entryPath: String) {
@@ -3421,7 +3198,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
         _shovelClipboard.value = ShovelClipboardState(merged.items)
         _clipboard.value = null
-        _remoteClipboard.value = null
         message(if (merged.addedCount > 0) "Archyvo įrašas pridėtas prie kopijavimo rinkinio" else "Archyvo įrašas jau yra kopijavimo rinkinyje")
     }
 
@@ -3826,8 +3602,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             is PreviewTarget.Archive -> "Keliama į šiukšlinę"
             is PreviewTarget.TrashFile -> "Šalinama iš šiukšliadėžės"
             is PreviewTarget.ContentFile -> "Šalinamas Android dokumentas"
-            is PreviewTarget.RemoteFile -> "Šalinama iš serverio"
-            is PreviewTarget.RemoteArchive -> "Šalinama iš serverio"
             is PreviewTarget.PrivilegedFile -> if (target.localOrigin) "Keliama į šiukšlinę" else "Šalinamas apsaugotas failas"
             is PreviewTarget.ArchiveEntry -> return
         }
@@ -3842,8 +3616,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     graph.contentFiles.delete(target.entry.uri).getOrThrow()
                     progress(itemDelta = 1, byteDelta = target.entry.sizeBytes ?: 0L, currentName = target.entry.name)
                 }
-                is PreviewTarget.RemoteFile -> deleteRemotePreviewTarget(target.profileId, target.connectionName, target.remote, this)
-                is PreviewTarget.RemoteArchive -> deleteRemotePreviewTarget(target.profileId, target.connectionName, target.remote, this)
                 is PreviewTarget.PrivilegedFile -> if (target.localOrigin) {
                     graph.trash.moveToTrash(listOf(target.entry.absolutePath), this)
                 } else graph.privilegedFiles.deletePermanently(listOf(target.entry.absolutePath), this)
@@ -3851,9 +3623,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             if (_preview.value == target) closePreviewImmediately()
             when (target) {
-                is PreviewTarget.RemoteFile,
-                is PreviewTarget.RemoteArchive,
-                -> refreshRemote()
                 is PreviewTarget.PrivilegedFile -> if (!target.localOrigin) refreshAdvancedBrowser() else {
                     refreshPanel(PanelId.LEFT)
                     refreshPanel(PanelId.RIGHT)
@@ -3870,25 +3639,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }.onFailure { message(it.message ?: "Trynimo pradėti nepavyko", true) }
-    }
-
-    private suspend fun deleteRemotePreviewTarget(
-        profileId: String,
-        connectionName: String,
-        entry: RemoteEntry,
-        operation: OperationContext,
-    ) {
-        val profile = _networkState.value.connectedProfile
-        require(profile?.id == profileId) { "Prieš trindami vėl prisijunkite prie $connectionName" }
-        val client = remoteClient ?: throw IllegalStateException("Serverio ryšys neaktyvus")
-        operation.setTotals(1, entry.sizeBytes.takeIf { !entry.directory })
-        operation.checkpoint()
-        client.delete(entry.path, recursive = entry.directory)
-        operation.progress(
-            itemDelta = 1,
-            byteDelta = entry.sizeBytes.takeIf { !entry.directory } ?: 0L,
-            currentName = entry.name,
-        )
     }
 
     fun cancelAnalysis() {
@@ -4250,7 +4000,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
         _shovelClipboard.value = ShovelClipboardState(merged.items)
         _clipboard.value = null
-        _remoteClipboard.value = null
         message(if (merged.addedCount > 0) "Archyvo įrašai pridėti prie kopijavimo rinkinio: ${merged.addedCount}" else "Pasirinkti archyvo įrašai jau yra kopijavimo rinkinyje")
     }
 
@@ -4858,778 +4607,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _safBrowser.value = SafBrowserUiState()
     }
 
-    fun openNextcloudSetup() {
-        nextcloudLoginJob?.cancel()
-        nextcloudLoginJob = null
-        _section.value = AppSection.CONNECTIONS
-        _nextcloudLogin.value = NextcloudLoginUiState(open = true)
-    }
-
-    fun updateNextcloudServer(value: String) {
-        if (_nextcloudLogin.value.running) return
-        _nextcloudLogin.update { it.copy(server = value.take(8_192), error = null) }
-    }
-
-    fun cancelNextcloudSetup() {
-        nextcloudLoginJob?.cancel()
-        nextcloudLoginJob = null
-        _nextcloudLogin.value = NextcloudLoginUiState()
-    }
-
-    fun startNextcloudLogin(openBrowser: (String) -> Unit) {
-        val server = _nextcloudLogin.value.server.trim()
-        if (server.isEmpty() || _nextcloudLogin.value.running) return
-        nextcloudLoginJob?.cancel()
-        nextcloudLoginJob = viewModelScope.launch {
-            _nextcloudLogin.update { it.copy(phase = NextcloudLoginPhase.STARTING, error = null) }
-            try {
-                val login = nextcloudLoginClient.begin(server)
-                _nextcloudLogin.update { it.copy(phase = NextcloudLoginPhase.WAITING_FOR_BROWSER) }
-                openBrowser(login.loginUrl)
-                nextcloudLoginClient.await(login).use { credentials ->
-                    _nextcloudLogin.update { it.copy(phase = NextcloudLoginPhase.SAVING) }
-                    val profile = credentials.profile()
-                    graph.networkProfiles.save(profile, credentials.appPassword.copyOf()).getOrThrow()
-                    val profiles = graph.networkProfiles.list()
-                    _networkState.update { it.copy(profiles = profiles) }
-                    _nextcloudLogin.value = NextcloudLoginUiState()
-                    message("Nextcloud paskyra prijungta")
-                    connectNetwork(profile)
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                _nextcloudLogin.update {
-                    it.copy(
-                        phase = NextcloudLoginPhase.IDLE,
-                        error = (error.message ?: "Nextcloud prijungti nepavyko").take(240),
-                    )
-                }
-            } finally {
-                nextcloudLoginJob = null
-            }
-        }
-    }
-
-    fun refreshProfiles() {
-        viewModelScope.launch {
-            runCatching { graph.networkProfiles.list() }
-                .onSuccess { profiles -> _networkState.update { it.copy(profiles = profiles) } }
-                .onFailure { message(it.message ?: "Profilių perskaityti nepavyko", true) }
-        }
-    }
-
-    fun saveNetworkProfile(profile: NetworkProfile, password: CharArray?, privateKeyPem: CharArray? = null) {
-        val editing = profile.id.isNotBlank()
-        viewModelScope.launch {
-            graph.networkProfiles.save(profile, password, privateKeyPem).fold(
-                onSuccess = {
-                    refreshProfiles()
-                    message(if (editing) "Jungtis atnaujinta" else "Jungtis išsaugota")
-                },
-                onFailure = { message(it.message ?: "Profilio išsaugoti nepavyko", true) },
-            )
-        }
-    }
-
-    fun removeNetworkProfile(id: String) {
-        viewModelScope.launch {
-            graph.networkProfiles.remove(id).fold(
-                onSuccess = { refreshProfiles() },
-                onFailure = { message(it.message ?: "Profilio pašalinti nepavyko", true) },
-            )
-        }
-    }
-
-    fun connectNetwork(profile: NetworkProfile) {
-        viewModelScope.launch {
-            val normalizedProfile = NetworkProfileRules.normalize(profile)
-            val profileProblem = runCatching { NetworkProfileRules.validate(normalizedProfile) }
-                .exceptionOrNull()
-                ?.message
-            if (profileProblem != null) {
-                _networkState.update {
-                    it.copy(loading = false, error = RemoteErrorPresenter.invalidProfile(profileProblem))
-                }
-                return@launch
-            }
-            disconnectRemote()
-            _networkState.update { it.copy(loading = true, error = null) }
-            val result = runCatching {
-                val initial = openRemoteConnection(normalizedProfile)
-                ReconnectingRemoteClient(
-                    initial = initial,
-                    reconnect = {
-                        val latest = graph.networkProfiles.list().firstOrNull { it.id == normalizedProfile.id }
-                            ?: throw IllegalArgumentException("Profilis neberastas")
-                        openRemoteConnection(latest)
-                    },
-                    onReconnected = { message("Nuotolinis ryšys automatiškai atkurtas") },
-                )
-            }
-            result.onSuccess { client ->
-                remoteClient = client
-                if (client.verifiedHostFingerprint != null && normalizedProfile.expectedHostKeySha256 == null) {
-                    graph.networkProfiles.updateSftpFingerprint(normalizedProfile.id, requireNotNull(client.verifiedHostFingerprint)).getOrThrow()
-                    refreshProfiles()
-                }
-                val path = RemotePath.normalize(normalizedProfile.basePath)
-                val identity = remoteDirectoryIdentity(normalizedProfile.id, path)
-                val displaySettings = savedDirectoryDisplaySettings(identity)
-                val sortSettings = savedDirectorySortSettings(identity)
-                _networkState.update {
-                    it.copy(
-                        connectedProfile = normalizedProfile,
-                        path = path,
-                        entries = emptyList(),
-                        selectedPaths = emptySet(),
-                        backHistory = emptyList(),
-                        forwardHistory = emptyList(),
-                        loading = false,
-                        error = null,
-                        sortMode = sortSettings.mode,
-                        sortDirection = sortSettings.direction,
-                    ).withDirectoryDisplaySettings(displaySettings)
-                }
-                refreshRemote(path)
-            }.onFailure { error ->
-                _networkState.update {
-                    it.copy(
-                        loading = false,
-                        error = RemoteErrorPresenter.present(normalizedProfile.protocol, RemoteOperation.CONNECT, error),
-                    )
-                }
-            }
-        }
-    }
-
-    fun navigateRemote(path: String): Boolean {
-        val target = RemotePath.normalize(path)
-        val current = _networkState.value
-        if (target == current.path) return false
-        val profileId = current.connectedProfile?.id ?: return false
-        val identity = remoteDirectoryIdentity(profileId, target)
-        val displaySettings = savedDirectoryDisplaySettings(identity)
-        val sortSettings = savedDirectorySortSettings(identity)
-        cancelRemoteFileOpen()
-        _networkState.update {
-            it.copy(
-                path = target,
-                entries = emptyList(),
-                selectedPaths = emptySet(),
-                backHistory = (it.backHistory + it.path).takeLast(50),
-                forwardHistory = emptyList(),
-                loading = true,
-                error = null,
-            ).withDirectoryDisplaySettings(displaySettings)
-                .withDirectorySortSettings(sortSettings)
-        }
-        refreshRemote(target)
-        return true
-    }
-
-    fun navigateRemoteBack(): Boolean {
-        val current = _networkState.value
-        val target = current.backHistory.lastOrNull() ?: return false
-        val profileId = current.connectedProfile?.id ?: return false
-        val identity = remoteDirectoryIdentity(profileId, target)
-        val displaySettings = savedDirectoryDisplaySettings(identity)
-        val sortSettings = savedDirectorySortSettings(identity)
-        cancelRemoteFileOpen()
-        _networkState.update {
-            it.copy(
-                path = target,
-                entries = emptyList(),
-                selectedPaths = emptySet(),
-                backHistory = it.backHistory.dropLast(1),
-                forwardHistory = (it.forwardHistory + it.path).takeLast(50),
-                loading = true,
-                error = null,
-            ).withDirectoryDisplaySettings(displaySettings)
-                .withDirectorySortSettings(sortSettings)
-        }
-        refreshRemote(target)
-        return true
-    }
-
-    fun navigateRemoteForward(): Boolean {
-        val current = _networkState.value
-        val target = current.forwardHistory.lastOrNull() ?: return false
-        val profileId = current.connectedProfile?.id ?: return false
-        val identity = remoteDirectoryIdentity(profileId, target)
-        val displaySettings = savedDirectoryDisplaySettings(identity)
-        val sortSettings = savedDirectorySortSettings(identity)
-        cancelRemoteFileOpen()
-        _networkState.update {
-            it.copy(
-                path = target,
-                entries = emptyList(),
-                selectedPaths = emptySet(),
-                backHistory = (it.backHistory + it.path).takeLast(50),
-                forwardHistory = it.forwardHistory.dropLast(1),
-                loading = true,
-                error = null,
-            ).withDirectoryDisplaySettings(displaySettings)
-                .withDirectorySortSettings(sortSettings)
-        }
-        refreshRemote(target)
-        return true
-    }
-
-    fun navigateRemoteUp(): Boolean {
-        val current = _networkState.value.path
-        if (current == "/") return false
-        return navigateRemote(RemotePath.normalize("$current/.."))
-    }
-
-    fun openRemoteEntry(entry: RemoteEntry) {
-        if (entry.directory) {
-            navigateRemote(entry.path)
-            return
-        }
-        val state = _networkState.value
-        val profile = state.connectedProfile ?: return
-        val client = remoteClient ?: return
-        if (entry.sizeBytes !in 0..RemotePreviewCache.MAX_FILE_BYTES) {
-            message("Nuotolinis failas per didelis greitajai peržiūrai. Naudokite „Kopijuoti į telefoną“.", true)
-            return
-        }
-
-        cancelRemoteFileOpen()
-        val requestId = ++remoteFileOpenRequestId
-        remoteFileOpenJob = viewModelScope.launch {
-            var destination: File? = null
-            _networkState.update { it.copy(openingPath = entry.path) }
-            try {
-                destination = withContext(Dispatchers.IO) {
-                    remotePreviewCache.createDestination(profile.id, entry)
-                }
-                client.download(
-                    remotePath = entry.path,
-                    localDestination = requireNotNull(destination),
-                    operation = OperationContext.background(),
-                    maxBytes = RemotePreviewCache.MAX_FILE_BYTES,
-                )
-                withContext(Dispatchers.IO) {
-                    remotePreviewCache.validateCompleted(requireNotNull(destination))
-                }
-                if (remoteClient !== client || _networkState.value.connectedProfile?.id != profile.id) {
-                    withContext(Dispatchers.IO) { remotePreviewCache.discard(destination) }
-                    return@launch
-                }
-
-                val cachedFile = requireNotNull(destination)
-                val kind = FileSystemRules.detectKind(entry.name, mimeType = null, isDirectory = false)
-                val openedTarget = if (kind == EntryKind.ARCHIVE) {
-                    val previewEntry = FileEntry(
-                        absolutePath = cachedFile.absolutePath,
-                        name = entry.name,
-                        kind = kind,
-                        sizeBytes = cachedFile.length().coerceAtLeast(0),
-                        modifiedAtMillis = entry.modifiedAtMillis ?: cachedFile.lastModified().coerceAtLeast(0),
-                        isHidden = entry.name.startsWith('.'),
-                        isReadable = cachedFile.canRead(),
-                        isWritable = false,
-                    )
-                    val archiveEntries = graph.archives.list(cachedFile)
-                    PreviewTarget.RemoteArchive(
-                        remote = entry,
-                        file = previewEntry,
-                        profileId = profile.id,
-                        connectionName = profile.name,
-                        entries = archiveEntries,
-                    )
-                } else {
-                    PreviewTarget.RemoteFile(
-                        remote = entry,
-                        cachedFile = cachedFile,
-                        profileId = profile.id,
-                        connectionName = profile.name,
-                    )
-                }
-                val previousTarget = _preview.value
-                _preview.value = openedTarget
-                val previousFile = previousTarget.remoteCachedFile()
-                if (previousFile != null && previousFile.absolutePath != cachedFile.absolutePath) {
-                    withContext(Dispatchers.IO) { remotePreviewCache.discard(previousFile) }
-                }
-            } catch (cancelled: CancellationException) {
-                withContext(NonCancellable + Dispatchers.IO) { remotePreviewCache.discard(destination) }
-                throw cancelled
-            } catch (_: Throwable) {
-                withContext(Dispatchers.IO) { remotePreviewCache.discard(destination) }
-                message("Nuotolinio failo atidaryti nepavyko", true)
-            } finally {
-                if (remoteFileOpenRequestId == requestId) {
-                    _networkState.update { it.copy(openingPath = null) }
-                    remoteFileOpenJob = null
-                }
-            }
-        }
-    }
-
-    fun toggleRemoteHidden() {
-        _networkState.update { state ->
-            val updated = state.copy(includeHidden = !state.includeHidden)
-            val available = visibleRemoteEntries(updated).map(RemoteEntry::path)
-            updated.copy(selectedPaths = RemoteSelectionRules.retainAvailable(updated.selectedPaths, available))
-        }
-    }
-
-    fun toggleRemoteGrid() {
-        val current = _networkState.value
-        setRemoteDirectoryDisplaySettings(
-            current.directoryDisplaySettings().copy(
-                layoutMode = if (current.grid) DirectoryLayoutMode.LIST else DirectoryLayoutMode.GRID,
-                showThumbnails = false,
-            ),
-        )
-    }
-
-    fun setRemoteDirectoryDisplaySettings(settings: DirectoryDisplaySettings) {
-        val current = _networkState.value
-        val profileId = current.connectedProfile?.id ?: return
-        val remoteSettings = settings.copy(showThumbnails = false)
-        val identity = remoteDirectoryIdentity(profileId, current.path)
-        runCatching { graph.navigation.setDirectoryDisplaySettings(identity, remoteSettings) }
-            .onSuccess { _networkState.update { it.withDirectoryDisplaySettings(remoteSettings) } }
-            .onFailure { message(it.message ?: "Katalogo vaizdo nustatymo išsaugoti nepavyko", true) }
-    }
-
-    fun setRemoteSort(mode: SortMode) {
-        val snapshot = _networkState.value
-        val profileId = snapshot.connectedProfile?.id ?: return
-        val next = DirectorySortSettings(
-            mode = mode,
-            direction = if (snapshot.sortMode == mode && snapshot.sortDirection == SortDirection.ASCENDING) {
-                SortDirection.DESCENDING
-            } else {
-                SortDirection.ASCENDING
-            },
-        )
-        val identity = remoteDirectoryIdentity(profileId, snapshot.path)
-        runCatching { graph.navigation.setDirectorySortSettings(identity, next) }
-            .onSuccess { _networkState.update { it.withDirectorySortSettings(next) } }
-            .onFailure { message(it.message ?: "Katalogo rūšiavimo nustatymo išsaugoti nepavyko", true) }
-    }
-
-    private val _networkProfileEditor = MutableStateFlow<NetworkProfile?>(null)
-    val networkProfileEditor = _networkProfileEditor.asStateFlow()
-
-    fun openNetworkProfileEditor(profile: NetworkProfile) {
-        _networkProfileEditor.value = profile
-        _section.value = AppSection.CONNECTIONS
-    }
-
-    fun consumeNetworkProfileEditor() { _networkProfileEditor.value = null }
-
-    fun openCloudProfile(profile: NetworkProfile) {
-        _section.value = AppSection.CONNECTIONS
-        connectNetwork(profile)
-    }
-
-    fun setRemoteSort(mode: SortMode, direction: SortDirection) {
-        val snapshot = _networkState.value
-        val profileId = snapshot.connectedProfile?.id ?: return
-        val next = DirectorySortSettings(mode, direction)
-        val identity = remoteDirectoryIdentity(profileId, snapshot.path)
-        runCatching { graph.navigation.setDirectorySortSettings(identity, next) }
-            .onSuccess { _networkState.update { it.withDirectorySortSettings(next) } }
-            .onFailure { message(it.message ?: "Katalogo rūšiavimo nustatymo išsaugoti nepavyko", true) }
-    }
-
-    fun refreshRemote(path: String = _networkState.value.path) {
-        val client = remoteClient ?: return
-        val protocol = _networkState.value.connectedProfile?.protocol ?: return
-        val profileId = _networkState.value.connectedProfile?.id ?: return
-        val normalizedPath = RemotePath.normalize(path)
-        val identity = remoteDirectoryIdentity(profileId, normalizedPath)
-        val displaySettings = savedDirectoryDisplaySettings(identity)
-        val sortSettings = savedDirectorySortSettings(identity)
-        viewModelScope.launch {
-            _networkState.update { state ->
-                val updated = state.copy(
-                    path = normalizedPath,
-                    selectedPaths = if (state.path == normalizedPath) state.selectedPaths else emptySet(),
-                    loading = true,
-                    error = null,
-                )
-                if (state.path == normalizedPath) {
-                    updated
-                } else {
-                    updated.withDirectoryDisplaySettings(displaySettings).withDirectorySortSettings(sortSettings)
-                }
-            }
-            runCatching { client.list(normalizedPath) }
-                .onSuccess { entries ->
-                    _networkState.update { state ->
-                        if (state.path != normalizedPath) {
-                            state
-                        } else {
-                            val updated = state.copy(entries = entries, loading = false)
-                            val available = visibleRemoteEntries(updated).map(RemoteEntry::path)
-                            updated.copy(
-                                selectedPaths = RemoteSelectionRules.retainAvailable(updated.selectedPaths, available),
-                            )
-                        }
-                    }
-                }
-                .onFailure { error ->
-                    _networkState.update {
-                        it.copy(loading = false, error = RemoteErrorPresenter.present(protocol, RemoteOperation.LIST, error))
-                    }
-                }
-        }
-    }
-
-    fun toggleRemoteSelection(path: String) {
-        var limitReached = false
-        _networkState.update { state ->
-            val available = visibleRemoteEntries(state).map(RemoteEntry::path)
-            val result = RemoteSelectionRules.toggle(
-                current = state.selectedPaths,
-                availablePaths = available,
-                path = path,
-                maximum = RemoteCopyEngine.MAX_SELECTED_ROOTS,
-            )
-            limitReached = result.limitReached
-            state.copy(selectedPaths = result.selectedPaths)
-        }
-        if (limitReached) message("Vienu metu galima pasirinkti iki ${RemoteCopyEngine.MAX_SELECTED_ROOTS} failų ar aplankų", true)
-    }
-
-    fun selectAllRemote() {
-        var limitReached = false
-        _networkState.update { state ->
-            val result = RemoteSelectionRules.selectAll(
-                availablePaths = visibleRemoteEntries(state).map(RemoteEntry::path),
-                maximum = RemoteCopyEngine.MAX_SELECTED_ROOTS,
-            )
-            limitReached = result.limitReached
-            state.copy(selectedPaths = result.selectedPaths)
-        }
-        if (limitReached) message("Pasirinkti pirmi ${RemoteCopyEngine.MAX_SELECTED_ROOTS} elementų", true)
-    }
-
-    fun selectRemotePaths(paths: List<String>) {
-        var limitReached = false
-        _networkState.update { state ->
-            val available = visibleRemoteEntries(state).map(RemoteEntry::path).toHashSet()
-            val requested = paths.filter(available::contains).distinct()
-            val result = RemoteSelectionRules.selectAll(requested, RemoteCopyEngine.MAX_SELECTED_ROOTS)
-            limitReached = result.limitReached
-            state.copy(selectedPaths = result.selectedPaths)
-        }
-        if (limitReached) message("Pasirinkti pirmi ${RemoteCopyEngine.MAX_SELECTED_ROOTS} elementų", true)
-    }
-
-    fun setRemoteSelection(paths: List<String>, selected: Boolean) {
-        if (paths.isEmpty()) return
-        var limitReached = false
-        _networkState.update { state ->
-            val result = RemoteSelectionRules.set(
-                current = state.selectedPaths,
-                availablePaths = visibleRemoteEntries(state).map(RemoteEntry::path),
-                paths = paths,
-                selected = selected,
-                maximum = RemoteCopyEngine.MAX_SELECTED_ROOTS,
-            )
-            limitReached = result.limitReached
-            state.copy(selectedPaths = result.selectedPaths)
-        }
-        if (limitReached) message("Vienu metu galima pasirinkti iki ${RemoteCopyEngine.MAX_SELECTED_ROOTS} failų ar aplankų", true)
-    }
-
-    fun clearRemoteSelection() {
-        _networkState.update { it.copy(selectedPaths = emptySet()) }
-    }
-
-    fun copyRemoteSelection() {
-        val state = _networkState.value
-        val entries = state.entries.filter { it.path in state.selectedPaths }
-        setRemoteClipboard(entries)
-    }
-
-    fun addRemoteSelectionToClipboard() {
-        val state = _networkState.value
-        val entries = state.entries.filter { it.path in state.selectedPaths }
-        setRemoteClipboard(entries, append = true)
-    }
-
-    fun copyRemoteEntry(entry: RemoteEntry) {
-        setRemoteClipboard(listOf(entry))
-    }
-
-    private fun setRemoteClipboard(entries: List<RemoteEntry>, append: Boolean = false) {
-        val profile = _networkState.value.connectedProfile ?: return
-        val additional = entries.map { entry ->
-            ShovelSourceRef(
-                location = ShovelLocationRef.remote(profile.id, profile.name, entry.path),
-                displayName = entry.name,
-            ).normalized()
-        }
-        val existing = if (append) {
-            val current = _shovelClipboard.value
-            if (current == null) {
-                message("Nėra kopijavimo rinkinio, kurį būtų galima papildyti", true)
-                return
-            }
-            if (current.moveAfterVerifiedCopies) {
-                message("Iškirptų elementų negalima maišyti su „Kopijuoti daugiau“. Pradėkite naują rinkinį.", true)
-                return
-            }
-            current.sources
-        } else {
-            emptyList()
-        }
-        val merged = ClipboardMergeRules.merge(
-            existing = existing,
-            additional = additional,
-            maximum = ShovelWorkflowLimits.MAX_SOURCE_ROOTS,
-            key = { source -> "${source.kind}:${source.location.identityKey()}:${source.archiveEntryPath.orEmpty()}" },
-        )
-        if (merged.items.isEmpty()) return
-        _shovelClipboard.value = ShovelClipboardState(merged.items)
-        val onlyThisProfile = merged.items.all {
-            it.kind == com.shovel.filemanager.workflow.ShovelSourceKind.FILE_SYSTEM &&
-                it.location.kind == ShovelLocationKind.REMOTE &&
-                it.location.profileId == profile.id
-        }
-        _remoteClipboard.value = if (onlyThisProfile) {
-            val legacyExisting = if (append && _remoteClipboard.value?.profileId == profile.id) {
-                _remoteClipboard.value?.entries.orEmpty()
-            } else {
-                emptyList()
-            }
-            val legacy = ClipboardMergeRules.merge(
-                existing = legacyExisting,
-                additional = entries,
-                maximum = RemoteCopyEngine.MAX_SELECTED_ROOTS,
-                key = { entry -> RemotePath.normalize(entry.path) },
-            )
-            RemoteClipboardState(profile.id, legacy.items)
-        } else {
-            null
-        }
-        _clipboard.value = null
-        clearRemoteSelection()
-        if (append) {
-            message(
-                if (merged.addedCount == 0) {
-                    "Visi pasirinkti elementai jau yra kopijavimo rinkinyje (iš viso ${merged.items.size})"
-                } else {
-                    "Iš šio serverio pridėta: ${merged.addedCount} · iš viso ${merged.items.size}"
-                },
-            )
-        } else {
-            message("Nukopijuota iš serverio: ${merged.items.size}")
-        }
-        if (merged.limitReached) {
-            message("Pasiekta kopijavimo rinkinio riba: ${ShovelWorkflowLimits.MAX_SOURCE_ROOTS} elementų", true)
-        }
-    }
-
-    fun connectSavedNetworkProfile(profileId: String) {
-        viewModelScope.launch {
-            val profile = graph.networkProfiles.list().firstOrNull { it.id == profileId }
-            if (profile == null) {
-                _networkState.update { it.copy(loading = false, error = RemoteErrorPresenter.invalidProfile("Profilis neberastas")) }
-            } else {
-                connectNetwork(profile)
-            }
-        }
-    }
-
-    fun pasteRemoteClipboard(destinationPanel: PanelId = _activePanel.value): Boolean {
-        val clipboard = _remoteClipboard.value ?: return false
-        val profile = _networkState.value.connectedProfile
-        if (profile == null || profile.id != clipboard.profileId || remoteClient == null) {
-            message("Serverio iškarpinė nebegalioja; prisijunkite prie to paties serverio", true)
-            return false
-        }
-        return enqueueRemoteDownload(clipboard.entries, destinationPanel)
-    }
-
-    fun remoteDownloadSelection(destinationPanel: PanelId = _activePanel.value) {
-        val state = _networkState.value
-        val entries = state.entries.filter { it.path in state.selectedPaths }
-        if (entries.isEmpty()) return
-        if (enqueueRemoteDownload(entries, destinationPanel)) clearRemoteSelection()
-    }
-
-    fun remoteDownload(entry: RemoteEntry, destinationPanel: PanelId = _activePanel.value) {
-        enqueueRemoteDownload(listOf(entry), destinationPanel)
-    }
-
-    private fun enqueueRemoteDownload(entries: List<RemoteEntry>, destinationPanel: PanelId): Boolean {
-        val client = remoteClient ?: return false
-        if (entries.isEmpty() || entries.size > RemoteCopyEngine.MAX_SELECTED_ROOTS) return false
-        val destination = File(panelFlow(destinationPanel).value.path)
-        val title = if (entries.size == 1) {
-            "Kopijuojama iš serverio: ${entries.first().name}"
-        } else {
-            "Kopijuojama iš serverio: ${entries.size}"
-        }
-        return graph.operationManager.submit(title) {
-            val result = graph.remoteCopies.download(entries, destination, client, this)
-            if (result.failures.isNotEmpty()) {
-                completeWithErrors(
-                    result.failures.size,
-                    result.failures.joinToString("; ") { "${it.sourceName}: ${it.message}" },
-                )
-            } else {
-                note("Nukopijuota į ${destination.absolutePath}")
-            }
-            if (result.copiedRoots > 0) refreshPanel(destinationPanel)
-            entries.asSequence()
-                .filterNot(RemoteEntry::directory)
-                .map { entry -> File(destination, entry.name) }
-                .filter(File::isFile)
-                .forEach { copied -> runCatching { graph.recentFiles.recordAdded(copied.absolutePath) } }
-            if (result.copiedRoots > 0) refreshRecentFiles()
-        }.onFailure { message(it.message ?: "Atsisiuntimo pradėti nepavyko", true) }.isSuccess
-    }
-
-    fun remoteUpload(localPaths: List<String>, remoteDirectory: String = _networkState.value.path): Boolean {
-        val client = remoteClient ?: return false
-        val sources = localPaths.distinct().map(::File)
-        if (sources.isEmpty() || sources.size > RemoteCopyEngine.MAX_SELECTED_ROOTS) return false
-        val normalizedRemoteDirectory = RemotePath.normalize(remoteDirectory)
-        return graph.operationManager.submit("Kopijuojama į serverį: ${sources.size}") {
-            val result = graph.remoteCopies.upload(sources, normalizedRemoteDirectory, client, this)
-            if (result.failures.isNotEmpty()) {
-                completeWithErrors(
-                    result.failures.size,
-                    result.failures.joinToString("; ") { "${it.sourceName}: ${it.message}" },
-                )
-            } else {
-                note("Nukopijuota į $normalizedRemoteDirectory")
-            }
-            if (result.copiedRoots > 0) refreshRemote(normalizedRemoteDirectory)
-        }.onFailure { message(it.message ?: "Įkėlimo pradėti nepavyko", true) }.isSuccess
-    }
-
-    fun pasteLocalClipboardToRemote(): Boolean {
-        val clipboard = _clipboard.value ?: return false
-        if (clipboard.source != ClipboardSource.LOCAL) {
-            message("Į serverį pirmiausia nukopijuokite failą iš apsaugotos vietos į telefoną", true)
-            return false
-        }
-        if (clipboard.mode != ClipboardMode.COPY) {
-            message("Į serverį galima įklijuoti tik nukopijuotus, ne iškirptus elementus", true)
-            return false
-        }
-        return remoteUpload(clipboard.paths)
-    }
-
     suspend fun listLocalDirectoryForUpload(path: String): Result<List<FileEntry>> = graph.localFiles.list(
         directoryPath = path,
         includeHidden = false,
         sortMode = SortMode.NAME,
         sortDirection = SortDirection.ASCENDING,
     )
-
-    fun remoteCreateDirectory(name: String) {
-        remoteCreateItem(name, directory = true)
-    }
-
-    fun remoteCreateFile(name: String) {
-        remoteCreateItem(name, directory = false)
-    }
-
-    private fun remoteCreateItem(name: String, directory: Boolean) {
-        val client = remoteClient ?: return
-        val state = _networkState.value
-        val protocol = state.connectedProfile?.protocol ?: return
-        val parentPath = state.path
-        val safeName = FileSystemRules.validateFileName(name).fold(
-            onSuccess = { it },
-            onFailure = {
-                message(it.message ?: "Netinkamas pavadinimas", true)
-                return
-            },
-        )
-        val operation = if (directory) RemoteOperation.CREATE_DIRECTORY else RemoteOperation.CREATE_FILE
-        viewModelScope.launch {
-            _networkState.update { it.copy(loading = true, error = null) }
-            runCatching {
-                val target = RemotePath.join(parentPath, safeName)
-                if (directory) client.createDirectory(target) else client.createFile(target)
-            }
-                .onSuccess {
-                    if (_networkState.value.path == parentPath) refreshRemote(parentPath)
-                    else _networkState.update { it.copy(loading = false) }
-                }
-                .onFailure { error ->
-                    _networkState.update {
-                        it.copy(loading = false, error = RemoteErrorPresenter.present(protocol, operation, error))
-                    }
-                }
-        }
-    }
-
-    fun remoteRename(entry: RemoteEntry, name: String) {
-        val client = remoteClient ?: return
-        val protocol = _networkState.value.connectedProfile?.protocol ?: return
-        viewModelScope.launch {
-            _networkState.update { it.copy(loading = true, error = null) }
-            runCatching { client.rename(entry.path, RemotePath.join(_networkState.value.path, name)) }
-                .onSuccess { refreshRemote() }
-                .onFailure { error ->
-                    _networkState.update {
-                        it.copy(loading = false, error = RemoteErrorPresenter.present(protocol, RemoteOperation.RENAME, error))
-                    }
-                }
-        }
-    }
-
-    fun remoteDelete(entry: RemoteEntry) {
-        remoteDelete(listOf(entry))
-    }
-
-    fun remoteDelete(entries: List<RemoteEntry>) {
-        val client = remoteClient ?: return
-        val protocol = _networkState.value.connectedProfile?.protocol ?: return
-        val selected = entries.distinctBy { RemotePath.normalize(it.path) }.take(RemoteCopyEngine.MAX_SELECTED_ROOTS)
-        if (selected.isEmpty()) return
-        graph.operationManager.submit("Šalinama iš serverio: ${selected.size}") {
-            _networkState.update { it.copy(loading = true, error = null) }
-            var firstFailure: Throwable? = null
-            var deleted = 0
-            setTotals(selected.size, selected.takeIf { values -> values.none(RemoteEntry::directory) }?.sumOf(RemoteEntry::sizeBytes))
-            selected.forEach { entry ->
-                checkpoint()
-                runCatching { client.delete(entry.path, recursive = entry.directory) }
-                    .onSuccess { deleted += 1; progress(itemDelta = 1, byteDelta = entry.sizeBytes.takeIf { !entry.directory } ?: 0L, currentName = entry.name) }
-                    .onFailure { if (firstFailure == null) firstFailure = it }
-            }
-            clearRemoteSelection()
-            val failure = firstFailure
-            if (failure == null) {
-                refreshRemote()
-            } else if (deleted > 0) {
-                completeWithErrors(selected.size - deleted, "Ištrinta: $deleted, nepavyko ištrinti: ${selected.size - deleted}")
-                refreshRemote()
-                message("Ištrinta: $deleted, nepavyko ištrinti: ${selected.size - deleted}", true)
-            } else {
-                _networkState.update {
-                    it.copy(
-                        loading = false,
-                        error = RemoteErrorPresenter.present(protocol, RemoteOperation.DELETE, failure),
-                    )
-                }
-            }
-        }.onFailure { message(it.message ?: "Trynimo pradėti nepavyko", true) }
-    }
-
-    suspend fun loadRemoteSelectionInfo(entries: Collection<RemoteEntry>): Result<FileSelectionSummary> = runCatching {
-        val client = remoteClient ?: throw IllegalStateException("Server connection is not active")
-        RemoteSelectionInfoScanner().scan(entries, client)
-    }
-
-    fun disconnectNetwork() {
-        viewModelScope.launch { disconnectRemote() }
-    }
 
     fun cancelOperation(id: String) = graph.durableTransfers.cancel(id)
     fun pauseOperation(id: String) = graph.operationManager.pause(id)
@@ -5650,7 +4633,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         searchDraftSaveRequests.close()
         recentFilesJob?.cancel()
         recentFilesJob = null
-        cancelRemoteFileOpen()
         fileEditRequestId += 1
         fileEditJob?.cancel()
         val editSession = _fileEditState.value.session
@@ -5659,12 +4641,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _preview.value = null
         graph.applicationScope.launch {
             graph.editSessions.discard(editSession)
-            remotePreviewCache.discard(previewTarget.remoteCachedFile())
             graph.privilegedFiles.discardPreview(previewTarget.privilegedCachedFile())
             discardArchiveMaterializations()
         }
-        remoteClient?.let { client -> graph.applicationScope.launch { client.close() } }
-        remoteClient = null
         super.onCleared()
     }
 
@@ -5692,9 +4671,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }.onFailure {
         message(it.message ?: "Katalogo rūšiavimo nustatymo perskaityti nepavyko", true)
     }.getOrDefault(DirectorySortSettings())
-
-    private fun remoteDirectoryIdentity(profileId: String, path: String): String =
-        "remote:$profileId:${RemotePath.normalize(path)}"
 
     private fun fileCategoryIdentity(category: FileCategory): String =
         "virtual:category/${category.name.lowercase()}"
@@ -5809,28 +4785,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sortDirection = settings.direction,
     )
 
-    private fun NetworkUiState.directoryDisplaySettings(): DirectoryDisplaySettings = DirectoryDisplaySettings(
-        layoutMode = if (grid) DirectoryLayoutMode.GRID else DirectoryLayoutMode.LIST,
-        iconScalePercent = iconScalePercent,
-        spacingScalePercent = spacingScalePercent,
-        gridColumns = gridColumns,
-        gridStyle = gridStyle,
-        showThumbnails = false,
-    )
-
-    private fun NetworkUiState.withDirectoryDisplaySettings(settings: DirectoryDisplaySettings): NetworkUiState = copy(
-        grid = settings.layoutMode == DirectoryLayoutMode.GRID,
-        iconScalePercent = settings.iconScalePercent,
-        spacingScalePercent = settings.spacingScalePercent,
-        gridColumns = settings.gridColumns,
-        gridStyle = settings.gridStyle,
-    )
-
-    private fun NetworkUiState.withDirectorySortSettings(settings: DirectorySortSettings): NetworkUiState = copy(
-        sortMode = settings.mode,
-        sortDirection = settings.direction,
-    )
-
     private fun tabsFlow(panel: PanelId): MutableStateFlow<PanelWorkspace> = if (panel == PanelId.LEFT) _leftTabs else _rightTabs
 
     private fun PanelWorkspace.withGlobalDisplayDefaults(
@@ -5937,13 +4891,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun visibleRemoteEntries(state: NetworkUiState): List<RemoteEntry> = RemoteBrowserRules.displayEntries(
-        entries = state.entries,
-        includeHidden = state.includeHidden,
-        sortMode = state.sortMode,
-        sortDirection = state.sortDirection,
-    )
-
     private fun closePreviewImmediately() {
         fileEditRequestId += 1
         fileEditJob?.cancel()
@@ -5965,19 +4912,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _preview.value = null
         graph.applicationScope.launch {
             val editRemoved = graph.editSessions.discard(session)
-            val previewRemoved = remotePreviewCache.discard(target.remoteCachedFile())
             val privilegedPreviewRemoved = graph.privilegedFiles.discardPreview(target.privilegedCachedFile())
             val archivePreviewRemoved = discardArchiveMaterializations()
-            if (!editRemoved || !previewRemoved || !privilegedPreviewRemoved || !archivePreviewRemoved) {
+            if (!editRemoved || !privilegedPreviewRemoved || !archivePreviewRemoved) {
                 message("Laikinos redagavimo kopijos pašalinti nepavyko", true)
             }
         }
-    }
-
-    private fun PreviewTarget?.remoteCachedFile(): File? = when (this) {
-        is PreviewTarget.RemoteFile -> cachedFile
-        is PreviewTarget.RemoteArchive -> file.file
-        else -> null
     }
 
     private fun PreviewTarget?.privilegedCachedFile(): File? = when (this) {
@@ -5987,13 +4927,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun PreviewTarget?.archiveFile(): File? = when (this) {
         is PreviewTarget.Archive -> file.file
-        is PreviewTarget.RemoteArchive -> file.file
         else -> null
     }
 
     private fun PreviewTarget?.archiveEntries(): List<ArchiveEntryInfo> = when (this) {
         is PreviewTarget.Archive -> entries
-        is PreviewTarget.RemoteArchive -> entries
         else -> emptyList()
     }
 
@@ -6002,7 +4940,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             when {
                 current !== expected -> current
                 current is PreviewTarget.Archive -> current.copy(entries = entries)
-                current is PreviewTarget.RemoteArchive -> current.copy(entries = entries)
                 else -> current
             }
         }
@@ -6104,51 +5041,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ?: throw FileNotFoundException("Pasirinkta vieta nesuteikė įrašomo srauto")
     }
 
-    private suspend fun saveRemoteOrigin(session: EditSession, forceOverwrite: Boolean): EditSaveResult {
-        val origin = session.origin as? EditOrigin.Remote ?: error("Edit session is not remote")
-        val profile = _networkState.value.connectedProfile
-        val client = remoteClient
-        require(profile?.id == origin.profileId && client != null) {
-            "Prieš išsaugodami pradiniame serveryje vėl prisijunkite prie ${origin.connectionName}"
-        }
-        return graph.remoteEdits.saveOrigin(session, client, forceOverwrite)
-    }
-
-    private suspend fun disconnectRemote() {
-        cancelRemoteFileOpen()
-        val client = remoteClient
-        remoteClient = null
-        runCatching { client?.close() }
-        _networkState.update {
-            it.copy(
-                connectedProfile = null,
-                path = "/",
-                entries = emptyList(),
-                selectedPaths = emptySet(),
-                backHistory = emptyList(),
-                forwardHistory = emptyList(),
-                openingPath = null,
-                loading = false,
-                error = null,
-            )
-        }
-        _remoteClipboard.value = null
-    }
-
-    private fun cancelRemoteFileOpen() {
-        remoteFileOpenRequestId += 1
-        remoteFileOpenJob?.cancel()
-        remoteFileOpenJob = null
-        _networkState.update { state ->
-            if (state.openingPath == null) state else state.copy(openingPath = null)
-        }
-    }
-
-    private suspend fun openRemoteConnection(profile: NetworkProfile): RemoteClient {
-        val normalized = NetworkProfileRules.normalize(profile)
-        NetworkProfileRules.validate(normalized)
-        return graph.networkProfiles.secret(normalized.id).getOrThrow().use { secret ->
-            graph.remoteClients.connect(normalized, secret)
-        }
-    }
 }

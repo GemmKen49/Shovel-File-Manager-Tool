@@ -93,7 +93,6 @@ import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.UiTranslator
 import com.shovel.filemanager.ui.screens.AnalyzeScreen
 import com.shovel.filemanager.ui.screens.AdvancedStorageBrowserDialog
-import com.shovel.filemanager.ui.screens.ConnectionsScreen
 import com.shovel.filemanager.ui.screens.FilesScreen
 import com.shovel.filemanager.ui.screens.ToolsScreen
 import com.shovel.filemanager.ui.screens.TrashBrowserDialog
@@ -109,7 +108,6 @@ private data class SectionDestination(
 private val destinations = listOf(
     SectionDestination(AppSection.FILES, "Failai", Icons.Rounded.Folder),
     SectionDestination(AppSection.ANALYZE, "Analizė", Icons.Rounded.Analytics),
-    SectionDestination(AppSection.CONNECTIONS, "Ryšiai", Icons.Rounded.Storage),
     SectionDestination(AppSection.TOOLS, "Daugiau", Icons.Rounded.MoreHoriz),
 )
 
@@ -124,15 +122,12 @@ fun ShovelApp(
     val lifecycleOwner = LocalLifecycleOwner.current
     val section by viewModel.section.collectAsStateWithLifecycle()
     val featureVisibility by viewModel.featureVisibility.collectAsStateWithLifecycle()
-    val networkState by viewModel.networkState.collectAsStateWithLifecycle()
     val visibleDestinations = destinations.filter { destination ->
         val feature = when (destination.section) {
             AppSection.ANALYZE -> OptionalFeature.ANALYSIS
-            AppSection.CONNECTIONS -> OptionalFeature.NETWORK
             else -> null
         }
-        feature == null || featureVisibility.isVisible(feature) || destination.section == section ||
-            destination.section == AppSection.CONNECTIONS && networkState.connectedProfile != null
+        feature == null || featureVisibility.isVisible(feature) || destination.section == section
     }
     val filesHomeVisible by viewModel.filesHomeVisible.collectAsStateWithLifecycle()
     val operations by viewModel.operations.collectAsStateWithLifecycle()
@@ -162,7 +157,6 @@ fun ShovelApp(
     val activePanelState = if (activePanel == PanelId.LEFT) leftPanel else rightPanel
     val selectionDockVisible = when (section) {
         AppSection.FILES -> activePanelState.selectedPaths.isNotEmpty()
-        AppSection.CONNECTIONS -> networkState.selectedPaths.isNotEmpty()
         else -> false
     }
     val visibleOperation = operations.firstOrNull {
@@ -182,10 +176,6 @@ fun ShovelApp(
         hasParent = File(activePanelState.path).parentFile != null &&
             !sameNormalizedPath(Environment.getExternalStorageDirectory().absolutePath, activePanelState.path) &&
             storageRoots.none { root -> sameNormalizedPath(root.path, activePanelState.path) },
-        remoteSelectedCount = networkState.selectedPaths.size,
-        remoteConnected = networkState.connectedProfile != null,
-        remoteHasBackHistory = networkState.backHistory.isNotEmpty(),
-        remoteHasParent = networkState.path != "/",
     )
 
     BackHandler(
@@ -194,9 +184,6 @@ fun ShovelApp(
         when (systemBackAction) {
             SystemBackAction.CLOSE_PREVIEW -> viewModel.closePreview()
             SystemBackAction.SHOW_FILES -> viewModel.showFilesHome()
-            SystemBackAction.CLEAR_REMOTE_SELECTION -> viewModel.clearRemoteSelection()
-            SystemBackAction.NAVIGATE_REMOTE_BACK -> viewModel.navigateRemoteBack()
-            SystemBackAction.NAVIGATE_REMOTE_UP -> viewModel.navigateRemoteUp()
             SystemBackAction.CLEAR_SELECTION -> viewModel.clearSelection(activePanel)
             SystemBackAction.NAVIGATE_BACK -> viewModel.navigateBack(activePanel)
             SystemBackAction.NAVIGATE_UP -> viewModel.navigateUp(activePanel)
@@ -340,7 +327,6 @@ fun ShovelApp(
                             onOpenSystemFiles = { systemFilesLauncher.launch(arrayOf("*/*")) },
                         )
                         AppSection.ANALYZE -> AnalyzeScreen(viewModel, padding)
-                        AppSection.CONNECTIONS -> ConnectionsScreen(viewModel, padding)
                         AppSection.TOOLS -> ToolsScreen(
                             viewModel = viewModel,
                             contentPadding = padding,
@@ -426,17 +412,12 @@ fun ShovelApp(
             onSaveEdit = viewModel::saveFileEdit,
             onSaveEditAs = viewModel::saveFileEditAs,
             onSaveEditAsLocal = { directory, name -> viewModel.saveFileEditAsLocal(directory, name) },
-            onSaveEditAsRemote = { directory, name -> viewModel.saveFileEditAsRemote(directory, name) },
             onResolveSaveAsConflict = viewModel::resolveFileEditSaveAsConflict,
             onDismissSaveAsConflict = viewModel::dismissFileEditSaveAsConflict,
             initialLocalSavePath = activePanelState.path,
-            initialRemoteSavePath = networkState.path.takeIf { networkState.connectedProfile != null },
-            remoteConnectionName = networkState.connectedProfile?.name,
             loadLocalSaveDirectory = viewModel::listLocalDirectoryForUpload,
-            loadRemoteSaveDirectory = viewModel::listRemoteDirectoryForEdit,
             onExternalEditorReturned = viewModel::refreshFileEditAfterExternalEditor,
             onDismissEditConflict = viewModel::dismissFileEditConflict,
-            onMergeEditConflict = viewModel::mergeFileEditConflict,
             onKeepEditing = viewModel::keepEditing,
             onDiscardEditAndClose = viewModel::discardFileEditAndClose,
             onCopyArchiveEntry = viewModel::copyArchiveEntryToSet,

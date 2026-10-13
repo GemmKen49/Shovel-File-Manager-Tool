@@ -157,7 +157,6 @@ import com.shovel.filemanager.data.DirectoryGridStyle
 import com.shovel.filemanager.data.DirectoryLayoutMode
 import com.shovel.filemanager.data.HomeCustomization
 import com.shovel.filemanager.data.HomeCustomizationRules
-import com.shovel.filemanager.network.NetworkProfile
 import com.shovel.filemanager.data.OptionalFeature
 import com.shovel.filemanager.ui.components.featureVisible
 import com.shovel.filemanager.data.HomeDisplayArea
@@ -213,7 +212,6 @@ import kotlin.math.roundToInt
 @Composable
 internal fun FilesHome(
     roots: List<StorageRoot>,
-    safLocations: List<SafLocation>,
     recentFiles: List<RecentFileItem>,
     recentAddedFiles: List<RecentFileItem>,
     recentOpenedFiles: List<RecentFileItem>,
@@ -238,17 +236,8 @@ internal fun FilesHome(
     onRefreshRecent: () -> Unit,
     onToggleLayout: (HomeDisplayArea) -> Unit,
     onConfigureLayout: (HomeDisplayArea) -> Unit,
-    onAddSafLocation: () -> Unit,
-    onAddNextcloud: () -> Unit,
-    onOpenSafLocation: (SafLocation) -> Unit,
-    onRenameSafLocation: (String, String) -> Unit,
-    onRemoveSafLocation: (String) -> Unit,
     onOpenSystemFiles: () -> Unit,
     onCustomizeHome: () -> Unit,
-    cloudProfiles: List<NetworkProfile> = emptyList(),
-    onOpenCloudProfile: (NetworkProfile) -> Unit = {},
-    onEditCloudProfile: (NetworkProfile) -> Unit = {},
-    onRemoveCloudProfile: (String) -> Unit = {},
 ) {
     fun asLocation(shortcut: HomeShortcut) =
         QuickLocation(
@@ -268,10 +257,6 @@ internal fun FilesHome(
         it.visible && it.section == HomeSection.TOOLS
     }.map(::asLocation)
     var showAllRecent by remember { mutableStateOf(false) }
-    var showCloudLocations by remember { mutableStateOf(false) }
-    var editCloudLocation by remember { mutableStateOf<SafLocation?>(null) }
-    var removeCloudLocation by remember { mutableStateOf<SafLocation?>(null) }
-    var removeCloudProfile by remember { mutableStateOf<NetworkProfile?>(null) }
     val visibility = com.shovel.filemanager.ui.components.LocalFeatureVisibility.current
     var showBookmarks by remember { mutableStateOf(false) }
     val bookmarks = remember(customization.shortcuts) { customization.shortcuts.filter { !it.builtIn } }
@@ -342,14 +327,10 @@ internal fun FilesHome(
                     )
                     HomeSection.TOOLS -> HomeToolsSection(
                         trashCount = trashCount,
-                        cloudCount = safLocations.size + cloudProfiles.size,
                         bookmarkCount = bookmarks.size,
                         customization = customization,
                         shortcuts = toolShortcuts,
                         onOpenTrash = onOpenTrash,
-                        // Always open the provider list: even with one saved location the user
-                        // still needs a visible route for adding a second cloud/provider account.
-                        onOpenCloud = { showCloudLocations = true },
                         onOpenBookmarks = { showBookmarks = true },
                         onOpenShortcut = onOpen,
                     )
@@ -381,127 +362,6 @@ internal fun FilesHome(
             onReveal = { entry -> showAllRecent = false; onRevealRecent(entry) },
             onCopy = onCopyRecent,
             onDismiss = { showAllRecent = false },
-        )
-    }
-
-    if (showCloudLocations) {
-        ShovelModalDialog(
-            title = "Debesija ir teikėjų vietos",
-            icon = Icons.Rounded.Cloud,
-            onDismissRequest = { showCloudLocations = false },
-            expandedContent = false,
-            modifier = Modifier.testTag("cloud_locations_dialog"),
-            actions = {
-                TextButton(onClick = { showCloudLocations = false }) { LText("Uždaryti") }
-            },
-        ) {
-            if (safLocations.isEmpty() && cloudProfiles.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    LText("Teikėjo vietų dar nepridėta")
-                    LText(
-                        "Android suteikia Shovel prieigą tik prie čia pasirinkto teikėjo aplanko. Visai Google Drive paskyrai reikalingas atskiras Google prisijungimas.",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Button(onClick = onAddSafLocation, modifier = Modifier.padding(top = 12.dp)) {
-                        LText("Pridėti teikėjo aplanką")
-                    }
-                    OutlinedButton(
-                        onClick = { showCloudLocations = false; onAddNextcloud() },
-                        modifier = Modifier.padding(top = 8.dp),
-                    ) {
-                        LText("Prisijungti prie Nextcloud")
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Button(onClick = { showCloudLocations = false; onAddNextcloud() }) {
-                                LText("Pridėti Nextcloud")
-                            }
-                            OutlinedButton(onClick = onAddSafLocation) {
-                                LText("Pridėti teikėjo aplanką")
-                            }
-                        }
-                    }
-                    items(cloudProfiles, key = { "network.${it.id}" }) { profile ->
-                        ProfileCard(
-                            profile = profile, loading = false,
-                            onConnect = { showCloudLocations = false; onOpenCloudProfile(profile) },
-                            onEdit = { showCloudLocations = false; onEditCloudProfile(profile) },
-                            onDelete = { removeCloudProfile = profile },
-                        )
-                    }
-                    items(safLocations, key = SafLocation::uri) { location ->
-                        Card(onClick = { showCloudLocations = false; onOpenSafLocation(location) }) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                ProviderAppVisual(
-                                    packageName = location.providerPackageName,
-                                    fallbackIcon = Icons.Rounded.Cloud,
-                                    targetSize = 28.dp,
-                                    modifier = Modifier.size(28.dp),
-                                )
-                                Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                                    Text(location.title, fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        location.folderName ?: uiText(if (location.canWrite) "Pasirinkta vieta" else "Tik skaitymui"),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                SafLocationActionButtons(
-                                    location = location,
-                                    onEdit = { editCloudLocation = location },
-                                    onRemove = { removeCloudLocation = location },
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    editCloudLocation?.let { location ->
-        SafLocationEditDialog(
-            location = location,
-            onDismiss = { editCloudLocation = null },
-            onSave = { title ->
-                onRenameSafLocation(location.uri, title)
-                editCloudLocation = null
-            },
-        )
-    }
-
-    removeCloudProfile?.let { profile ->
-        AlertDialog(
-            onDismissRequest = { removeCloudProfile = null },
-            title = { LText("Pašalinti jungtį") },
-            text = { Text(profile.name) },
-            confirmButton = { Button(onClick = { onRemoveCloudProfile(profile.id); removeCloudProfile = null }) { LText("Pašalinti") } },
-            dismissButton = { TextButton(onClick = { removeCloudProfile = null }) { LText("Atšaukti") } },
-        )
-    }
-
-    removeCloudLocation?.let { location ->
-        SafLocationRemovalDialog(
-            location = location,
-            onDismiss = { removeCloudLocation = null },
-            onRemove = {
-                onRemoveSafLocation(location.uri)
-                removeCloudLocation = null
-            },
         )
     }
 
@@ -980,29 +840,20 @@ private fun QuickLocationsHomeSection(
 @Composable
 private fun HomeToolsSection(
     trashCount: Int,
-    cloudCount: Int,
     bookmarkCount: Int,
     customization: HomeCustomization,
     shortcuts: List<QuickLocation>,
     onOpenTrash: () -> Unit,
-    onOpenCloud: () -> Unit,
     onOpenBookmarks: () -> Unit,
     onOpenShortcut: (QuickLocation) -> Unit,
 ) {
     LText("Įrankiai ir saugumas", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
     val builtInTools = listOf(
         HomeToolLocation("trash", "Šiukšlinė", itemCountLabel(trashCount), Icons.Rounded.Delete, onOpenTrash),
-        HomeToolLocation("cloud", "Debesija", itemCountLabel(cloudCount), Icons.Rounded.Cloud, onOpenCloud),
         HomeToolLocation("bookmarks", "Žymelės", itemCountLabel(bookmarkCount), Icons.Rounded.Bookmark, onOpenBookmarks),
     ).associateBy(HomeToolLocation::id)
     val visibility = com.shovel.filemanager.ui.components.LocalFeatureVisibility.current
-    val tools = HomeCustomizationRules.orderedToolIds(customization).filter { id ->
-        val feature = when (id) {
-            "cloud" -> OptionalFeature.CLOUD
-            else -> null
-        }
-        feature == null || visibility.isVisible(feature)
-    }
+    val tools = HomeCustomizationRules.orderedToolIds(customization)
         .asSequence()
         .filterNot(customization.hiddenToolIds::contains)
         .mapNotNull(builtInTools::get)
@@ -1279,7 +1130,6 @@ private fun HomeOrderRow(
 private fun homeToolTitle(id: String): String = when (id) {
     "trash" -> "Šiukšlinė"
     "plans" -> "Shovel planai"
-    "cloud" -> "Debesija"
     "bookmarks" -> "Žymelės"
     else -> id
 }

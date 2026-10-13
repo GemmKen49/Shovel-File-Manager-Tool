@@ -1,5 +1,4 @@
 package com.shovel.filemanager.ui.editor
-import com.shovel.filemanager.ui.components.ShovelActionRow
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,13 +12,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.PhoneAndroid
 import com.shovel.filemanager.ui.theme.ShovelAlertDialog as AlertDialog
 import com.shovel.filemanager.ui.theme.ShovelButton as Button
 import androidx.compose.material3.CircularProgressIndicator
-import com.shovel.filemanager.ui.theme.ShovelFilterChip as FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,16 +37,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shovel.filemanager.editing.EditDestinationRules
 import com.shovel.filemanager.model.FileEntry
-import com.shovel.filemanager.network.RemoteEntry
-import com.shovel.filemanager.network.RemotePath
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.uiText
 import java.io.File
-
-private enum class SaveAsLocation {
-    PHONE,
-    SERVER,
-}
 
 private data class SaveAsNavigation(
     val path: String,
@@ -70,50 +59,29 @@ private data class SaveAsNavigation(
 fun EditSaveAsDialog(
     initialFileName: String,
     initialLocalPath: String,
-    initialRemotePath: String?,
-    remoteConnectionName: String?,
     loadLocalDirectory: suspend (String) -> Result<List<FileEntry>>,
-    loadRemoteDirectory: suspend (String) -> Result<List<RemoteEntry>>,
     onSaveLocal: (String, String) -> Unit,
-    onSaveRemote: (String, String) -> Unit,
     onOpenSystemPicker: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var location by remember(initialRemotePath) { mutableStateOf(SaveAsLocation.PHONE) }
-    var localNavigation by remember(initialLocalPath) { mutableStateOf(SaveAsNavigation(initialLocalPath)) }
-    var remoteNavigation by remember(initialRemotePath) {
-        mutableStateOf(SaveAsNavigation(initialRemotePath ?: "/"))
-    }
+    var navigation by remember(initialLocalPath) { mutableStateOf(SaveAsNavigation(initialLocalPath)) }
     var name by remember(initialFileName) { mutableStateOf(initialFileName) }
     var directories by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val navigation = if (location == SaveAsLocation.PHONE) localNavigation else remoteNavigation
     val currentPath = navigation.path
-    val remoteAvailable = initialRemotePath != null && remoteConnectionName != null
 
-    LaunchedEffect(location, currentPath) {
+    LaunchedEffect(currentPath) {
         loading = true
         error = null
         directories = emptyList()
-        val result = if (location == SaveAsLocation.PHONE) {
-            loadLocalDirectory(currentPath).map { entries ->
-                entries.asSequence()
-                    .filter(FileEntry::isDirectory)
-                    .take(MAX_VISIBLE_DIRECTORIES)
-                    .map { it.name to it.absolutePath }
-                    .toList()
-            }
-        } else {
-            loadRemoteDirectory(currentPath).map { entries ->
-                entries.asSequence()
-                    .filter(RemoteEntry::directory)
-                    .take(MAX_VISIBLE_DIRECTORIES)
-                    .map { it.name to it.path }
-                    .toList()
-            }
-        }
-        result.fold(
+        loadLocalDirectory(currentPath).map { entries ->
+            entries.asSequence()
+                .filter(FileEntry::isDirectory)
+                .take(MAX_VISIBLE_DIRECTORIES)
+                .map { it.name to it.absolutePath }
+                .toList()
+        }.fold(
             onSuccess = { directories = it },
             onFailure = { failure -> error = failure.message ?: "Katalogo atidaryti nepavyko" },
         )
@@ -121,25 +89,14 @@ fun EditSaveAsDialog(
     }
 
     fun navigateTo(path: String) {
-        if (location == SaveAsLocation.PHONE) localNavigation = localNavigation.navigate(path)
-        else remoteNavigation = remoteNavigation.navigate(RemotePath.normalize(path))
+        navigation = navigation.navigate(path)
     }
 
     fun navigateBackOrDismiss() {
-        when {
-            location == SaveAsLocation.PHONE && localNavigation.backStack.isNotEmpty() -> localNavigation = localNavigation.back()
-            location == SaveAsLocation.SERVER && remoteNavigation.backStack.isNotEmpty() -> remoteNavigation = remoteNavigation.back()
-            else -> onDismiss()
-        }
+        if (navigation.backStack.isNotEmpty()) navigation = navigation.back() else onDismiss()
     }
 
-    val parentPath = remember(location, currentPath) {
-        if (location == SaveAsLocation.PHONE) {
-            File(currentPath).parentFile?.absolutePath
-        } else {
-            currentPath.takeUnless { it == "/" }?.let { RemotePath.normalize("$it/..") }
-        }
-    }
+    val parentPath = remember(currentPath) { File(currentPath).parentFile?.absolutePath }
     val validatedName = runCatching { EditDestinationRules.validateFileName(name) }.getOrNull()
 
     AlertDialog(
@@ -151,24 +108,6 @@ fun EditSaveAsDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                ShovelActionRow {
-                    FilterChip(
-                        selected = location == SaveAsLocation.PHONE,
-                        onClick = { location = SaveAsLocation.PHONE },
-                        label = { LText("Telefonas") },
-                        leadingIcon = { Icon(Icons.Rounded.PhoneAndroid, contentDescription = null) },
-                    )
-                    FilterChip(
-                        selected = location == SaveAsLocation.SERVER,
-                        onClick = { if (remoteAvailable) location = SaveAsLocation.SERVER },
-                        enabled = remoteAvailable,
-                        label = { LText("Serveris") },
-                        leadingIcon = { Icon(Icons.Rounded.Cloud, contentDescription = null) },
-                    )
-                }
-                if (location == SaveAsLocation.SERVER) {
-                    Text(remoteConnectionName.orEmpty(), style = MaterialTheme.typography.labelMedium)
-                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { parentPath?.let(::navigateTo) }, enabled = parentPath != null && !loading) {
                         Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Aukštyn"))
@@ -214,20 +153,17 @@ fun EditSaveAsDialog(
                         { LText("Pavadinime negali būti kelio ar valdymo simbolių") }
                     } else null,
                 )
-                if (location == SaveAsLocation.PHONE) {
-                    OutlinedButton(
-                        onClick = onOpenSystemPicker,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { LText("Rinktis per Android dokumentų sistemą") }
-                }
+                OutlinedButton(
+                    onClick = onOpenSystemPicker,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { LText("Rinktis per Android dokumentų sistemą") }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
                     val safeName = validatedName ?: return@Button
-                    if (location == SaveAsLocation.PHONE) onSaveLocal(currentPath, safeName)
-                    else onSaveRemote(currentPath, safeName)
+                    onSaveLocal(currentPath, safeName)
                 },
                 enabled = validatedName != null && !loading,
             ) { LText("Išsaugoti čia") }

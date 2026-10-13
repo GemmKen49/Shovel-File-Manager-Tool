@@ -110,7 +110,6 @@ fun ToolsScreen(
 ) {
     val operations by viewModel.operations.collectAsStateWithLifecycle()
     val trash by viewModel.trashItems.collectAsStateWithLifecycle()
-    val safLocations by viewModel.safLocations.collectAsStateWithLifecycle()
     val appLockEnabled by viewModel.appLockEnabled.collectAsStateWithLifecycle()
     val appearanceSettings by viewModel.appearanceSettings.collectAsStateWithLifecycle()
     val featureVisibility by viewModel.featureVisibility.collectAsStateWithLifecycle()
@@ -122,8 +121,6 @@ fun ToolsScreen(
     val active = viewModel.activePanelState()
     val selectedEntry = active.entries.singleOrNull { it.absolutePath in active.selectedPaths }
     val context = LocalContext.current
-    var editSaf by remember { mutableStateOf<com.shovel.filemanager.data.SafLocation?>(null) }
-    var removeSaf by remember { mutableStateOf<com.shovel.filemanager.data.SafLocation?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
@@ -156,7 +153,7 @@ fun ToolsScreen(
         if ("actions" in expandedSections) {
         item { SectionHeader("Operacijų centras", operations.size.toString()) }
         if (operations.isEmpty()) {
-            item { InfoCard("Nėra operacijų", "Kopijavimas, archyvavimas ir tinklo perdavimai bus rodomi čia.", Icons.Rounded.CheckCircle) }
+            item { InfoCard("Nėra operacijų", "Kopijavimas ir archyvavimas bus rodomi čia.", Icons.Rounded.CheckCircle) }
         } else {
             items(operations, key = OperationSnapshot::id) { operation ->
                 OperationCard(
@@ -199,43 +196,6 @@ fun ToolsScreen(
                     LText("Atidaryti", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
             }
-        }
-
-        if (featureVisibility.isVisible(OptionalFeature.CLOUD)) {
-        item { SectionHeader("Pasirinktos ir debesijos vietos", safLocations.size.toString()) }
-        item {
-            FilledTonalButton(onClick = onAddSafLocation) {
-                Icon(Icons.Rounded.Add, contentDescription = null)
-                LText("Pridėti per Android dokumentų sistemą", modifier = Modifier.padding(start = 8.dp))
-            }
-        }
-        items(safLocations, key = { it.uri }) { location ->
-            Card(onClick = { viewModel.openSafLocation(location) }, modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    ProviderAppVisual(
-                        packageName = location.providerPackageName,
-                        fallbackIcon = Icons.Rounded.FolderSpecial,
-                        targetSize = 28.dp,
-                        modifier = Modifier.size(28.dp),
-                    )
-                    Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                        Text(location.title, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            location.folderName ?: uiText(if (location.canWrite) "Pasirinkta vieta" else "Tik skaitymui"),
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    SafLocationActionButtons(
-                        location = location,
-                        onEdit = { editSaf = location },
-                        onRemove = { removeSaf = location },
-                    )
-                }
-            }
-        }
-
         }
 
         }
@@ -340,34 +300,12 @@ fun ToolsScreen(
         item {
             InfoCard(
                 "Vietiniai duomenys lieka įrenginyje",
-                "Prisijungimų paslaptys šifruojamos Android Keystore. Analitika ir reklamos SDK nepridėti.",
+                "Programa neturi interneto prieigos. Analitika ir reklamos SDK nepridėti.",
                 Icons.Rounded.Security,
             )
         }
         }
         }
-    }
-
-    editSaf?.let { location ->
-        SafLocationEditDialog(
-            location = location,
-            onDismiss = { editSaf = null },
-            onSave = { title ->
-                viewModel.renameSafLocation(location.uri, title)
-                editSaf = null
-            },
-        )
-    }
-
-    removeSaf?.let { location ->
-        SafLocationRemovalDialog(
-            location = location,
-            onDismiss = { removeSaf = null },
-            onRemove = {
-                viewModel.removeSafLocation(location.uri)
-                removeSaf = null
-            },
-        )
     }
 
 }

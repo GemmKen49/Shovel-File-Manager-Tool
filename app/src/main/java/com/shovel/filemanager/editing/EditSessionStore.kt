@@ -315,11 +315,6 @@ class EditSessionStore(cacheDirectory: File) {
         val origin = when (destination) {
             is EditDestination.Local -> EditOrigin.Local(destination.path, canWrite = true)
             is EditDestination.Content -> EditOrigin.Content(destination.uri, canWrite = true)
-            is EditDestination.Remote -> EditOrigin.Remote(
-                profileId = destination.profileId,
-                connectionName = destination.connectionName,
-                path = destination.path,
-            )
         }
         return session.copy(
             displayName = sanitizeName(destination.displayName),

@@ -194,7 +194,6 @@ import com.shovel.filemanager.data.DirectoryDisplaySettings
 import com.shovel.filemanager.data.DirectoryDisplayDefaults
 import com.shovel.filemanager.data.DirectoryGridStyle
 import com.shovel.filemanager.data.DirectoryLayoutMode
-import com.shovel.filemanager.network.RemoteEntry
 import com.shovel.filemanager.pdfsigning.PdfSignaturePlacement
 import com.shovel.filemanager.pdfsigning.SignatureDrawing
 import com.shovel.filemanager.ui.PreviewTarget
@@ -313,17 +312,12 @@ fun FilePreviewDialog(
     onSaveEdit: (Boolean) -> Unit,
     onSaveEditAs: (Uri) -> Unit,
     onSaveEditAsLocal: (String, String) -> Unit,
-    onSaveEditAsRemote: (String, String) -> Unit,
     onResolveSaveAsConflict: (EditExistingPolicy) -> Unit,
     onDismissSaveAsConflict: () -> Unit,
     initialLocalSavePath: String,
-    initialRemoteSavePath: String?,
-    remoteConnectionName: String?,
     loadLocalSaveDirectory: suspend (String) -> Result<List<FileEntry>>,
-    loadRemoteSaveDirectory: suspend (String) -> Result<List<RemoteEntry>>,
     onExternalEditorReturned: () -> Unit,
     onDismissEditConflict: () -> Unit,
-    onMergeEditConflict: () -> Unit,
     onKeepEditing: () -> Unit,
     onDiscardEditAndClose: () -> Unit,
     onCopyArchiveEntry: (String) -> Unit,
@@ -438,7 +432,7 @@ fun FilePreviewDialog(
         }
     }
     val navigateBack: () -> Unit = {
-        if ((target is PreviewTarget.Archive || target is PreviewTarget.RemoteArchive) && archivePath.isNotEmpty()) {
+        if (target is PreviewTarget.Archive && archivePath.isNotEmpty()) {
             archivePath = ArchiveBrowserIndex.parentOf(archivePath)
         } else {
             onClose()
@@ -545,32 +539,9 @@ fun FilePreviewDialog(
                         initialDisplayDefaults = archiveDisplayDefaults,
                         onApplyDisplayToAll = onApplyArchiveDisplayToAll,
                     )
-                    is PreviewTarget.RemoteArchive -> ArchivePreview(
-                        file = target.file,
-                        entries = target.entries,
-                        currentPath = archivePath,
-                        onPathChanged = { archivePath = it },
-                        onCopyEntry = null,
-                        onCopyEntries = null,
-                        onOpenEntry = onOpenArchiveEntry,
-                        onShareEntries = onShareArchiveEntries,
-                        onExtractEntries = onExtractArchiveEntries,
-                        onRenameEntry = null,
-                        onDeleteEntries = null,
-                        onMoveEntries = null,
-                        onRefresh = onRefreshArchive,
-                        loadThumbnail = loadArchiveThumbnail,
-                        onExtract = onExtract,
-                        initialExtractDirectory = initialLocalSavePath,
-                        loadExtractDirectory = loadLocalSaveDirectory,
-                        mutable = false,
-                        initialDisplayDefaults = archiveDisplayDefaults,
-                        onApplyDisplayToAll = onApplyArchiveDisplayToAll,
-                    )
                     is PreviewTarget.LocalFile,
                     is PreviewTarget.TrashFile,
                     is PreviewTarget.ContentFile,
-                    is PreviewTarget.RemoteFile,
                     is PreviewTarget.PrivilegedFile,
                     is PreviewTarget.ArchiveEntry,
                     -> FileContentPreview(
@@ -614,8 +585,8 @@ fun FilePreviewDialog(
             conflict = conflict,
             workingRevision = editSession?.workingRevision ?: conflict.expected,
             saving = activeEditState.saving,
-            canMerge = target is PreviewTarget.RemoteFile && editSession?.usesInternalTextEditor == true && conflict.current != null,
-            onMerge = onMergeEditConflict,
+            canMerge = false,
+            onMerge = {},
             onOverwrite = { onSaveEdit(true) },
             onSaveAs = launchSaveAs,
             onKeepEditing = onDismissEditConflict,
@@ -647,17 +618,10 @@ fun FilePreviewDialog(
             } else {
                 initialLocalSavePath
             },
-            initialRemotePath = initialRemoteSavePath,
-            remoteConnectionName = remoteConnectionName,
             loadLocalDirectory = loadLocalSaveDirectory,
-            loadRemoteDirectory = loadRemoteSaveDirectory,
             onSaveLocal = { directory, name ->
                 showSaveAs = false
                 onSaveEditAsLocal(directory, name)
-            },
-            onSaveRemote = { directory, name ->
-                showSaveAs = false
-                onSaveEditAsRemote(directory, name)
             },
             onOpenSystemPicker = {
                 showSaveAs = false
@@ -690,14 +654,9 @@ fun FilePreviewDialog(
     if (confirmDelete && onDelete != null) {
         val permanent = target is PreviewTarget.TrashFile ||
             target is PreviewTarget.ContentFile ||
-            target is PreviewTarget.RemoteFile ||
-            target is PreviewTarget.RemoteArchive ||
             (target is PreviewTarget.PrivilegedFile && !target.localOrigin)
         val explanation = when (target) {
             is PreviewTarget.ContentFile -> "Elementas bus trinamas per Android dokumentų teikėją ir nepateks į Shovel šiukšlinę."
-            is PreviewTarget.RemoteFile,
-            is PreviewTarget.RemoteArchive,
-            -> "Elementai bus ištrinti nuotoliniame serveryje be vietinės šiukšlinės."
             is PreviewTarget.PrivilegedFile -> if (target.localOrigin) "Elementus bus galima atkurti iš Shovel šiukšlinės."
                 else "Šių apsaugotų failų nebus galima atkurti iš Shovel šiukšlinės."
             is PreviewTarget.TrashFile -> "Elemento nebebus galima atkurti iš programos šiukšliadėžės."

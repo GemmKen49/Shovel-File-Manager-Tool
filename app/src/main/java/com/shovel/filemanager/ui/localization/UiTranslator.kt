@@ -427,7 +427,6 @@ object UiTranslator {
         "Pridėti vietą" to "Add location",
         "Pridėti teikėjo aplanką" to "Add provider folder",
         "Teikėjo vietų dar nepridėta" to "No provider locations added",
-        "Pridėkite Google Drive, Nextcloud, Files arba bet kurį Android įdiegtą teikėją." to "Add Google Drive, Nextcloud, Files or any provider installed on Android.",
         "Android suteikia Shovel prieigą tik prie čia pasirinkto teikėjo aplanko. Visai Google Drive paskyrai reikalingas atskiras Google prisijungimas." to "Android gives Shovel access only to the provider folder selected here. A separate Google sign-in is required for the whole Google Drive account.",
         "Naudokite „Pridėti žymelę“ bet kurio failo ar aplanko meniu." to "Use ‘Add bookmark’ in any file or folder menu.",
         "Pasirinkta" to "Selected",
@@ -848,7 +847,7 @@ object UiTranslator {
         "Jokių reklamų, sekimo SDK ar privalomos paskyros." to "No ads, tracking SDKs, or mandatory account.",
         "Operacijų centras" to "Operations center",
         "Nėra operacijų" to "No operations",
-        "Kopijavimas, archyvavimas ir tinklo perdavimai bus rodomi čia." to "Copy, archive, and network transfers appear here.",
+        "Kopijavimas ir archyvavimas bus rodomi čia." to "Copy and archive operations appear here.",
         "Paslėpti užbaigtas" to "Hide completed",
         "Perdavimas kompiuteriui" to "Computer transfer",
         "Veikia" to "Running",
@@ -1168,7 +1167,7 @@ object UiTranslator {
         "Pridėti per Android dokumentų sistemą" to "Add through Android's document system",
         "Pašalinti pasirinktą vietą?" to "Remove the selected location?",
         "Pašalinti vietą" to "Remove location",
-        "Prisijungimų paslaptys šifruojamos Android Keystore. Analitika ir reklamos SDK nepridėti." to "Connection secrets are encrypted with Android Keystore. No analytics or ad SDKs are included.",
+        "Programa neturi interneto prieigos. Analitika ir reklamos SDK nepridėti." to "The app has no internet access. No analytics or ad SDKs are included.",
         "Tvarkaraščių nėra" to "No schedules",
         "Prisijunkite skiltyje „Ryšiai“, atidarykite sinchronizavimą ir pasirinkite intervalą." to "Connect under Connections, open synchronization, and choose an interval.",
         "Shovel užrakinta" to "Shovel is locked",
@@ -1752,12 +1751,6 @@ object UiTranslator {
                     else -> "The ${match.groupValues[1]}"
                 }
                 "$label URL points to another server"
-            },
-            Regex("^Nextcloud prisijungimo pradėti nepavyko \\(HTTP (\\d+)\\)$") to { match: MatchResult ->
-                "Could not start Nextcloud sign-in (HTTP ${match.groupValues[1]})"
-            },
-            Regex("^Nextcloud prisijungimo patvirtinti nepavyko \\(HTTP (\\d+)\\)$") to { match: MatchResult ->
-                "Could not confirm Nextcloud sign-in (HTTP ${match.groupValues[1]})"
             },
             Regex("^Grupės kodas atmestas \\(HTTP (\\d+)\\)$") to { match: MatchResult ->
                 "The group code was rejected (HTTP ${match.groupValues[1]})"

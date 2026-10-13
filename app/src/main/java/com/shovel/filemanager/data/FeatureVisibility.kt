@@ -2,7 +2,7 @@ package com.shovel.filemanager.data
 
 /** Stable, optional UI entry points. Hiding one never changes stored data or running work. */
 enum class OptionalFeature(val label: String) {
-    ANALYSIS("Analizė"), NETWORK("Ryšiai"), CLOUD("Debesija"),
+    ANALYSIS("Analizė"),
     RECENT("Naujausi failai"), ADVANCED_ACCESS("Pažengusio naudotojo režimas"),
     BATCH_RENAME("Masinis pervadinimas"), COMPARE("Aplankų palyginimas"),
     TOOLBAR_BACK("Atgal"), TOOLBAR_FORWARD("Pirmyn"), TOOLBAR_UP("Aukštyn"),
