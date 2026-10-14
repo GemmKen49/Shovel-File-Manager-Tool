@@ -1,5 +1,9 @@
 package com.shovel.filemanager.ui.screens
 
+import com.shovel.filemanager.ui.theme.ShovelDialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
@@ -123,7 +127,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setVar as setvar
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -451,143 +454,158 @@ internal fun RecentFilesDialog(
     val selectedEntries = selectedPaths.mapNotNull(knownEntries::get)
     LaunchedEffect(knownEntries) { selectedPaths = selectedPaths.intersect(knownEntries.keys) }
 
-    ShovelModalDialog(
-        title = "Naujausi failai",
-        icon = Icons.Rounded.History,
+    ShovelDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.testTag("recent_files_dialog"),
-        showFooter = false,
-        expandedContent = true,
-        actions = {},
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        ShovelPullToRefresh(
-            isRefreshing = loading,
-            onRefresh = onRefresh,
-            modifier = Modifier.fillMaxSize(),
-            testTag = "pull_to_refresh_recent_files",
+        com.shovel.filemanager.ui.theme.AppearancePage(
+            modifier = Modifier.fillMaxSize().testTag("recent_files_dialog"),
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    FilterChip(
-                        selected = tab == RecentFilesTab.ADDED,
-                        onClick = { tab = RecentFilesTab.ADDED },
-                        modifier = Modifier.testTag("recent_tab_added"),
-                        label = { LText("Neseniai pridėti") },
-                    )
-                    FilterChip(
-                        selected = tab == RecentFilesTab.OPENED,
-                        onClick = { tab = RecentFilesTab.OPENED },
-                        modifier = Modifier.testTag("recent_tab_opened"),
-                        label = { LText("Neseniai atidaryti") },
-                    )
-                    if (featureVisible(OptionalFeature.TOOLBAR_SEARCH) || searchVisible) IconButton(onClick = { searchVisible = !searchVisible }, modifier = Modifier.testTag("recent_search_toggle[...]") ) {
-                        Icon(Icons.Rounded.Search, contentDescription = uiText(if (searchVisible) "Slėpti paiešką" else "Ieškoti naujausiuose"))
+                    IconButton(onClick = onDismiss, modifier = Modifier.testTag("recent_files_back")) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Atgal"))
                     }
-                    Box(
-                        modifier = Modifier.size(48.dp).testTag("recent_sort_toggle").combinedClickable(
-                            onClick = { ascending = !ascending },
-                            onLongClick = { sortMenu = true },
-                        ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            if (ascending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
-                            contentDescription = uiText("Keisti rikiavimo kryptį; palaikykite rikiavimo tipui"),
-                        )
-                        DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
-                            RecentFilesSort.entries.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { LText(recentFilesSortLabel(option)) },
-                                    onClick = { sort = option; sortMenu = false },
-                                    leadingIcon = if (option == sort) ({ Icon(Icons.Rounded.CheckCircle, contentDescription = null) }) else null,
-                                )
-                            }
-                        }
-                    }
-                    Box(modifier = Modifier.testTag("recent_date_filter")) {
-                        IconButton(onClick = { dateMenu = true }) {
-                            Icon(Icons.Rounded.CalendarMonth, contentDescription = uiText("Filtruoti pagal datą"))
-                        }
-                        DropdownMenu(expanded = dateMenu, onDismissRequest = { dateMenu = false }) {
-                            RecentFilesDateRange.entries.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { LText(recentDateRangeLabel(option)) },
-                                    onClick = { dateRange = option; dateMenu = false },
-                                    leadingIcon = if (option == dateRange) ({ Icon(Icons.Rounded.CheckCircle, contentDescription = null) }) else null,
-                                )
-                            }
-                        }
-                    }
-                    LText(recentDateRangeLabel(dateRange), style = MaterialTheme.typography.labelMedium)
-                }
-                if (searchVisible) {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("recent_files_search"),
-                        singleLine = true,
-                        label = { LText("Paieška") },
-                        trailingIcon = if (query.isEmpty()) null else ({
-                            IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Rounded.Close, contentDescription = uiText("Išvalyti paiešką"))
-                            }
-                        }),
+                    Icon(Icons.Rounded.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    LText(
+                        "Naujausi failai",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f).padding(start = 8.dp),
                     )
                 }
-                if (selectedEntries.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        LText("Pažymėta: ${selectedEntries.size}", modifier = Modifier.weight(1f))
-                        IconButton(onClick = { onCopy(selectedEntries, false) }) {
-                            Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
-                        }
-                        IconButton(onClick = { onCopy(selectedEntries, true); selectedPaths = emptySet() }) {
-                            Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti"))
-                        }
-                        IconButton(onClick = { onShare(selectedEntries) }) {
-                            Icon(Icons.Rounded.Share, contentDescription = uiText("Bendrinti"))
-                        }
-                        IconButton(onClick = { onTrash(selectedEntries) }) {
-                            Icon(Icons.Rounded.Delete, contentDescription = uiText("Perkelti į šiukšlinę"))
-                        }
-                        IconButton(onClick = { selectedPaths = emptySet() }) {
-                            Icon(Icons.Rounded.Close, contentDescription = uiText("Atžymėti visus"))
-                        }
-                    }
-                }
-                if (visibleItems.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        LText(if (tab == RecentFilesTab.ADDED) "Neseniai pridėtų elementų nėra" else "Neseniai atidarytų elementų nėra")
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp).testTag("recent_files_all"),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        items(visibleItems, key = { it.entry.absolutePath }) { item ->
-                            RecentFileListItem(
-                                item = item,
-                                selected = item.entry.absolutePath in selectedPaths,
-                                selectionActive = selectedPaths.isNotEmpty(),
-                                onOpen = { onOpen(item.entry) },
-                                onSelect = {
-                                    selectedPaths = selectedPaths.toMutableSet().also { paths ->
-                                        if (!paths.add(item.entry.absolutePath)) paths.remove(item.entry.absolutePath)
-                                    }
-                                },
-                                onRename = { onRename(item.entry) },
-                                onShare = { onShare(listOf(item.entry)) },
-                                onTrash = { onTrash(listOf(item.entry)) },
-                                onReveal = { onReveal(item.entry) },
-                                onCopy = { move -> onCopy(listOf(item.entry), move) },
+                ShovelPullToRefresh(
+                    isRefreshing = loading,
+                    onRefresh = onRefresh,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    testTag = "pull_to_refresh_recent_files",
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            FilterChip(
+                                selected = tab == RecentFilesTab.ADDED,
+                                onClick = { tab = RecentFilesTab.ADDED },
+                                modifier = Modifier.testTag("recent_tab_added"),
+                                label = { LText("Neseniai pridėti") },
                             )
+                            FilterChip(
+                                selected = tab == RecentFilesTab.OPENED,
+                                onClick = { tab = RecentFilesTab.OPENED },
+                                modifier = Modifier.testTag("recent_tab_opened"),
+                                label = { LText("Neseniai atidaryti") },
+                            )
+                            if (featureVisible(OptionalFeature.TOOLBAR_SEARCH) || searchVisible) IconButton(onClick = { searchVisible = !searchVisible }, modifier = Modifier.testTag("recent_search_toggle")) {
+                                Icon(Icons.Rounded.Search, contentDescription = uiText(if (searchVisible) "Slėpti paiešką" else "Ieškoti naujausiuose"))
+                            }
+                            Box(
+                                modifier = Modifier.size(48.dp).testTag("recent_sort_toggle").combinedClickable(
+                                    onClick = { ascending = !ascending },
+                                    onLongClick = { sortMenu = true },
+                                ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    if (ascending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
+                                    contentDescription = uiText("Keisti rikiavimo kryptį; palaikykite rikiavimo tipui"),
+                                )
+                                DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                                    RecentFilesSort.entries.forEach { option ->
+                                        DropdownMenuItem(
+                                            text = { LText(recentFilesSortLabel(option)) },
+                                            onClick = { sort = option; sortMenu = false },
+                                            leadingIcon = if (option == sort) ({ Icon(Icons.Rounded.CheckCircle, contentDescription = null) }) else null,
+                                        )
+                                    }
+                                }
+                            }
+                            Box(modifier = Modifier.testTag("recent_date_filter")) {
+                                IconButton(onClick = { dateMenu = true }) {
+                                    Icon(Icons.Rounded.CalendarMonth, contentDescription = uiText("Filtruoti pagal datą"))
+                                }
+                                DropdownMenu(expanded = dateMenu, onDismissRequest = { dateMenu = false }) {
+                                    RecentFilesDateRange.entries.forEach { option ->
+                                        DropdownMenuItem(
+                                            text = { LText(recentDateRangeLabel(option)) },
+                                            onClick = { dateRange = option; dateMenu = false },
+                                            leadingIcon = if (option == dateRange) ({ Icon(Icons.Rounded.CheckCircle, contentDescription = null) }) else null,
+                                        )
+                                    }
+                                }
+                            }
+                            LText(recentDateRangeLabel(dateRange), style = MaterialTheme.typography.labelMedium)
+                        }
+                        if (searchVisible) {
+                            OutlinedTextField(
+                                value = query,
+                                onValueChange = { query = it },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("recent_files_search"),
+                                singleLine = true,
+                                label = { LText("Paieška") },
+                                trailingIcon = if (query.isEmpty()) null else ({
+                                    IconButton(onClick = { query = "" }) {
+                                        Icon(Icons.Rounded.Close, contentDescription = uiText("Išvalyti paiešką"))
+                                    }
+                                }),
+                            )
+                        }
+                        if (selectedEntries.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.End,
+                            ) {
+                                LText("Pažymėta: ${selectedEntries.size}", modifier = Modifier.weight(1f))
+                                IconButton(onClick = { onCopy(selectedEntries, false) }) {
+                                    Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
+                                }
+                                IconButton(onClick = { onCopy(selectedEntries, true); selectedPaths = emptySet() }) {
+                                    Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti"))
+                                }
+                                IconButton(onClick = { onShare(selectedEntries) }) {
+                                    Icon(Icons.Rounded.Share, contentDescription = uiText("Bendrinti"))
+                                }
+                                IconButton(onClick = { onTrash(selectedEntries) }) {
+                                    Icon(Icons.Rounded.Delete, contentDescription = uiText("Perkelti į šiukšlinę"))
+                                }
+                                IconButton(onClick = { selectedPaths = emptySet() }) {
+                                    Icon(Icons.Rounded.Close, contentDescription = uiText("Atžymėti visus"))
+                                }
+                            }
+                        }
+                        if (visibleItems.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                LText(if (tab == RecentFilesTab.ADDED) "Neseniai pridėtų elementų nėra" else "Neseniai atidarytų elementų nėra")
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp).testTag("recent_files_all"),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                items(visibleItems, key = { it.entry.absolutePath }) { item ->
+                                    RecentFileListItem(
+                                        item = item,
+                                        selected = item.entry.absolutePath in selectedPaths,
+                                        selectionActive = selectedPaths.isNotEmpty(),
+                                        onOpen = { onOpen(item.entry) },
+                                        onSelect = {
+                                            selectedPaths = selectedPaths.toMutableSet().also { paths ->
+                                                if (!paths.add(item.entry.absolutePath)) paths.remove(item.entry.absolutePath)
+                                            }
+                                        },
+                                        onRename = { onRename(item.entry) },
+                                        onShare = { onShare(listOf(item.entry)) },
+                                        onTrash = { onTrash(listOf(item.entry)) },
+                                        onReveal = { onReveal(item.entry) },
+                                        onCopy = { move -> onCopy(listOf(item.entry), move) },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -999,3 +1017,402 @@ internal fun HomeCustomizationDialog(
                     }
                 }
                 item {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    LText("Greitos vietos", style = MaterialTheme.typography.titleSmall)
+                }
+                items(customization.shortcuts, key = HomeShortcut::id) { shortcut ->
+                    val index = customization.shortcuts.indexOfFirst { it.id == shortcut.id }
+                    var placementMenu by remember(shortcut.id) { mutableStateOf(false) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Switch(
+                            checked = shortcut.visible,
+                            onCheckedChange = { onSetShortcutVisible(shortcut.id, it) },
+                        )
+                        Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                            if (shortcut.builtIn) LText(shortcut.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            else Text(shortcut.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                shortcut.path,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Box {
+                            TextButton(onClick = { placementMenu = true }) {
+                                LText(homeSectionTitle(shortcut.section), maxLines = 1)
+                            }
+                            DropdownMenu(expanded = placementMenu, onDismissRequest = { placementMenu = false }) {
+                                HomeCustomizationRules.SHORTCUT_SECTIONS.forEach { section ->
+                                    DropdownMenuItem(
+                                        text = { LText(homeSectionTitle(section)) },
+                                        onClick = {
+                                            placementMenu = false
+                                            onSetShortcutSection(shortcut.id, section)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        IconButton(onClick = { onMoveShortcut(shortcut.id, -1) }, enabled = index > 0) {
+                            Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Perkelti aukštyn"))
+                        }
+                        IconButton(
+                            onClick = { onMoveShortcut(shortcut.id, 1) },
+                            enabled = index < customization.shortcuts.lastIndex,
+                        ) {
+                            Icon(Icons.Rounded.ArrowDownward, contentDescription = uiText("Perkelti žemyn"))
+                        }
+                        if (!shortcut.builtIn) {
+                            IconButton(onClick = { onRemoveShortcut(shortcut.id) }) {
+                                Icon(Icons.Rounded.Delete, contentDescription = uiText("Pašalinti greitą vietą"))
+                            }
+                        }
+                    }
+                }
+                }
+            }
+    }
+
+    if (showAdd) {
+        var title by remember { mutableStateOf("") }
+        var path by remember(currentPath) { mutableStateOf(currentPath) }
+        var section by remember { mutableStateOf(HomeSection.QUICK_LOCATIONS) }
+        AlertDialog(
+            onDismissRequest = { showAdd = false },
+            title = { LText("Pridėti greitą vietą") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { LText("Pavadinimas (nebūtina)") },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = path,
+                        onValueChange = { path = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { LText("Failo arba aplanko kelias") },
+                        singleLine = true,
+                    )
+                    LText("Rodyti skiltyje", style = MaterialTheme.typography.labelLarge)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        HomeCustomizationRules.SHORTCUT_SECTIONS.forEach { destination ->
+                            FilterChip(
+                                selected = section == destination,
+                                onClick = { section = destination },
+                                label = { LText(homeSectionTitle(destination)) },
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { if (onAddShortcut(title, path, section)) showAdd = false },
+                    enabled = path.isNotBlank(),
+                ) { LText("Pridėti") }
+            },
+            dismissButton = { TextButton(onClick = { showAdd = false }) { LText("Atšaukti") } },
+        )
+    }
+}
+
+@Composable
+private fun HomeOrderRow(
+    title: String,
+    visible: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onVisibleChange: (Boolean) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Switch(checked = visible, onCheckedChange = onVisibleChange)
+        LText(title, modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
+        IconButton(onClick = onMoveUp, enabled = canMoveUp) {
+            Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Perkelti aukštyn"))
+        }
+        IconButton(onClick = onMoveDown, enabled = canMoveDown) {
+            Icon(Icons.Rounded.ArrowDownward, contentDescription = uiText("Perkelti žemyn"))
+        }
+    }
+}
+
+private fun homeToolTitle(id: String): String = when (id) {
+    "trash" -> "Šiukšlinė"
+    "plans" -> "Shovel planai"
+    "bookmarks" -> "Žymelės"
+    else -> id
+}
+
+private fun homeSectionTitle(section: HomeSection): String = when (section) {
+    HomeSection.STORAGE -> "Saugyklos"
+    HomeSection.TOOLS -> "Įrankiai ir saugumas"
+    HomeSection.QUICK_LOCATIONS -> "Greitos vietos"
+    HomeSection.RECENT_FILES -> "Naujausi failai"
+}
+
+private fun homeShortcutIcon(shortcut: HomeShortcut): ImageVector = when (shortcut.id) {
+    else -> if (File(shortcut.path).isDirectory) Icons.Rounded.Folder else Icons.Rounded.Description
+}
+
+@Composable
+private fun RecentFileCard(item: RecentFileItem, onOpen: () -> Unit) {
+    val context = LocalContext.current
+    ElevatedCard(
+        elevation = com.shovel.filemanager.ui.theme.appearanceCardElevation(),
+        onClick = onOpen,
+        modifier = Modifier.width(188.dp).height(172.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            LocalFileVisual(
+                entry = item.entry,
+                targetWidth = 72.dp,
+                targetHeight = 68.dp,
+                showThumbnails = true,
+                modifier = Modifier.fillMaxWidth().height(68.dp),
+            )
+            Text(item.entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(FileSystemRules.humanBytes(item.entry.sizeBytes), style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.weight(1f))
+                Text(recentTimeLabel(context, item.recentAtMillis), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentFileListItem(
+    item: RecentFileItem,
+    selected: Boolean,
+    selectionActive: Boolean,
+    onOpen: () -> Unit,
+    onSelect: () -> Unit,
+    onRename: () -> Unit,
+    onShare: () -> Unit,
+    onTrash: () -> Unit,
+    onReveal: () -> Unit,
+    onCopy: (Boolean) -> Unit,
+) {
+    val context = LocalContext.current
+    var menu by remember(item.entry.absolutePath) { mutableStateOf(false) }
+    ElevatedCard(
+        elevation = com.shovel.filemanager.ui.theme.appearanceCardElevation(),
+        onClick = { if (selectionActive) onSelect() else onOpen() },
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            LocalFileVisual(
+                entry = item.entry,
+                targetWidth = 44.dp,
+                targetHeight = 44.dp,
+                showThumbnails = true,
+                modifier = Modifier.size(44.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    "${if (item.entry.isDirectory) uiText("Aplankas") else FileSystemRules.humanBytes(item.entry.sizeBytes)} · ${recentTimeLabel(context, item.recentAtMillis)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Box {
+                IconButton(onClick = { menu = true }, modifier = Modifier.testTag("recent_file_menu")) {
+                    Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Daugiau veiksmų"))
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { LText("Pervadinti") }, onClick = { menu = false; onRename() }, leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) }, modifier = Modifier.testTag("recent_action_rename"))
+                    DropdownMenuItem(text = { LText("Bendrinti") }, onClick = { menu = false; onShare() }, leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) }, modifier = Modifier.testTag("recent_action_share"))
+                    DropdownMenuItem(text = { LText("Perkelti į šiukšlinę") }, onClick = { menu = false; onTrash() }, leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) }, modifier = Modifier.testTag("recent_action_trash"))
+                    DropdownMenuItem(text = { LText("Atidaryti aplanką") }, onClick = { menu = false; onReveal() }, leadingIcon = { Icon(Icons.Rounded.FolderOpen, contentDescription = null) }, modifier = Modifier.testTag("recent_action_reveal"))
+                    DropdownMenuItem(text = { LText("Kopijuoti") }, onClick = { menu = false; onCopy(false) }, leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) }, modifier = Modifier.testTag("recent_action_copy"))
+                    DropdownMenuItem(text = { LText("Perkelti") }, onClick = { menu = false; onCopy(true) }, leadingIcon = { Icon(Icons.Rounded.ContentCut, contentDescription = null) }, modifier = Modifier.testTag("recent_action_move"))
+                    DropdownMenuItem(text = { LText(if (selected) "Atžymėti" else "Pasirinkti") }, onClick = { menu = false; onSelect() }, leadingIcon = { Icon(Icons.Rounded.CheckCircle, contentDescription = null) }, modifier = Modifier.testTag("recent_action_select"))
+                }
+            }
+        }
+    }
+}
+
+private fun recentTimeLabel(context: android.content.Context, timestampMillis: Long): String =
+    DateUtils.getRelativeTimeSpanString(context, timestampMillis, false).toString()
+
+internal data class QuickLocation(
+    val id: String,
+    val title: String,
+    val path: String,
+    val icon: ImageVector,
+    val virtual: Boolean = false,
+)
+
+private data class HomeStorageLocation(
+    val id: String,
+    val title: String,
+    val description: String,
+    val icon: ImageVector,
+    val usageFraction: Float?,
+    val onClick: () -> Unit,
+)
+
+private data class HomeToolLocation(
+    val id: String,
+    val title: String,
+    val description: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun QuickLocationTile(
+    location: QuickLocation,
+    iconScalePercent: Int,
+    compact: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val iconSize = ((if (compact) 24f else 32f) * iconScalePercent / 100f).dp
+    ElevatedCard(
+        elevation = com.shovel.filemanager.ui.theme.appearanceCardElevation(),
+        onClick = onClick,
+        modifier = modifier.heightIn(min = if (compact) 80.dp else 92.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 9.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(location.icon, contentDescription = null, modifier = Modifier.size(iconSize), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(5.dp))
+            LText(
+                location.title,
+                style = MaterialTheme.typography.labelSmall,
+                minLines = 2,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StorageLocationTile(
+    location: HomeStorageLocation,
+    iconScalePercent: Int,
+    modifier: Modifier = Modifier,
+) {
+    val iconSize = (34f * iconScalePercent / 100f).dp
+    val animatedUsage by animateFloatAsState(
+        targetValue = location.usageFraction?.coerceIn(0f, 1f) ?: 0f,
+        animationSpec = spring(),
+        label = "storage tile usage",
+    )
+    ElevatedCard(
+        elevation = com.shovel.filemanager.ui.theme.appearanceCardElevation(),
+        onClick = location.onClick,
+        modifier = modifier.fillMaxHeight().heightIn(min = 132.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(location.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(iconSize))
+            LText(location.title, modifier = Modifier.padding(top = 6.dp), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LText(location.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            location.usageFraction?.let { fraction ->
+                LinearProgressIndicator(
+                    progress = { animatedUsage },
+                    modifier = Modifier.fillMaxWidth().height(8.dp).padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainer,
+                )
+                LText(
+                    "${(fraction.coerceIn(0f, 1f) * 100f).roundToInt()}% užimta",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StorageLocationCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    usageFraction: Float? = null,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val animatedUsage by animateFloatAsState(
+        targetValue = usageFraction?.coerceIn(0f, 1f) ?: 0f,
+        animationSpec = spring(),
+        label = "storage usage",
+    )
+    ElevatedCard(
+        elevation = com.shovel.filemanager.ui.theme.appearanceCardElevation(),
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                LText(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                LText(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                usageFraction?.let {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        LinearProgressIndicator(
+                            progress = { animatedUsage },
+                            modifier = Modifier.weight(1f).height(10.dp).padding(top = 3.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        )
+                        LText(
+                            "${(it.coerceIn(0f, 1f) * 100f).roundToInt()}% užimta",
+                            modifier = Modifier.padding(start = 9.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun itemCountLabel(count: Int): String = if (count == 1) "1 elementas" else "$count elementų"
