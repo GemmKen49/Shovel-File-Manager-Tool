@@ -340,6 +340,7 @@ class DurableTransferEngine {
             val item = plan.items[itemIndex]
             try {
                 copyOne(plan, item, context)
+                context.logDebug("Copied: ${item.sourcePath} -> ${item.targetPath} (${com.shovel.filemanager.core.FileSystemRules.humanBytes(item.sizeBytes)})")
                 state = if (retry.isEmpty()) {
                     state.copy(nextItemIndex = itemIndex + 1, failedItemIndices = state.failedItemIndices - itemIndex, lastMessage = null)
                 } else {
@@ -357,6 +358,7 @@ class DurableTransferEngine {
                     } else {
                         state.copy(retryPosition = state.retryPosition + 1, failedItemIndices = failures, lastMessage = message)
                     }
+                    context.logWarn(message)
                     context.note("Praleista: ${File(item.sourcePath).name}")
                 } else {
                     state = state.copy(

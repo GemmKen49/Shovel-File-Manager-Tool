@@ -1030,7 +1030,7 @@ private fun CompactPanelActions(
                 modifier = Modifier.testTag("open_operations_$panelId"),
                 onClick = {
                     onExpandedChange(false)
-                    viewModel.setSection(AppSection.TOOLS)
+                    viewModel.setSection(AppSection.OPERATIONS)
                 },
             )
             HorizontalDivider()

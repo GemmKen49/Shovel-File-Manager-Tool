@@ -108,7 +108,6 @@ fun ToolsScreen(
     onAddSafLocation: () -> Unit,
     onToggleAppLock: (Boolean) -> Unit,
 ) {
-    val operations by viewModel.operations.collectAsStateWithLifecycle()
     val trash by viewModel.trashItems.collectAsStateWithLifecycle()
     val appLockEnabled by viewModel.appLockEnabled.collectAsStateWithLifecycle()
     val appearanceSettings by viewModel.appearanceSettings.collectAsStateWithLifecycle()
@@ -149,26 +148,8 @@ fun ToolsScreen(
         }
         }
 
-        item { SettingsSectionHeader("Operacijų centras", "actions", "actions" in expandedSections) { toggleSection("actions") } }
+        item { SettingsSectionHeader("Šiukšliadėžė", "actions", "actions" in expandedSections) { toggleSection("actions") } }
         if ("actions" in expandedSections) {
-        item { SectionHeader("Operacijų centras", operations.size.toString()) }
-        if (operations.isEmpty()) {
-            item { InfoCard("Nėra operacijų", "Kopijavimas ir archyvavimas bus rodomi čia.", Icons.Rounded.CheckCircle) }
-        } else {
-            items(operations, key = OperationSnapshot::id) { operation ->
-                OperationCard(
-                    operation = operation,
-                    onPause = { viewModel.pauseOperation(operation.id) },
-                    onResume = { viewModel.resumeOperation(operation.id) },
-                    onCancel = { viewModel.cancelOperation(operation.id) },
-                    onRetry = { viewModel.retryOperation(operation.id) },
-                )
-            }
-            item {
-                TextButton(onClick = viewModel::dismissFinishedOperations) { LText("Paslėpti užbaigtas") }
-            }
-        }
-
         item { SectionHeader("Šiukšliadėžė", trash.size.toString()) }
         item {
             Card(
@@ -512,62 +493,6 @@ internal fun AppearanceSettingsCard(
                     onCheckedChange = onAmoledBlack,
                     modifier = Modifier.testTag("amoled_black"),
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun OperationCard(
-    operation: OperationSnapshot,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onCancel: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    LText(operation.title, fontWeight = FontWeight.SemiBold)
-                    operation.currentName?.let {
-                        Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                    } ?: LText(operation.message ?: operation.status.name, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                }
-                when (operation.status) {
-                    OperationStatus.RUNNING -> IconButton(onClick = onPause) { Icon(Icons.Rounded.Pause, contentDescription = uiText("Pauzė")) }
-                    OperationStatus.PAUSED -> IconButton(onClick = onResume) { Icon(Icons.Rounded.PlayArrow, contentDescription = uiText("Tęsti")) }
-                    else -> Unit
-                }
-                if (operation.status == OperationStatus.RUNNING || operation.status == OperationStatus.PAUSED || operation.status == OperationStatus.QUEUED) {
-                    IconButton(onClick = onCancel) { Icon(Icons.Rounded.Cancel, contentDescription = uiText("Atšaukti")) }
-                }
-                if (operation.retryable && operation.status !in setOf(OperationStatus.RUNNING, OperationStatus.PAUSED, OperationStatus.QUEUED)) {
-                    IconButton(onClick = onRetry) { Icon(Icons.Rounded.Refresh, contentDescription = uiText("Bandyti dar kartą")) }
-                }
-            }
-            val totalBytes = operation.totalBytes
-            if (totalBytes != null && totalBytes > 0) {
-                LinearProgressIndicator(
-                    progress = { (operation.completedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                LText("${FileSystemRules.humanBytes(operation.completedBytes)} / ${FileSystemRules.humanBytes(totalBytes)}", style = MaterialTheme.typography.labelSmall)
-                val startedAt = operation.startedAtMillis
-                if (startedAt != null && operation.completedBytes > 0 && operation.status == OperationStatus.RUNNING) {
-                    val elapsedSeconds = ((System.currentTimeMillis() - startedAt).coerceAtLeast(1L) / 1_000.0)
-                    val bytesPerSecond = (operation.completedBytes / elapsedSeconds).toLong().coerceAtLeast(1L)
-                    val remainingSeconds = ((totalBytes - operation.completedBytes).coerceAtLeast(0L) / bytesPerSecond)
-                    LText(
-                        "${FileSystemRules.humanBytes(bytesPerSecond)}/s · liko apie ${remainingSeconds}s",
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-            } else if (operation.status == OperationStatus.RUNNING) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-            if (operation.errorCount > 0) {
-                LText("Klaidų: ${operation.errorCount}. Galima bandyti dar kartą.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
             }
         }
     }

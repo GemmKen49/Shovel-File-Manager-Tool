@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Analytics
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -91,6 +92,7 @@ import com.shovel.filemanager.ui.components.BatchRenameDialog
 import com.shovel.filemanager.ui.components.BackgroundPlaybackBar
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.UiTranslator
+import com.shovel.filemanager.ui.screens.OperationsScreen
 import com.shovel.filemanager.ui.screens.AnalyzeScreen
 import com.shovel.filemanager.ui.screens.AdvancedStorageBrowserDialog
 import com.shovel.filemanager.ui.screens.FilesScreen
@@ -108,6 +110,7 @@ private data class SectionDestination(
 private val destinations = listOf(
     SectionDestination(AppSection.FILES, "Failai", Icons.Rounded.Folder),
     SectionDestination(AppSection.ANALYZE, "Analizė", Icons.Rounded.Analytics),
+    SectionDestination(AppSection.OPERATIONS, "Operations", Icons.Rounded.Sync),
     SectionDestination(AppSection.TOOLS, "Daugiau", Icons.Rounded.MoreHoriz),
 )
 
@@ -272,7 +275,7 @@ fun ShovelApp(
                                     modifier = Modifier.testTag("nav_${destination.section.name.lowercase()}"),
                                     icon = {
                                         Box(Modifier.testTag("nav_icon_${destination.section.name.lowercase()}")) {
-                                            DestinationIcon(destination.icon, activeOperations.takeIf { destination.section == AppSection.TOOLS })
+                                            DestinationIcon(destination.icon, activeOperations.takeIf { destination.section == AppSection.OPERATIONS })
                                         }
                                     },
                                     label = { NavigationLabel(destination.label) },
@@ -295,7 +298,7 @@ fun ShovelApp(
                                 modifier = Modifier.testTag("nav_${destination.section.name.lowercase()}"),
                                 icon = {
                                     Box(Modifier.testTag("nav_icon_${destination.section.name.lowercase()}")) {
-                                        DestinationIcon(destination.icon, activeOperations.takeIf { destination.section == AppSection.TOOLS })
+                                        DestinationIcon(destination.icon, activeOperations.takeIf { destination.section == AppSection.OPERATIONS })
                                     }
                                 },
                                 label = { NavigationLabel(destination.label, Modifier.width(railLabelWidth)) },
@@ -327,6 +330,7 @@ fun ShovelApp(
                             onOpenSystemFiles = { systemFilesLauncher.launch(arrayOf("*/*")) },
                         )
                         AppSection.ANALYZE -> AnalyzeScreen(viewModel, padding)
+                        AppSection.OPERATIONS -> OperationsScreen(viewModel, padding)
                         AppSection.TOOLS -> ToolsScreen(
                             viewModel = viewModel,
                             contentPadding = padding,

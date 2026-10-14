@@ -80,7 +80,8 @@ class AppGraph(application: Application) {
     val textMerge by lazy { ThreeWayTextMerge() }
     val localFileOperator by lazy { LocalFileOperator(onMutation = sharedStorageIndex::changed) }
     val batchRename by lazy { BatchRenameEngine(onMutation = sharedStorageIndex::changed) }
-    val operationManager = FileOperationManager(applicationScope) {
+    val operationLogs = com.shovel.filemanager.operations.OperationLogStore(application)
+    val operationManager = FileOperationManager(applicationScope, operationLogs) {
         FileOperationForegroundService.start(application)
     }
     val durableTransferRepository = DurableTransferRepository(application)

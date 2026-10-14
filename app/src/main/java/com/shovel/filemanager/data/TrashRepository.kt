@@ -195,6 +195,7 @@ class TrashRepository(
                     throw cancelled
                 } catch (error: Throwable) {
                     failures += failureMessage(error)
+                    operation.logWarn(failures.last())
                     null
                 }
             }
@@ -215,6 +216,7 @@ class TrashRepository(
                     throw cancelled
                 } catch (error: Throwable) {
                     failures += failureMessage(error)
+                    operation.logWarn(failures.last())
                 }
             }
             operation.setTotals(
@@ -233,6 +235,7 @@ class TrashRepository(
                     throw cancelled
                 } catch (error: Throwable) {
                     failures += failureMessage(error)
+                    operation.logWarn(failures.last())
                 }
             }
             if (failures.isNotEmpty()) {

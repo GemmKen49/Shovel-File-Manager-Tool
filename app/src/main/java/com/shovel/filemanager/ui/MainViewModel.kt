@@ -146,6 +146,7 @@ private const val MAX_ARCHIVE_SHARE_FILES = 1_000
 enum class AppSection {
     FILES,
     ANALYZE,
+    OPERATIONS,
     TOOLS,
 }
 
@@ -556,6 +557,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val signatureLibrary: StateFlow<SignatureLibraryUiState> = _signatureLibrary.asStateFlow()
 
     val operations = graph.operationManager.operations
+
+    /** Saved history of what each operation did, newest first. */
+    val operationLogs: StateFlow<List<com.shovel.filemanager.operations.OperationLogSummary>> =
+        graph.operationLogs.summaries
+
+    /** True when full debug logging is on; false for simple logs. */
+    val operationLogDebugMode: StateFlow<Boolean> = graph.operationLogs.debugMode
+
+    fun setOperationLogDebugMode(enabled: Boolean) = graph.operationLogs.setDebugMode(enabled)
+
+    fun clearOperationLogs() {
+        graph.operationLogs.clear()
+        message("Operation logs cleared")
+    }
+
+    suspend fun operationLogEvents(id: String): List<com.shovel.filemanager.operations.OperationLogEvent> =
+        withContext(Dispatchers.IO) { graph.operationLogs.events(id) }
+
+    suspend fun operationLogReport(appInfo: String): String =
+        withContext(Dispatchers.IO) { graph.operationLogs.exportText(appInfo) }
 
     private val _messages = MutableSharedFlow<UiMessage>(extraBufferCapacity = 16)
     val messages: SharedFlow<UiMessage> = _messages.asSharedFlow()
