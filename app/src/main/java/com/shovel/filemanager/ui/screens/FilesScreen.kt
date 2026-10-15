@@ -171,9 +171,7 @@ import com.shovel.filemanager.advanced.AdvancedAccessBackend
 import com.shovel.filemanager.ui.MainViewModel
 import com.shovel.filemanager.ui.AppSection
 import com.shovel.filemanager.ui.FileScrollKey
-import com.shovel.filemanager.ui.PanelId
 import com.shovel.filemanager.ui.PanelUiState
-import com.shovel.filemanager.ui.PanelComparisonStatus
 import com.shovel.filemanager.ui.ProgressiveScrollRules
 import com.shovel.filemanager.ui.components.LocalFileVisual
 import com.shovel.filemanager.ui.components.ShovelModalDialog
@@ -210,19 +208,18 @@ import java.util.Date
 import kotlin.math.roundToInt
 
 private data class ArchiveRequest(
-    val panel: PanelId,
     val sourcePaths: List<String>,
     val initialName: String,
 ) {
     companion object {
-        fun fromSelection(panel: PanelId, paths: Collection<String>): ArchiveRequest? {
+        fun fromSelection(paths: Collection<String>): ArchiveRequest? {
             val sources = paths.distinct()
             if (sources.isEmpty()) return null
-            return ArchiveRequest(panel, sources, defaultArchiveName(sources))
+            return ArchiveRequest(sources, defaultArchiveName(sources))
         }
 
-        fun fromEntry(panel: PanelId, entry: FileEntry): ArchiveRequest =
-            ArchiveRequest(panel, listOf(entry.absolutePath), defaultArchiveName(listOf(entry.absolutePath)))
+        fun fromEntry(entry: FileEntry): ArchiveRequest =
+            ArchiveRequest(listOf(entry.absolutePath), defaultArchiveName(listOf(entry.absolutePath)))
     }
 }
 
@@ -246,31 +243,27 @@ fun FilesScreen(
     onAddSafLocation: () -> Unit,
     onOpenSystemFiles: () -> Unit,
 ) {
-    val left by viewModel.leftPanel.collectAsStateWithLifecycle()
-    val right by viewModel.rightPanel.collectAsStateWithLifecycle()
-    val leftTabs by viewModel.leftTabs.collectAsStateWithLifecycle()
-    val rightTabs by viewModel.rightTabs.collectAsStateWithLifecycle()
+    val panelState by viewModel.panel.collectAsStateWithLifecycle()
+    val tabs by viewModel.tabs.collectAsStateWithLifecycle()
     val roots by viewModel.roots.collectAsStateWithLifecycle()
     val recentFiles by viewModel.recentFiles.collectAsStateWithLifecycle()
     val filesHomeDisplaySettings by viewModel.filesHomeDisplaySettings.collectAsStateWithLifecycle()
     val storageHomeDisplaySettings by viewModel.storageHomeDisplaySettings.collectAsStateWithLifecycle()
     val homeCustomization by viewModel.homeCustomization.collectAsStateWithLifecycle()
     val filesHomeVisible by viewModel.filesHomeVisible.collectAsStateWithLifecycle()
-    val activePanel by viewModel.activePanel.collectAsStateWithLifecycle()
     val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val renameUndo by viewModel.renameUndo.collectAsStateWithLifecycle()
-    val panelComparison by viewModel.panelComparison.collectAsStateWithLifecycle()
     val trashItems by viewModel.trashItems.collectAsStateWithLifecycle()
     val advancedAccess by viewModel.advancedAccess.collectAsStateWithLifecycle()
     val fileCategory by viewModel.fileCategory.collectAsStateWithLifecycle()
 
-    var createFor by remember { mutableStateOf<PanelId?>(null) }
-    var renameTarget by remember { mutableStateOf<Pair<PanelId, FileEntry>?>(null) }
-    var trashPanel by remember { mutableStateOf<PanelId?>(null) }
-    var permanentDeletePanel by remember { mutableStateOf<PanelId?>(null) }
+    var showCreate by remember { mutableStateOf(false) }
+    var renameTarget by remember { mutableStateOf<FileEntry?>(null) }
+    var showTrashConfirm by remember { mutableStateOf(false) }
+    var showPermanentDelete by remember { mutableStateOf(false) }
     var archiveRequest by remember { mutableStateOf<ArchiveRequest?>(null) }
-    var pastePanel by remember { mutableStateOf<PanelId?>(null) }
-    var displayPanel by remember { mutableStateOf<PanelId?>(null) }
+    var showPaste by remember { mutableStateOf(false) }
+    var showDisplaySettings by remember { mutableStateOf(false) }
     var homeDisplayArea by remember { mutableStateOf<HomeDisplayArea?>(null) }
     var showHomeCustomization by remember { mutableStateOf(false) }
     var infoTargets by remember { mutableStateOf<List<FileEntry>?>(null) }
@@ -278,7 +271,7 @@ fun FilesScreen(
     val clipboardAvailable = clipboard != null
 
     LaunchedEffect(clipboardAvailable) {
-        if (!clipboardAvailable) pastePanel = null
+        if (!clipboardAvailable) showPaste = false
     }
 
     BoxWithConstraints(
@@ -310,41 +303,41 @@ fun FilesScreen(
                         else -> false
                     }
                 }
-                val state = if (activePanel == PanelId.LEFT) left else right
+                val state = panelState
                 when {
                     event.isCtrlPressed && event.isShiftPressed && event.key == Key.T -> {
-                        viewModel.restoreClosedTab(activePanel); true
+                        viewModel.restoreClosedTab(); true
                     }
                     event.isCtrlPressed && event.key == Key.T -> {
-                        viewModel.newTab(activePanel); true
+                        viewModel.newTab(); true
                     }
                     event.isCtrlPressed && event.key == Key.W -> {
-                        viewModel.closeActiveTab(activePanel); true
+                        viewModel.closeActiveTab(); true
                     }
                     event.isCtrlPressed && event.key == Key.C -> {
-                        viewModel.copySelection(activePanel, move = false); true
+                        viewModel.copySelection(move = false); true
                     }
                     event.isCtrlPressed && event.key == Key.X -> {
-                        viewModel.copySelection(activePanel, move = true); true
+                        viewModel.copySelection(move = true); true
                     }
                     event.isCtrlPressed && event.key == Key.V && clipboardAvailable -> {
-                        pastePanel = activePanel; true
+                        showPaste = true; true
                     }
                     event.isCtrlPressed && event.key == Key.A -> {
-                        viewModel.selectAll(activePanel); true
+                        viewModel.selectAll(); true
                     }
-                    event.isAltPressed && event.key == Key.DirectionLeft -> viewModel.navigateBack(activePanel)
-                    event.isAltPressed && event.key == Key.DirectionRight -> viewModel.navigateForward(activePanel)
-                    event.key == Key.Backspace -> viewModel.navigateUp(activePanel)
+                    event.isAltPressed && event.key == Key.DirectionLeft -> viewModel.navigateBack()
+                    event.isAltPressed && event.key == Key.DirectionRight -> viewModel.navigateForward()
+                    event.key == Key.Backspace -> viewModel.navigateUp()
                     event.key == Key.F5 -> {
-                        viewModel.refreshPanel(activePanel, scrollToTop = true); true
+                        viewModel.refreshPanel(scrollToTop = true); true
                     }
                     event.key == Key.Delete && state.selectedPaths.isNotEmpty() -> {
-                        trashPanel = activePanel; true
+                        showTrashConfirm = true; true
                     }
                     event.key == Key.F2 && state.selectedPaths.isNotEmpty() -> {
                         if (state.selectedPaths.size == 1) {
-                            state.entries.firstOrNull { it.absolutePath in state.selectedPaths }?.let { renameTarget = activePanel to it }
+                            state.entries.firstOrNull { it.absolutePath in state.selectedPaths }?.let { renameTarget = it }
                         } else {
                             viewModel.beginBatchRename(state.entries.filter { it.absolutePath in state.selectedPaths }.map(FileEntry::absolutePath))
                         }
@@ -354,15 +347,13 @@ fun FilesScreen(
                 }
             },
     ) {
-        val dualPane = maxWidth >= 780.dp
         Column(modifier = Modifier.fillMaxSize()) {
             if (!hasAllFilesAccess) {
                 PermissionBanner(onRequestAllFilesAccess)
             }
             if (fileCategory.open) {
                 PanelTabsBar(
-                    panel = activePanel,
-                    workspace = if (activePanel == PanelId.LEFT) leftTabs else rightTabs,
+                    workspace = tabs,
                     viewModel = viewModel,
                     onBeforeTabAction = viewModel::closeFileCategory,
                 )
@@ -387,14 +378,14 @@ fun FilesScreen(
                         AdvancedAccessBackend.ROOT,
                         AdvancedAccessBackend.SHIZUKU_ROOT,
                     ),
-                    onOpen = { location -> viewModel.openHomeShortcut(location.id, location.path, activePanel) },
-                    onOpenStorage = { root -> viewModel.openStorageRoot(root, activePanel) },
-                    onOpenRoot = { viewModel.openRootFromHome(activePanel) },
-                    onOpenRecent = { entry -> viewModel.activatePanel(activePanel); viewModel.open(entry) },
-                    onRenameRecent = { entry -> renameTarget = activePanel to entry },
+                    onOpen = { location -> viewModel.openHomeShortcut(location.id, location.path) },
+                    onOpenStorage = { root -> viewModel.openStorageRoot(root) },
+                    onOpenRoot = { viewModel.openRootFromHome() },
+                    onOpenRecent = { entry -> viewModel.open(entry) },
+                    onRenameRecent = { entry -> renameTarget = entry },
                     onShareRecent = { entries -> viewModel.shareEntries(entries.map(FileEntry::absolutePath)) },
                     onTrashRecent = { entries -> recentTrashEntries = entries },
-                    onRevealRecent = { entry -> viewModel.revealLocalEntry(activePanel, entry.absolutePath) },
+                    onRevealRecent = { entry -> viewModel.revealLocalEntry(entry.absolutePath) },
                     onCopyRecent = { entries, move -> viewModel.copyEntries(entries.map(FileEntry::absolutePath), move) },
                     onOpenTrash = viewModel::openTrashFromHome,
                     onOpenCleanup = viewModel::openCleanupFromHome,
@@ -404,120 +395,61 @@ fun FilesScreen(
                     onOpenSystemFiles = onOpenSystemFiles,
                     onCustomizeHome = { showHomeCustomization = true },
                 )
-            } else if (dualPane) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    FilePanel(
-                        panelId = PanelId.LEFT,
-                        state = left,
-                        tabs = leftTabs,
-                        active = activePanel == PanelId.LEFT,
-                        clipboardAvailable = clipboardAvailable,
-                        batchRenameUndoAvailable = renameUndo != null,
-                        modifier = Modifier.weight(1f),
-                        viewModel = viewModel,
-                        onCreate = { createFor = PanelId.LEFT },
-                        onRename = { renameTarget = PanelId.LEFT to it },
-                        onTrash = { trashPanel = PanelId.LEFT },
-                        onPermanentDelete = { permanentDeletePanel = PanelId.LEFT },
-                        onTrashEntry = { entry -> viewModel.selectOnly(PanelId.LEFT, entry.absolutePath); trashPanel = PanelId.LEFT },
-                        onInfo = { infoTargets = it },
-                        onArchive = {
-                            archiveRequest = ArchiveRequest.fromSelection(PanelId.LEFT, left.selectedPaths)
-                        },
-                        onArchiveEntry = { entry -> archiveRequest = ArchiveRequest.fromEntry(PanelId.LEFT, entry) },
-                        onCopyToOther = { viewModel.copySelection(PanelId.LEFT, move = false); pastePanel = PanelId.RIGHT },
-                        onPaste = { pastePanel = PanelId.LEFT },
-                        onUndoBatchRename = viewModel::undoBatchRename,
-                        onDisplaySettings = { displayPanel = PanelId.LEFT },
-                    )
-                    VerticalDivider(modifier = Modifier.fillMaxHeight().width(1.dp))
-                    FilePanel(
-                        panelId = PanelId.RIGHT,
-                        state = right,
-                        tabs = rightTabs,
-                        active = activePanel == PanelId.RIGHT,
-                        clipboardAvailable = clipboardAvailable,
-                        batchRenameUndoAvailable = renameUndo != null,
-                        modifier = Modifier.weight(1f),
-                        viewModel = viewModel,
-                        onCreate = { createFor = PanelId.RIGHT },
-                        onRename = { renameTarget = PanelId.RIGHT to it },
-                        onTrash = { trashPanel = PanelId.RIGHT },
-                        onPermanentDelete = { permanentDeletePanel = PanelId.RIGHT },
-                        onTrashEntry = { entry -> viewModel.selectOnly(PanelId.RIGHT, entry.absolutePath); trashPanel = PanelId.RIGHT },
-                        onInfo = { infoTargets = it },
-                        onArchive = {
-                            archiveRequest = ArchiveRequest.fromSelection(PanelId.RIGHT, right.selectedPaths)
-                        },
-                        onArchiveEntry = { entry -> archiveRequest = ArchiveRequest.fromEntry(PanelId.RIGHT, entry) },
-                        onCopyToOther = { viewModel.copySelection(PanelId.RIGHT, move = false); pastePanel = PanelId.LEFT },
-                        onPaste = { pastePanel = PanelId.RIGHT },
-                        onUndoBatchRename = viewModel::undoBatchRename,
-                        onDisplaySettings = { displayPanel = PanelId.RIGHT },
-                    )
-                }
             } else {
-                val panelState = if (activePanel == PanelId.LEFT) left else right
                 FilePanel(
-                    panelId = activePanel,
                     state = panelState,
-                    tabs = if (activePanel == PanelId.LEFT) leftTabs else rightTabs,
-                    active = true,
+                    tabs = tabs,
                     clipboardAvailable = clipboardAvailable,
                     batchRenameUndoAvailable = renameUndo != null,
                     modifier = Modifier.fillMaxSize(),
                     viewModel = viewModel,
-                    onCreate = { createFor = activePanel },
-                    onRename = { renameTarget = activePanel to it },
-                    onTrash = { trashPanel = activePanel },
-                    onPermanentDelete = { permanentDeletePanel = activePanel },
-                    onTrashEntry = { entry -> viewModel.selectOnly(activePanel, entry.absolutePath); trashPanel = activePanel },
+                    onCreate = { showCreate = true },
+                    onRename = { renameTarget = it },
+                    onTrash = { showTrashConfirm = true },
+                    onPermanentDelete = { showPermanentDelete = true },
+                    onTrashEntry = { entry -> viewModel.selectOnly(entry.absolutePath); showTrashConfirm = true },
                     onInfo = { infoTargets = it },
                     onArchive = {
-                        archiveRequest = ArchiveRequest.fromSelection(activePanel, panelState.selectedPaths)
+                        archiveRequest = ArchiveRequest.fromSelection(panelState.selectedPaths)
                     },
-                    onArchiveEntry = { entry -> archiveRequest = ArchiveRequest.fromEntry(activePanel, entry) },
-                    onCopyToOther = {
-                        viewModel.copySelection(activePanel, move = false)
-                        pastePanel = if (activePanel == PanelId.LEFT) PanelId.RIGHT else PanelId.LEFT
-                    },
-                    onPaste = { pastePanel = activePanel },
+                    onArchiveEntry = { entry -> archiveRequest = ArchiveRequest.fromEntry(entry) },
+                    onPaste = { showPaste = true },
                     onUndoBatchRename = viewModel::undoBatchRename,
-                    onDisplaySettings = { displayPanel = activePanel },
+                    onDisplaySettings = { showDisplaySettings = true },
                 )
             }
         }
     }
 
-    createFor?.let { panel ->
+    if (showCreate) {
         CreateItemDialog(
-            onDismiss = { createFor = null },
-            onCreateFolder = { name -> viewModel.createDirectory(panel, name); createFor = null },
-            onCreateFile = { name -> viewModel.createFile(panel, name); createFor = null },
+            onDismiss = { showCreate = false },
+            onCreateFolder = { name -> viewModel.createDirectory(name); showCreate = false },
+            onCreateFile = { name -> viewModel.createFile(name); showCreate = false },
             onCreateArchive = { name, format ->
-                viewModel.createArchive(panel, name, format, sourcePaths = emptyList())
-                createFor = null
+                viewModel.createArchive(name, format, sourcePaths = emptyList())
+                showCreate = false
             },
         )
     }
-    renameTarget?.let { (panel, entry) ->
+    renameTarget?.let { entry ->
         TextInputDialog(
             title = "Pervadinti",
             initial = entry.name,
             confirmLabel = "Pervadinti",
             onDismiss = { renameTarget = null },
-            onConfirm = { name -> viewModel.rename(panel, entry.absolutePath, name); renameTarget = null },
+            onConfirm = { name -> viewModel.rename(entry.absolutePath, name); renameTarget = null },
         )
     }
-    trashPanel?.let { panel ->
-        val selectedState = if (panel == PanelId.LEFT) left else right
+    if (showTrashConfirm) {
+        val selectedState = panelState
         val paths = selectedState.selectedPaths.toList()
         val entries = selectedState.entries.filter { it.absolutePath in selectedState.selectedPaths }
         DeleteConfirmationDialog(
             names = entries.map(FileEntry::name).ifEmpty { paths.map { java.io.File(it).name } },
             permanent = false,
-            onDismiss = { trashPanel = null },
-            onConfirm = { viewModel.moveSelectionToTrash(panel); trashPanel = null },
+            onDismiss = { showTrashConfirm = false },
+            onConfirm = { viewModel.moveSelectionToTrash(); showTrashConfirm = false },
             loadSummary = { viewModel.loadFileSelectionInfo(paths) },
         )
     }
@@ -534,15 +466,15 @@ fun FilesScreen(
             loadSummary = { viewModel.loadFileSelectionInfo(paths) },
         )
     }
-    permanentDeletePanel?.let { panel ->
-        val selectedState = if (panel == PanelId.LEFT) left else right
+    if (showPermanentDelete) {
+        val selectedState = panelState
         val paths = selectedState.selectedPaths.toList()
         val entries = selectedState.entries.filter { it.absolutePath in selectedState.selectedPaths }
         DeleteConfirmationDialog(
             names = entries.map(FileEntry::name).ifEmpty { paths.map { java.io.File(it).name } },
             permanent = true,
-            onDismiss = { permanentDeletePanel = null },
-            onConfirm = { viewModel.deleteSelectionPermanently(panel); permanentDeletePanel = null },
+            onDismiss = { showPermanentDelete = false },
+            onConfirm = { viewModel.deleteSelectionPermanently(); showPermanentDelete = false },
             loadSummary = { viewModel.loadFileSelectionInfo(paths) },
         )
     }
@@ -554,7 +486,6 @@ fun FilesScreen(
             onDismiss = { archiveRequest = null },
             onCreate = { name, format, password, compressionLevel, maxOutputBytes ->
                 viewModel.createArchive(
-                    request.panel,
                     name,
                     format,
                     password,
@@ -566,34 +497,34 @@ fun FilesScreen(
             },
         )
     }
-    pastePanel?.let { panel ->
+    if (showPaste) {
         if (clipboard != null) {
             TransferOptionsDialog(
                 moving = clipboard?.mode == ClipboardMode.MOVE,
-                onDismiss = { pastePanel = null },
+                onDismiss = { showPaste = false },
                 onConfirm = { policy, verification, failurePolicy ->
-                    viewModel.paste(panel, policy, verification, failurePolicy)
-                    pastePanel = null
+                    viewModel.paste(policy, verification, failurePolicy)
+                    showPaste = false
                 },
             )
         }
     }
-    displayPanel?.let { panel ->
-        val state = if (panel == PanelId.LEFT) left else right
+    if (showDisplaySettings) {
+        val state = panelState
         DirectoryDisplaySettingsDialog(
             initialSettings = state.toDirectoryDisplaySettings(),
             thumbnailsAvailable = true,
             initialSortMode = state.sortMode,
             initialSortDirection = state.sortDirection,
-            onDismiss = { displayPanel = null },
+            onDismiss = { showDisplaySettings = false },
             onApply = { settings ->
-                viewModel.setDirectoryDisplaySettings(panel, settings)
-                displayPanel = null
+                viewModel.setDirectoryDisplaySettings(settings)
+                showDisplaySettings = false
             },
-            onApplySort = { mode, direction -> viewModel.setSort(panel, mode, direction) },
+            onApplySort = { mode, direction -> viewModel.setSort(mode, direction) },
             onApplyToAll = { settings, mode, direction ->
                 viewModel.applyDirectoryDisplaySettingsToAll(settings, mode, direction)
-                displayPanel = null
+                showDisplaySettings = false
             },
         )
     }
@@ -640,7 +571,7 @@ fun FilesScreen(
         )
     }
     if (showHomeCustomization) {
-        val currentPath = if (activePanel == PanelId.LEFT) left.path else right.path
+        val currentPath = panelState.path
         HomeCustomizationDialog(
             customization = homeCustomization,
             roots = roots,
@@ -657,49 +588,6 @@ fun FilesScreen(
             onSetStorageVisible = viewModel::setHomeStorageVisible,
             onRemoveShortcut = viewModel::removeHomeShortcut,
             onAddShortcut = viewModel::addHomeShortcut,
-        )
-    }
-    if (panelComparison.open) {
-        var onlyDifferences by remember(panelComparison.leftPath, panelComparison.rightPath) { mutableStateOf(true) }
-        val visibleEntries = if (onlyDifferences) {
-            panelComparison.entries.filter { it.status != PanelComparisonStatus.SAME }
-        } else {
-            panelComparison.entries
-        }
-        AlertDialog(
-            onDismissRequest = viewModel::closePanelComparison,
-            title = { LText("Skydelių aplankų palyginimas") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LText("Greitas palyginimas pagal pavadinimą, tipą, dydį ir keitimo datą. Failai nekeičiami.", style = MaterialTheme.typography.bodySmall)
-                    LText("Kairė: ${panelComparison.leftPath}", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    LText("Dešinė: ${panelComparison.rightPath}", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    FilterChip(
-                        selected = onlyDifferences,
-                        onClick = { onlyDifferences = !onlyDifferences },
-                        label = { LText("Tik skirtumai · ${panelComparison.entries.count { it.status != PanelComparisonStatus.SAME }}") },
-                    )
-                    when {
-                        panelComparison.running -> CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                        panelComparison.error != null -> LText(panelComparison.error.orEmpty(), color = MaterialTheme.colorScheme.error)
-                        visibleEntries.isEmpty() -> LText("Skirtumų nerasta")
-                        else -> LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
-                            items(visibleEntries, key = { "compare:${it.status}:${it.name}" }) { entry ->
-                                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp)) {
-                                    Text(entry.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    LText(
-                                        entry.detail,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (entry.status == PanelComparisonStatus.SAME) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                                    )
-                                }
-                                HorizontalDivider()
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = viewModel::closePanelComparison) { LText("Uždaryti") } },
         )
     }
 }
@@ -742,10 +630,8 @@ private fun PanelUiState.toDirectoryDisplaySettings(): DirectoryDisplaySettings 
 
 @Composable
 private fun FilePanel(
-    panelId: PanelId,
     state: PanelUiState,
     tabs: PanelWorkspace,
-    active: Boolean,
     clipboardAvailable: Boolean,
     batchRenameUndoAvailable: Boolean,
     modifier: Modifier,
@@ -758,15 +644,14 @@ private fun FilePanel(
     onInfo: (List<FileEntry>) -> Unit,
     onArchive: () -> Unit,
     onArchiveEntry: (FileEntry) -> Unit,
-    onCopyToOther: () -> Unit,
     onPaste: () -> Unit,
     onUndoBatchRename: () -> Unit,
     onDisplaySettings: () -> Unit,
 ) {
     var compactMenu by remember { mutableStateOf(false) }
     var showViewingHistory by remember { mutableStateOf(false) }
-    var searchVisible by remember(panelId) { mutableStateOf(false) }
-    var searchQuery by remember(panelId) { mutableStateOf("") }
+    var searchVisible by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     var entryFilters by remember(tabs.activeTabId, state.path) { mutableStateOf<Set<DirectoryEntryFilter>>(emptySet()) }
     var showEntryFilter by remember(tabs.activeTabId, state.path) { mutableStateOf(false) }
     val recents by viewModel.recents.collectAsStateWithLifecycle()
@@ -787,15 +672,15 @@ private fun FilePanel(
         modifier = modifier
             .fillMaxHeight(),
     ) {
-        PanelTabsBar(panelId, tabs, viewModel)
+        PanelTabsBar(tabs, viewModel)
         if (state.selectedPaths.isNotEmpty()) {
             SelectionHeader(
                 count = state.selectedPaths.size,
                 allSelected = allEntriesSelected,
-                onClose = { viewModel.clearSelection(panelId) },
+                onClose = { viewModel.clearSelection() },
                 onToggleSelectAll = {
-                    if (allEntriesSelected) viewModel.clearSelection(panelId)
-                    else viewModel.selectPaths(panelId, displayedEntries.map(FileEntry::absolutePath))
+                    if (allEntriesSelected) viewModel.clearSelection()
+                    else viewModel.selectPaths(displayedEntries.map(FileEntry::absolutePath))
                 },
             )
         } else {
@@ -807,21 +692,20 @@ private fun FilePanel(
                 upEnabled = File(state.path).parentFile != null,
                 searchActive = searchVisible,
                 grid = state.grid,
-                testTagPrefix = "local_$panelId",
-                onBack = { viewModel.navigateBack(panelId) },
-                onForward = { viewModel.navigateForward(panelId) },
-                onUp = { viewModel.navigateUp(panelId) },
+                testTagPrefix = "local",
+                onBack = { viewModel.navigateBack() },
+                onForward = { viewModel.navigateForward() },
+                onUp = { viewModel.navigateUp() },
                 onToggleSearch = {
                     searchVisible = !searchVisible
                     if (!searchVisible) searchQuery = ""
                 },
-                onToggleLayout = { viewModel.toggleGrid(panelId) },
+                onToggleLayout = { viewModel.toggleGrid() },
                 onOpenSettings = onDisplaySettings,
             ) {
                 CompactPanelActions(
                     expanded = compactMenu,
                     onExpandedChange = { compactMenu = it },
-                    panelId = panelId,
                     state = state,
                     clipboardAvailable = clipboardAvailable,
                     batchRenameUndoAvailable = batchRenameUndoAvailable,
@@ -843,11 +727,11 @@ private fun FilePanel(
                 onClose = { searchVisible = false; searchQuery = "" },
                 filterActive = entryFilters.isNotEmpty(),
                 onOpenFilter = { showEntryFilter = true },
-                modifier = Modifier.testTag("directory_search_field_local_$panelId"),
+                modifier = Modifier.testTag("directory_search_field_local"),
             )
         }
 
-        Breadcrumbs(state.path) { path -> viewModel.navigate(panelId, path) }
+        Breadcrumbs(state.path) { path -> viewModel.navigate(path) }
         if (state.loading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             LText(
@@ -876,27 +760,27 @@ private fun FilePanel(
 
         ShovelPullToRefresh(
             isRefreshing = state.loading,
-            onRefresh = { viewModel.refreshPanel(panelId, scrollToTop = true) },
+            onRefresh = { viewModel.refreshPanel(scrollToTop = true) },
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            testTag = "pull_to_refresh_local_$panelId",
+            testTag = "pull_to_refresh_local",
         ) {
             when {
                 state.error != null -> EmptyPanel("Aplankas nepasiekiamas", state.error)
                 state.loading && state.entries.isEmpty() -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 state.entries.isEmpty() -> EmptyPanel("Aplankas tuščias", "Čia dar nėra failų")
                 displayedEntries.isEmpty() -> EmptyPanel("Atitikmenų nerasta", "Pabandykite kitą pavadinimą")
-                state.grid -> FileGrid(panelId, displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
-                else -> FileList(panelId, displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
+                state.grid -> FileGrid(displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
+                else -> FileList(displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
             }
             if (state.selectedPaths.isNotEmpty()) {
                 val bookmarkedPaths = viewModel.homeCustomization.collectAsStateWithLifecycle().value.shortcuts.mapTo(hashSetOf()) { it.path }
                 val selectionBookmarked = state.selectedPaths.all { it in bookmarkedPaths }
                 SelectionActionDock(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
-                    IconButton(onClick = { viewModel.copySelection(panelId, move = false) }) {
+                    IconButton(onClick = { viewModel.copySelection(move = false) }) {
                         Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
                     }
                     IconButton(
-                        onClick = { viewModel.bookmarkSelection(panelId) },
+                        onClick = { viewModel.bookmarkSelection() },
                         modifier = Modifier.testTag("selection_bookmark_local"),
                     ) {
                         Icon(
@@ -905,7 +789,7 @@ private fun FilePanel(
                         )
                     }
                     IconButton(
-                        onClick = { viewModel.shareSelection(panelId) },
+                        onClick = { viewModel.shareSelection() },
                         modifier = Modifier.testTag("selection_share_local"),
                     ) {
                         Icon(Icons.Rounded.Share, contentDescription = uiText("Bendrinti"))
@@ -918,11 +802,8 @@ private fun FilePanel(
                     ) {
                         Icon(Icons.Rounded.Info, contentDescription = uiText("Informacija"))
                     }
-                    IconButton(onClick = { viewModel.copySelection(panelId, move = true) }) {
+                    IconButton(onClick = { viewModel.copySelection(move = true) }) {
                         Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti"))
-                    }
-                    IconButton(onClick = onCopyToOther) {
-                        Icon(Icons.AutoMirrored.Rounded.CompareArrows, contentDescription = uiText("Kopijuoti į kitą skydelį"))
                     }
                     if (state.selectedPaths.size == 1 || featureVisible(OptionalFeature.BATCH_RENAME)) IconButton(onClick = {
                         val selectedEntries = state.entries.filter { it.absolutePath in state.selectedPaths }
@@ -956,7 +837,7 @@ private fun FilePanel(
                 }
             } else {
                 FloatingActionButton(
-                    onClick = { viewModel.activatePanel(panelId); onCreate() },
+                    onClick = { onCreate() },
                     modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).testTag("create_local_item"),
                 ) {
                     Icon(Icons.Rounded.CreateNewFolder, contentDescription = uiText("Sukurti"))
@@ -970,7 +851,7 @@ private fun FilePanel(
             onDismiss = { showViewingHistory = false },
             onOpen = { recent ->
                 showViewingHistory = false
-                viewModel.openQuickPath(recent.path, panelId)
+                viewModel.openQuickPath(recent.path)
             },
             onClear = viewModel::clearRecents,
         )
@@ -988,7 +869,6 @@ private fun FilePanel(
 private fun CompactPanelActions(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    panelId: PanelId,
     state: PanelUiState,
     clipboardAvailable: Boolean,
     batchRenameUndoAvailable: Boolean,
@@ -1027,7 +907,7 @@ private fun CompactPanelActions(
             DropdownMenuItem(
                 text = { LText("Operacijų centras") },
                 leadingIcon = { Icon(Icons.Rounded.SwapHoriz, contentDescription = null) },
-                modifier = Modifier.testTag("open_operations_$panelId"),
+                modifier = Modifier.testTag("open_operations"),
                 onClick = {
                     onExpandedChange(false)
                     viewModel.setSection(AppSection.OPERATIONS)
@@ -1041,12 +921,12 @@ private fun CompactPanelActions(
                 thumbnailsAvailable = true,
                 sortMode = state.sortMode,
                 sortDirection = state.sortDirection,
-                displaySettingsTestTag = "display_settings_$panelId",
-                onToggleHidden = { viewModel.toggleHidden(panelId) },
-                onToggleLayout = { viewModel.toggleGrid(panelId) },
-                onToggleThumbnails = { viewModel.toggleThumbnails(panelId) },
+                displaySettingsTestTag = "display_settings",
+                onToggleHidden = { viewModel.toggleHidden() },
+                onToggleLayout = { viewModel.toggleGrid() },
+                onToggleThumbnails = { viewModel.toggleThumbnails() },
                 onOpenSettings = onDisplaySettings,
-                onSort = { viewModel.setSort(panelId, it) },
+                onSort = { viewModel.setSort(it) },
                 onDismissMenu = { onExpandedChange(false) },
                 filterActive = filterActive,
                 onOpenFilter = onOpenFilter,
@@ -1055,7 +935,7 @@ private fun CompactPanelActions(
             DropdownMenuItem(
                 text = { LText("Atnaujinti") },
                 leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
-                onClick = { viewModel.refreshPanel(panelId, scrollToTop = true); onExpandedChange(false) },
+                onClick = { viewModel.refreshPanel(scrollToTop = true); onExpandedChange(false) },
             )
         }
     }
@@ -1107,7 +987,6 @@ private fun ViewingHistoryDialog(
 
 @Composable
 private fun PanelTabsBar(
-    panel: PanelId,
     workspace: PanelWorkspace,
     viewModel: MainViewModel,
     onBeforeTabAction: () -> Unit = {},
@@ -1117,7 +996,7 @@ private fun PanelTabsBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("panel_tabs_$panel")
+            .testTag("panel_tabs")
             .padding(horizontal = 6.dp, vertical = 3.dp)
             .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(22.dp))
             .horizontalScroll(rememberScrollState())
@@ -1128,14 +1007,14 @@ private fun PanelTabsBar(
         workspace.tabs.forEach { tab ->
             FilterChip(
                 selected = tab.id == workspace.activeTabId,
-                onClick = { onBeforeTabAction(); viewModel.activateTab(panel, tab.id) },
+                onClick = { onBeforeTabAction(); viewModel.activateTab(tab.id) },
                 label = { Text(File(tab.path).name.ifBlank { tab.path }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingIcon = if (tab.locked) {
                     { Icon(Icons.Rounded.Lock, contentDescription = uiText("Užrakinta"), modifier = Modifier.size(16.dp)) }
                 } else null,
             )
         }
-        IconButton(onClick = { onBeforeTabAction(); viewModel.newTab(panel) }) {
+        IconButton(onClick = { onBeforeTabAction(); viewModel.newTab() }) {
             Icon(Icons.Rounded.Add, contentDescription = uiText("Nauja kortelė"))
         }
         Box {
@@ -1144,37 +1023,26 @@ private fun PanelTabsBar(
                 DropdownMenuItem(
                     text = { LText("Dubliuoti kortelę") },
                     leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
-                    onClick = { onBeforeTabAction(); viewModel.duplicateTab(panel); menu = false },
+                    onClick = { onBeforeTabAction(); viewModel.duplicateTab(); menu = false },
                 )
                 DropdownMenuItem(
                     text = { LText(if (workspace.activeTab.locked) "Atrakinti kortelę" else "Užrakinti kortelę") },
                     leadingIcon = {
                         Icon(if (workspace.activeTab.locked) Icons.Rounded.LockOpen else Icons.Rounded.Lock, contentDescription = null)
                     },
-                    onClick = { onBeforeTabAction(); viewModel.toggleTabLock(panel); menu = false },
+                    onClick = { onBeforeTabAction(); viewModel.toggleTabLock(); menu = false },
                 )
                 DropdownMenuItem(
                     text = { LText("Uždaryti kortelę") },
                     leadingIcon = { Icon(Icons.Rounded.Close, contentDescription = null) },
                     enabled = workspace.tabs.size > 1 && !workspace.activeTab.locked,
-                    onClick = { onBeforeTabAction(); viewModel.closeActiveTab(panel); menu = false },
+                    onClick = { onBeforeTabAction(); viewModel.closeActiveTab(); menu = false },
                 )
                 DropdownMenuItem(
                     text = { LText("Atkurti uždarytą kortelę") },
                     leadingIcon = { Icon(Icons.Rounded.Restore, contentDescription = null) },
                     enabled = workspace.closedTabs.isNotEmpty(),
-                    onClick = { onBeforeTabAction(); viewModel.restoreClosedTab(panel); menu = false },
-                )
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = { LText("Sukeisti skydelius") },
-                    leadingIcon = { Icon(Icons.Rounded.SwapHoriz, contentDescription = null) },
-                    onClick = { onBeforeTabAction(); viewModel.swapPanels(); menu = false },
-                )
-                if (featureVisible(OptionalFeature.COMPARE)) DropdownMenuItem(
-                    text = { LText("Palyginti skydelių aplankus") },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.CompareArrows, contentDescription = null) },
-                    onClick = { onBeforeTabAction(); viewModel.comparePanels(); menu = false },
+                    onClick = { onBeforeTabAction(); viewModel.restoreClosedTab(); menu = false },
                 )
             }
         }
@@ -1204,7 +1072,6 @@ private fun Breadcrumbs(path: String, onNavigate: (String) -> Unit) {
 
 @Composable
 internal fun FileList(
-    panel: PanelId,
     state: PanelUiState,
     scrollKey: FileScrollKey,
     viewModel: MainViewModel,
@@ -1304,13 +1171,12 @@ internal fun FileList(
                     isSelected = { index -> state.entries.getOrNull(index)?.absolutePath in state.selectedPaths },
                     onSelectionChange = { indices, selected ->
                         viewModel.setSelection(
-                            panel,
                             indices.mapNotNull { index -> state.entries.getOrNull(index)?.absolutePath },
                             selected,
                         )
                     },
                 )
-                .testTag("file_list_$panel"),
+                .testTag("file_list"),
             contentPadding = PaddingValues(bottom = 88.dp),
         ) {
             items(state.entries, key = FileEntry::absolutePath, contentType = FileEntry::kind) { entry ->
@@ -1325,9 +1191,9 @@ internal fun FileList(
                     iconScalePercent = state.iconScalePercent,
                     spacingScalePercent = state.spacingScalePercent,
                     largestSizeBytes = largestSizeBytes,
-                    onClick = { handleEntryClick(panel, state, entry, viewModel) },
-                    onLongClick = { viewModel.toggleSelection(panel, entry.absolutePath) },
-                    onPreview = { viewModel.activatePanel(panel); viewModel.open(entry) },
+                    onClick = { handleEntryClick(state, entry, viewModel) },
+                    onLongClick = { viewModel.toggleSelection(entry.absolutePath) },
+                    onPreview = {viewModel.open(entry) },
                     onOpenWith = {
                         runCatching { openWith(context, PreviewSource.Local(entry)) }
                             .onFailure {
@@ -1338,29 +1204,28 @@ internal fun FileList(
                                 ).show()
                             }
                     },
-                    onSelect = { viewModel.toggleSelection(panel, entry.absolutePath) },
+                    onSelect = { viewModel.toggleSelection(entry.absolutePath) },
                     onRename = { onRename(entry) },
                     onInfo = { onInfo(entry) },
                     onTrash = { onTrash(entry) },
                     onArchive = { onArchive(entry) },
                     onAnalyze = { viewModel.analyzeEntries(listOf(entry.absolutePath)) },
-                    onCopy = { viewModel.copyEntry(panel, entry.absolutePath, move = false) },
-                    onMove = { viewModel.copyEntry(panel, entry.absolutePath, move = true) },
+                    onCopy = { viewModel.copyEntry(entry.absolutePath, move = false) },
+                    onMove = { viewModel.copyEntry(entry.absolutePath, move = true) },
                     onBookmark = { viewModel.bookmarkPath(entry.absolutePath) },
                     bookmarked = entry.absolutePath in bookmarkedPaths,
                     onShare = { viewModel.shareEntry(entry.absolutePath) },
                 )
             }
         }
-        if (state.entries.isNotEmpty()) Spacer(Modifier.size(1.dp).testTag("file_list_content_$panel"))
+        if (state.entries.isNotEmpty()) Spacer(Modifier.size(1.dp).testTag("file_list_content"))
         LazyListFastScroller(listState)
-        if (!state.loading) Spacer(Modifier.size(1.dp).testTag("file_list_ready_$panel"))
+        if (!state.loading) Spacer(Modifier.size(1.dp).testTag("file_list_ready"))
     }
 }
 
 @Composable
 internal fun FileGrid(
-    panel: PanelId,
     state: PanelUiState,
     scrollKey: FileScrollKey,
     viewModel: MainViewModel,
@@ -1459,13 +1324,12 @@ internal fun FileGrid(
                     isSelected = { index -> state.entries.getOrNull(index)?.absolutePath in state.selectedPaths },
                     onSelectionChange = { indices, selected ->
                         viewModel.setSelection(
-                            panel,
                             indices.mapNotNull { index -> state.entries.getOrNull(index)?.absolutePath },
                             selected,
                         )
                     },
                 )
-                .testTag("file_grid_$panel"),
+                .testTag("file_grid"),
             contentPadding = PaddingValues(8.dp, 6.dp, 8.dp, 88.dp),
             horizontalArrangement = Arrangement.spacedBy((5f * state.spacingScalePercent / 100f).dp),
             verticalArrangement = Arrangement.spacedBy((5f * state.spacingScalePercent / 100f).dp),
@@ -1479,9 +1343,9 @@ internal fun FileGrid(
                     spacingScalePercent = state.spacingScalePercent,
                     gridStyle = state.gridStyle,
                     largestSizeBytes = largestSizeBytes,
-                    onClick = { handleEntryClick(panel, state, entry, viewModel) },
-                    onLongClick = { viewModel.toggleSelection(panel, entry.absolutePath) },
-                    onPreview = { viewModel.activatePanel(panel); viewModel.open(entry) },
+                    onClick = { handleEntryClick(state, entry, viewModel) },
+                    onLongClick = { viewModel.toggleSelection(entry.absolutePath) },
+                    onPreview = {viewModel.open(entry) },
                     onOpenWith = {
                         runCatching { openWith(context, PreviewSource.Local(entry)) }
                             .onFailure {
@@ -1492,29 +1356,28 @@ internal fun FileGrid(
                                 ).show()
                             }
                     },
-                    onSelect = { viewModel.toggleSelection(panel, entry.absolutePath) },
+                    onSelect = { viewModel.toggleSelection(entry.absolutePath) },
                     onRename = { onRename(entry) },
                     onInfo = { onInfo(entry) },
                     onTrash = { onTrash(entry) },
                     onArchive = { onArchive(entry) },
                     onAnalyze = { viewModel.analyzeEntries(listOf(entry.absolutePath)) },
-                    onCopy = { viewModel.copyEntry(panel, entry.absolutePath, move = false) },
-                    onMove = { viewModel.copyEntry(panel, entry.absolutePath, move = true) },
+                    onCopy = { viewModel.copyEntry(entry.absolutePath, move = false) },
+                    onMove = { viewModel.copyEntry(entry.absolutePath, move = true) },
                     onBookmark = { viewModel.bookmarkPath(entry.absolutePath) },
                     bookmarked = entry.absolutePath in bookmarkedPaths,
                     onShare = { viewModel.shareEntry(entry.absolutePath) },
                 )
             }
         }
-        if (state.entries.isNotEmpty()) Spacer(Modifier.size(1.dp).testTag("file_grid_content_$panel"))
+        if (state.entries.isNotEmpty()) Spacer(Modifier.size(1.dp).testTag("file_grid_content"))
         LazyGridFastScroller(gridState)
-        if (!state.loading) Spacer(Modifier.size(1.dp).testTag("file_grid_ready_$panel"))
+        if (!state.loading) Spacer(Modifier.size(1.dp).testTag("file_grid_ready"))
     }
 }
 
-private fun handleEntryClick(panel: PanelId, state: PanelUiState, entry: FileEntry, viewModel: MainViewModel) {
-    viewModel.activatePanel(panel)
-    if (state.selectedPaths.isNotEmpty()) viewModel.toggleSelection(panel, entry.absolutePath) else viewModel.open(entry)
+private fun handleEntryClick(state: PanelUiState, entry: FileEntry, viewModel: MainViewModel) {
+    if (state.selectedPaths.isNotEmpty()) viewModel.toggleSelection(entry.absolutePath) else viewModel.open(entry)
 }
 
 @OptIn(ExperimentalFoundationApi::class)

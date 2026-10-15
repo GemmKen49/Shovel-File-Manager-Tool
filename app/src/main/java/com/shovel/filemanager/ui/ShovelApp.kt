@@ -137,9 +137,7 @@ fun ShovelApp(
     val preview by viewModel.preview.collectAsStateWithLifecycle()
     val fileEditState by viewModel.fileEditState.collectAsStateWithLifecycle()
     val signatureLibrary by viewModel.signatureLibrary.collectAsStateWithLifecycle()
-    val activePanel by viewModel.activePanel.collectAsStateWithLifecycle()
-    val leftPanel by viewModel.leftPanel.collectAsStateWithLifecycle()
-    val rightPanel by viewModel.rightPanel.collectAsStateWithLifecycle()
+    val panelState by viewModel.panel.collectAsStateWithLifecycle()
     val storageRoots by viewModel.roots.collectAsStateWithLifecycle()
     val trashItems by viewModel.trashItems.collectAsStateWithLifecycle()
     val trashBrowser by viewModel.trashBrowser.collectAsStateWithLifecycle()
@@ -157,9 +155,8 @@ fun ShovelApp(
     val activeOperations = operations.count {
         it.status == OperationStatus.RUNNING || it.status == OperationStatus.PAUSED || it.status == OperationStatus.QUEUED
     }
-    val activePanelState = if (activePanel == PanelId.LEFT) leftPanel else rightPanel
     val selectionDockVisible = when (section) {
-        AppSection.FILES -> activePanelState.selectedPaths.isNotEmpty()
+        AppSection.FILES -> panelState.selectedPaths.isNotEmpty()
         else -> false
     }
     val visibleOperation = operations.firstOrNull {
@@ -173,12 +170,12 @@ fun ShovelApp(
         previewOpen = preview != null,
         section = section,
         filesHomeVisible = filesHomeVisible,
-        selectedCount = activePanelState.selectedPaths.size,
-        hasBackHistory = activePanelState.backHistory.isNotEmpty(),
-        returnToHomeAtBoundary = activePanelState.returnToHomeAtBoundary,
-        hasParent = File(activePanelState.path).parentFile != null &&
-            !sameNormalizedPath(Environment.getExternalStorageDirectory().absolutePath, activePanelState.path) &&
-            storageRoots.none { root -> sameNormalizedPath(root.path, activePanelState.path) },
+        selectedCount = panelState.selectedPaths.size,
+        hasBackHistory = panelState.backHistory.isNotEmpty(),
+        returnToHomeAtBoundary = panelState.returnToHomeAtBoundary,
+        hasParent = File(panelState.path).parentFile != null &&
+            !sameNormalizedPath(Environment.getExternalStorageDirectory().absolutePath, panelState.path) &&
+            storageRoots.none { root -> sameNormalizedPath(root.path, panelState.path) },
     )
 
     BackHandler(
@@ -187,9 +184,9 @@ fun ShovelApp(
         when (systemBackAction) {
             SystemBackAction.CLOSE_PREVIEW -> viewModel.closePreview()
             SystemBackAction.SHOW_FILES -> viewModel.showFilesHome()
-            SystemBackAction.CLEAR_SELECTION -> viewModel.clearSelection(activePanel)
-            SystemBackAction.NAVIGATE_BACK -> viewModel.navigateBack(activePanel)
-            SystemBackAction.NAVIGATE_UP -> viewModel.navigateUp(activePanel)
+            SystemBackAction.CLEAR_SELECTION -> viewModel.clearSelection()
+            SystemBackAction.NAVIGATE_BACK -> viewModel.navigateBack()
+            SystemBackAction.NAVIGATE_UP -> viewModel.navigateUp()
             SystemBackAction.DEFER_TO_SYSTEM -> Unit
         }
     }
@@ -382,7 +379,7 @@ fun ShovelApp(
     if (safBrowser.location != null) {
         SafBrowserDialog(
             state = safBrowser,
-            selectedLocalPath = activePanelState.selectedPaths.singleOrNull(),
+            selectedLocalPath = panelState.selectedPaths.singleOrNull(),
             viewModel = viewModel,
             onDismiss = viewModel::closeSafBrowser,
         )
@@ -418,7 +415,7 @@ fun ShovelApp(
             onSaveEditAsLocal = { directory, name -> viewModel.saveFileEditAsLocal(directory, name) },
             onResolveSaveAsConflict = viewModel::resolveFileEditSaveAsConflict,
             onDismissSaveAsConflict = viewModel::dismissFileEditSaveAsConflict,
-            initialLocalSavePath = activePanelState.path,
+            initialLocalSavePath = panelState.path,
             loadLocalSaveDirectory = viewModel::listLocalDirectoryForUpload,
             onExternalEditorReturned = viewModel::refreshFileEditAfterExternalEditor,
             onDismissEditConflict = viewModel::dismissFileEditConflict,

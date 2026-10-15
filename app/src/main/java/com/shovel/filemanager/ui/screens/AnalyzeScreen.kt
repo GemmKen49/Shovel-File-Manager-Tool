@@ -85,7 +85,6 @@ import com.shovel.filemanager.model.StorageAnalysis
 import com.shovel.filemanager.model.StorageRoot
 import com.shovel.filemanager.model.StorageRootKind
 import com.shovel.filemanager.ui.MainViewModel
-import com.shovel.filemanager.ui.PanelId
 import com.shovel.filemanager.ui.components.LocalFileVisual
 import com.shovel.filemanager.ui.components.DeleteConfirmationDialog
 import com.shovel.filemanager.ui.components.ShovelModalDialog
@@ -118,15 +117,13 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
     val analysisState by viewModel.analysisState.collectAsStateWithLifecycle()
     val savedSearches by viewModel.savedSearches.collectAsStateWithLifecycle()
     val storageRoots by viewModel.roots.collectAsStateWithLifecycle()
-    val activePanel by viewModel.activePanel.collectAsStateWithLifecycle()
-    val leftPanel by viewModel.leftPanel.collectAsStateWithLifecycle()
-    val rightPanel by viewModel.rightPanel.collectAsStateWithLifecycle()
+    val panelState by viewModel.panel.collectAsStateWithLifecycle()
     val renameUndo by viewModel.renameUndo.collectAsStateWithLifecycle()
     val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val cleanupRequested by viewModel.cleanupRequested.collectAsStateWithLifecycle()
     val deviceCleanup by viewModel.deviceCleanup.collectAsStateWithLifecycle()
     val searchDraft by viewModel.searchDraftPreferences.collectAsStateWithLifecycle()
-    val activePath = if (activePanel == PanelId.LEFT) leftPanel.path else rightPanel.path
+    val activePath = panelState.path
     val hasActiveSearch = searchState.roots.isNotEmpty()
 
     var query by remember { mutableStateOf(searchState.filters.query) }

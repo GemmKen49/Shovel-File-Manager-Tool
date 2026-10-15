@@ -182,8 +182,6 @@ import com.shovel.filemanager.operations.TransferVerification
 import com.shovel.filemanager.ui.AppSection
 import com.shovel.filemanager.ui.FileScrollKey
 import com.shovel.filemanager.ui.MainViewModel
-import com.shovel.filemanager.ui.PanelComparisonStatus
-import com.shovel.filemanager.ui.PanelId
 import com.shovel.filemanager.ui.PanelUiState
 import com.shovel.filemanager.ui.ProgressiveScrollRules
 import com.shovel.filemanager.ui.components.ShovelModalDialog

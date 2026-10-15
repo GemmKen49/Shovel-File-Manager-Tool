@@ -117,7 +117,7 @@ fun ToolsScreen(
         expandedSections = if (id in expandedSections) expandedSections - id else expandedSections + id
     }
     val advancedAccess by viewModel.advancedAccess.collectAsStateWithLifecycle()
-    val active = viewModel.activePanelState()
+    val active = viewModel.panelState()
     val selectedEntry = active.entries.singleOrNull { it.absolutePath in active.selectedPaths }
     val context = LocalContext.current
 

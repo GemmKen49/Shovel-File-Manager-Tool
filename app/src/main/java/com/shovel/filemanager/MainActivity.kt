@@ -20,7 +20,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shovel.filemanager.ui.ShovelApp
 import com.shovel.filemanager.ui.AppSection
 import com.shovel.filemanager.ui.MainViewModel
-import com.shovel.filemanager.ui.PanelId
 import com.shovel.filemanager.ui.theme.ShovelTheme
 import com.shovel.filemanager.ui.components.LocalStorageRoots
 import kotlinx.coroutines.delay
@@ -53,7 +52,7 @@ class MainActivity : AppCompatActivity() {
             val appearance = mainViewModel.appearanceSettings.collectAsStateWithLifecycle()
             val section = mainViewModel.section.collectAsStateWithLifecycle()
             val filesHomeVisible = mainViewModel.filesHomeVisible.collectAsStateWithLifecycle()
-            val leftPanel = mainViewModel.leftPanel.collectAsStateWithLifecycle()
+            val panel = mainViewModel.panel.collectAsStateWithLifecycle()
             val storageRoots = mainViewModel.roots.collectAsStateWithLifecycle()
             LaunchedEffect(pendingStorageRefresh.value) {
                 if (pendingStorageRefresh.value) {
@@ -67,14 +66,14 @@ class MainActivity : AppCompatActivity() {
                 section.value,
                 filesHomeVisible.value,
                 storageRoots.value.size,
-                leftPanel.value.path,
-                leftPanel.value.loading,
-                leftPanel.value.entries.size,
+                panel.value.path,
+                panel.value.loading,
+                panel.value.entries.size,
             ) {
                 val homeReady = section.value == AppSection.FILES &&
                     filesHomeVisible.value &&
                     storageRoots.value.isNotEmpty()
-                val localReady = leftPanel.value.entries.isNotEmpty()
+                val localReady = panel.value.entries.isNotEmpty()
                 if (homeReady || localReady) reportFullyDrawn()
             }
             ShovelTheme(settings = appearance.value) {

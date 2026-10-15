@@ -11,7 +11,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.UUID
 
-private const val CURRENT_WORKSPACE_SCHEMA = 3
+private const val CURRENT_WORKSPACE_SCHEMA = 4
 
 data class WorkspaceTab(
     val id: String,
@@ -36,8 +36,7 @@ data class PanelWorkspace(
 
 data class WorkspaceSession(
     val schemaVersion: Int = CURRENT_WORKSPACE_SCHEMA,
-    val left: PanelWorkspace,
-    val right: PanelWorkspace,
+    val workspace: PanelWorkspace,
 )
 
 class WorkspaceSessionRepository(context: Context) {
@@ -53,8 +52,8 @@ class WorkspaceSessionRepository(context: Context) {
     private val file = File(context.filesDir, "workspace_session_v1.json")
 
     @Synchronized
-    fun load(defaultLeftPath: String, defaultRightPath: String): WorkspaceSession {
-        if (!file.isFile) return defaultSession(defaultLeftPath, defaultRightPath)
+    fun load(defaultPath: String): WorkspaceSession {
+        if (!file.isFile) return defaultSession(defaultPath)
         require(file.length() in 1..MAX_FILE_BYTES) { "Darbo sesijos failo dydis netinkamas" }
         return runCatching {
             val json = JSONObject(file.readText(Charsets.UTF_8))
@@ -66,7 +65,7 @@ class WorkspaceSessionRepository(context: Context) {
             .getOrElse {
                 val corrupt = File(file.parentFile, "workspace_session_v1.${System.currentTimeMillis()}.corrupt")
                 file.renameTo(corrupt)
-                defaultSession(defaultLeftPath, defaultRightPath)
+                defaultSession(defaultPath)
             }
     }
 
@@ -94,23 +93,20 @@ class WorkspaceSessionRepository(context: Context) {
 
     fun newTab(path: String): WorkspaceTab = WorkspaceTab(id = UUID.randomUUID().toString(), path = canonicalOrAbsolute(path))
 
-    private fun defaultSession(left: String, right: String): WorkspaceSession {
-        val leftTab = newTab(left)
-        val rightTab = newTab(right)
-        return WorkspaceSession(
-            left = PanelWorkspace(listOf(leftTab), leftTab.id),
-            right = PanelWorkspace(listOf(rightTab), rightTab.id),
-        )
+    private fun defaultSession(path: String): WorkspaceSession {
+        val tab = newTab(path)
+        return WorkspaceSession(workspace = PanelWorkspace(listOf(tab), tab.id))
     }
 
     private fun parse(json: JSONObject): WorkspaceSession {
         val sourceSchema = json.getInt("schemaVersion")
         require(sourceSchema in 1..CURRENT_WORKSPACE_SCHEMA) { "Nepalaikoma darbo sesijos versija" }
         val resetLegacySort = sourceSchema == 1
+        // Older sessions stored a left and a right side; only the left side (the main tab set) is kept.
+        val workspaceJson = if (sourceSchema <= 3) json.getJSONObject("left") else json.getJSONObject("workspace")
         return WorkspaceSession(
             schemaVersion = CURRENT_WORKSPACE_SCHEMA,
-            left = parsePanel(json.getJSONObject("left"), resetLegacySort),
-            right = parsePanel(json.getJSONObject("right"), resetLegacySort),
+            workspace = parsePanel(workspaceJson, resetLegacySort),
         ).also(::validate)
     }
 
@@ -150,8 +146,7 @@ class WorkspaceSessionRepository(context: Context) {
 
     private fun WorkspaceSession.toJson(): JSONObject = JSONObject()
         .put("schemaVersion", schemaVersion)
-        .put("left", left.toJson())
-        .put("right", right.toJson())
+        .put("workspace", workspace.toJson())
 
     private fun PanelWorkspace.toJson(): JSONObject = JSONObject()
         .put("tabs", JSONArray().apply { tabs.forEach { put(it.toJson()) } })
@@ -172,8 +167,7 @@ class WorkspaceSessionRepository(context: Context) {
 
     private fun validate(session: WorkspaceSession) {
         require(session.schemaVersion == CURRENT_WORKSPACE_SCHEMA) { "Nepalaikoma darbo sesijos versija" }
-        validatePanel(session.left)
-        validatePanel(session.right)
+        validatePanel(session.workspace)
     }
 
     private fun validatePanel(panel: PanelWorkspace) {

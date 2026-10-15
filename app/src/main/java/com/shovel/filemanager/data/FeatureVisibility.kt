@@ -4,7 +4,7 @@ package com.shovel.filemanager.data
 enum class OptionalFeature(val label: String) {
     ANALYSIS("Analizė"),
     RECENT("Naujausi failai"), ADVANCED_ACCESS("Pažengusio naudotojo režimas"),
-    BATCH_RENAME("Masinis pervadinimas"), COMPARE("Aplankų palyginimas"),
+    BATCH_RENAME("Masinis pervadinimas"),
     TOOLBAR_BACK("Atgal"), TOOLBAR_FORWARD("Pirmyn"), TOOLBAR_UP("Aukštyn"),
     TOOLBAR_SEARCH("Paieška"), TOOLBAR_LAYOUT("Rodinio nustatymai"),
 }

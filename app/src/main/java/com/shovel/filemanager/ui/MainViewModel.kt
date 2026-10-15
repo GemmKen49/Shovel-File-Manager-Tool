@@ -150,11 +150,6 @@ enum class AppSection {
     TOOLS,
 }
 
-enum class PanelId {
-    LEFT,
-    RIGHT,
-}
-
 data class PanelUiState(
     val path: String = Environment.getExternalStorageDirectory().absolutePath,
     val entries: List<FileEntry> = emptyList(),
@@ -298,25 +293,6 @@ data class AdvancedBrowserUiState(
     val error: String? = null,
 )
 
-enum class PanelComparisonStatus { SAME, DIFFERENT, LEFT_ONLY, RIGHT_ONLY }
-
-data class PanelComparisonEntry(
-    val name: String,
-    val status: PanelComparisonStatus,
-    val leftPath: String? = null,
-    val rightPath: String? = null,
-    val detail: String,
-)
-
-data class PanelComparisonUiState(
-    val open: Boolean = false,
-    val running: Boolean = false,
-    val leftPath: String = "",
-    val rightPath: String = "",
-    val entries: List<PanelComparisonEntry> = emptyList(),
-    val error: String? = null,
-)
-
 data class ShovelClipboardState(
     val sources: List<ShovelSourceRef>,
     val moveAfterVerifiedCopies: Boolean = false,
@@ -426,7 +402,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val initialPrimaryPath = Environment.getExternalStorageDirectory().absolutePath
     private val initialDownloadsPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         .takeIf(File::isDirectory)?.absolutePath ?: initialPrimaryPath
-    private val initialWorkspace = graph.workspaceSession.load(initialDownloadsPath, initialPrimaryPath)
+    private val initialWorkspace = graph.workspaceSession.load(initialDownloadsPath)
     private val homeBuiltInShortcuts = emptyList<HomeShortcut>()
 
     private val _section = MutableStateFlow(AppSection.FILES)
@@ -449,22 +425,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     val homeCustomization: StateFlow<HomeCustomization> = _homeCustomization.asStateFlow()
 
-    private val _activePanel = MutableStateFlow(PanelId.LEFT)
-    val activePanel: StateFlow<PanelId> = _activePanel.asStateFlow()
-
-    private val _leftTabs = MutableStateFlow(initialWorkspace.left)
-    val leftTabs: StateFlow<PanelWorkspace> = _leftTabs.asStateFlow()
-
-    private val _rightTabs = MutableStateFlow(initialWorkspace.right)
-    val rightTabs: StateFlow<PanelWorkspace> = _rightTabs.asStateFlow()
+    private val _tabs = MutableStateFlow(initialWorkspace.workspace)
+    val tabs: StateFlow<PanelWorkspace> = _tabs.asStateFlow()
 
     private val fileScrollPositions = FileScrollPositionStore()
 
-    private val _leftPanel = MutableStateFlow(initialWorkspace.left.activeTab.toPanelUiState())
-    val leftPanel: StateFlow<PanelUiState> = _leftPanel.asStateFlow()
-
-    private val _rightPanel = MutableStateFlow(initialWorkspace.right.activeTab.toPanelUiState())
-    val rightPanel: StateFlow<PanelUiState> = _rightPanel.asStateFlow()
+    private val _panel = MutableStateFlow(initialWorkspace.workspace.activeTab.toPanelUiState())
+    val panel: StateFlow<PanelUiState> = _panel.asStateFlow()
 
     private val _roots = MutableStateFlow<List<StorageRoot>>(emptyList())
     val roots: StateFlow<List<StorageRoot>> = _roots.asStateFlow()
@@ -517,9 +484,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _advancedBrowser = MutableStateFlow(AdvancedBrowserUiState())
     val advancedBrowser: StateFlow<AdvancedBrowserUiState> = _advancedBrowser.asStateFlow()
-
-    private val _panelComparison = MutableStateFlow(PanelComparisonUiState())
-    val panelComparison: StateFlow<PanelComparisonUiState> = _panelComparison.asStateFlow()
 
     private val _batchRename = MutableStateFlow(BatchRenameUiState())
     val batchRename: StateFlow<BatchRenameUiState> = _batchRename.asStateFlow()
@@ -596,8 +560,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var fileEditJob: Job? = null
     private var fileEditRequestId = 0L
     private var signatureLibraryJob: Job? = null
-    private var leftPanelRefreshJob: Job? = null
-    private var rightPanelRefreshJob: Job? = null
+    private var panelRefreshJob: Job? = null
     private val handledOperations = ArrayDeque<String>()
     private val workspaceSaveRequests = Channel<WorkspaceSession>(Channel.CONFLATED)
     private val searchDraftSaveRequests = Channel<SearchDraftPreferences>(Channel.CONFLATED)
@@ -627,8 +590,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }.forEach { snapshot ->
                     handledOperations.add(snapshot.id)
                     while (handledOperations.size > 128) handledOperations.removeFirst()
-                    refreshPanel(PanelId.LEFT)
-                    refreshPanel(PanelId.RIGHT)
+                    refreshPanel()
                     refreshTrash()
                     refreshRecentFiles()
                     if (_safBrowser.value.location != null) refreshSafBrowser()
@@ -672,7 +634,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshAdvancedAccess() = graph.advancedAccess.refreshCapabilities()
 
-    fun openRootFromHome(panel: PanelId = _activePanel.value) {
+    fun openRootFromHome() {
         val rootBackend = graph.advancedAccess.state.value.activeBackend in setOf(
             AdvancedAccessBackend.ROOT,
             AdvancedAccessBackend.SHIZUKU_ROOT,
@@ -680,7 +642,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (rootBackend) {
             openAdvancedBrowser("/")
         } else {
-            openLocalDirectoryFromHome(panel, "/")
+            openLocalDirectoryFromHome("/")
         }
     }
 
@@ -928,8 +890,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (moving && result.skippedRoots == 0) _clipboard.value = null
             refreshAdvancedBrowser()
             if (clipboard.source == ClipboardSource.LOCAL && moving) {
-                refreshPanel(PanelId.LEFT)
-                refreshPanel(PanelId.RIGHT)
+                refreshPanel()
             }
         }.onFailure { message(it.message ?: "Įklijavimo pradėti nepavyko", true) }
     }
@@ -1056,9 +1017,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .onFailure { message(it.message ?: "Išvaizdos nustatymo išsaugoti nepavyko", true) }
     }
 
-    fun activatePanel(panel: PanelId) {
-        _activePanel.value = panel
-    }
 
     fun refreshRecentFiles() {
         recentFilesJob?.cancel()
@@ -1159,8 +1117,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 DirectoryDisplayDefaults(normalized, sortMode, sortDirection),
             )
         }.onSuccess {
-            _leftPanel.update { it.withDirectoryDisplaySettings(normalized).copy(sortMode = sortMode, sortDirection = sortDirection) }
-            _rightPanel.update { it.withDirectoryDisplaySettings(normalized).copy(sortMode = sortMode, sortDirection = sortDirection) }
+            _panel.update { it.withDirectoryDisplaySettings(normalized).copy(sortMode = sortMode, sortDirection = sortDirection) }
             _fileCategory.update {
                 it.withFileCategoryDisplaySettings(normalized).copy(sortMode = sortMode, sortDirection = sortDirection)
             }
@@ -1181,11 +1138,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     sortDirection = sortDirection,
                 )
             }
-            _leftTabs.update { workspace -> workspace.withGlobalDisplayDefaults(normalized, sortMode, sortDirection) }
-            _rightTabs.update { workspace -> workspace.withGlobalDisplayDefaults(normalized, sortMode, sortDirection) }
+            _tabs.update { workspace -> workspace.withGlobalDisplayDefaults(normalized, sortMode, sortDirection) }
             persistWorkspace()
-            refreshPanel(PanelId.LEFT)
-            refreshPanel(PanelId.RIGHT)
+            refreshPanel()
             if (_advancedBrowser.value.open) refreshAdvancedBrowser()
             if (_trashBrowser.value.open) refreshTrashBrowser()
             if (_safBrowser.value.location != null) refreshSafBrowser()
@@ -1197,7 +1152,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun currentDirectoryDisplayDefaults(): DirectoryDisplayDefaults =
         runCatching { graph.navigation.directoryDisplayDefaults() }.getOrNull()
-            ?: activePanelState().let { state ->
+            ?: panelState().let { state ->
                 DirectoryDisplayDefaults(state.directoryDisplaySettings(), state.sortMode, state.sortDirection)
             }
 
@@ -1281,8 +1236,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshPermissionDependentState() {
         viewModelScope.launch {
             _roots.value = graph.localFiles.roots()
-            refreshPanel(PanelId.LEFT)
-            refreshPanel(PanelId.RIGHT)
+            refreshPanel()
         }
     }
 
@@ -1297,11 +1251,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (removedRoots.isEmpty()) return@launch
             val fallback = refreshed.firstOrNull { it.kind == StorageRootKind.INTERNAL } ?: refreshed.firstOrNull()
             if (fallback == null) return@launch
-            listOf(PanelId.LEFT, PanelId.RIGHT).forEach { panel ->
-                val panelPath = panelFlow(panel).value.path
-                if (removedRoots.any { removed -> storagePathContains(removed.path, panelPath) }) {
-                    navigate(panel, fallback.path, rememberHistory = false)
-                }
+            val panelPath = _panel.value.path
+            if (removedRoots.any { removed -> storagePathContains(removed.path, panelPath) }) {
+                navigate(fallback.path, rememberHistory = false)
             }
         }
     }
@@ -1320,7 +1272,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return normalized.ifEmpty { "/" }
     }
 
-    fun navigate(panel: PanelId, path: String, rememberHistory: Boolean = true) {
+    fun navigate(path: String, rememberHistory: Boolean = true) {
         val target = runCatching { File(path).canonicalPath }.getOrElse {
             message(it.message ?: "Kelias nepasiekiamas", true)
             return
@@ -1328,11 +1280,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _filesHomeVisible.value = false
         val displaySettings = savedDirectoryDisplaySettings(target)
         val sortSettings = savedDirectorySortSettings(target)
-        val currentState = panelFlow(panel).value
+        val currentState = _panel.value
         if (currentState.path != target) {
-            fileScrollPositions.reset(tabsFlow(panel).value.activeTabId, target)
+            fileScrollPositions.reset(_tabs.value.activeTabId, target)
         }
-        panelFlow(panel).update { state ->
+        _panel.update { state ->
             if (state.path == target) return@update state.copy(selectedPaths = emptySet())
             state.copy(
                 path = target,
@@ -1348,8 +1300,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ).withDirectoryDisplaySettings(displaySettings)
                 .withDirectorySortSettings(sortSettings)
         }
-        syncActiveTab(panel)
-        refreshPanel(panel)
+        syncActiveTab()
+        refreshPanel()
     }
 
     fun fileScrollPosition(key: FileScrollKey): FileScrollPosition = fileScrollPositions.read(key)
@@ -1358,8 +1310,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         fileScrollPositions.write(key, firstVisibleItemIndex, firstVisibleItemScrollOffset)
     }
 
-    fun navigateBack(panel: PanelId): Boolean {
-        val flow = panelFlow(panel)
+    fun navigateBack(): Boolean {
+        val flow = _panel
         val state = flow.value
         val target = state.backHistory.lastOrNull() ?: return false
         val displaySettings = savedDirectoryDisplaySettings(target)
@@ -1379,13 +1331,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ).withDirectoryDisplaySettings(displaySettings)
                 .withDirectorySortSettings(sortSettings)
         }
-        syncActiveTab(panel)
-        refreshPanel(panel)
+        syncActiveTab()
+        refreshPanel()
         return true
     }
 
-    fun navigateForward(panel: PanelId): Boolean {
-        val flow = panelFlow(panel)
+    fun navigateForward(): Boolean {
+        val flow = _panel
         val state = flow.value
         val target = state.forwardHistory.lastOrNull() ?: return false
         val displaySettings = savedDirectoryDisplaySettings(target)
@@ -1405,22 +1357,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ).withDirectoryDisplaySettings(displaySettings)
                 .withDirectorySortSettings(sortSettings)
         }
-        syncActiveTab(panel)
-        refreshPanel(panel)
+        syncActiveTab()
+        refreshPanel()
         return true
     }
 
-    fun navigateUp(panel: PanelId): Boolean {
-        val state = panelFlow(panel).value
+    fun navigateUp(): Boolean {
+        val state = _panel.value
         val parent = File(state.path).parentFile ?: return false
-        navigate(panel, parent.absolutePath)
+        navigate(parent.absolutePath)
         return true
     }
 
-    fun refreshPanel(panel: PanelId, scrollToTop: Boolean = false) {
-        val flow = panelFlow(panel)
+    fun refreshPanel(scrollToTop: Boolean = false) {
+        val flow = _panel
         val snapshot = flow.value
-        panelRefreshJob(panel)?.cancel()
+        panelRefreshJob?.cancel()
         val job = viewModelScope.launch {
             flow.update {
                 it.copy(
@@ -1474,48 +1426,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 },
             )
         }
-        setPanelRefreshJob(panel, job)
+        panelRefreshJob = job
     }
 
-    fun toggleHidden(panel: PanelId) {
-        panelFlow(panel).update { it.copy(includeHidden = !it.includeHidden) }
-        syncActiveTab(panel)
-        refreshPanel(panel)
+    fun toggleHidden() {
+        _panel.update { it.copy(includeHidden = !it.includeHidden) }
+        syncActiveTab()
+        refreshPanel()
     }
 
-    fun toggleGrid(panel: PanelId) {
-        val current = panelFlow(panel).value
+    fun toggleGrid() {
+        val current = _panel.value
         setDirectoryDisplaySettings(
-            panel,
             current.directoryDisplaySettings().copy(
                 layoutMode = if (current.grid) DirectoryLayoutMode.LIST else DirectoryLayoutMode.GRID,
             ),
         )
     }
 
-    fun toggleThumbnails(panel: PanelId) {
-        val snapshot = panelFlow(panel).value
-        setDirectoryDisplaySettings(panel, snapshot.directoryDisplaySettings().copy(showThumbnails = !snapshot.showThumbnails))
+    fun toggleThumbnails() {
+        val snapshot = _panel.value
+        setDirectoryDisplaySettings(snapshot.directoryDisplaySettings().copy(showThumbnails = !snapshot.showThumbnails))
     }
 
-    fun setDirectoryDisplaySettings(panel: PanelId, settings: DirectoryDisplaySettings) {
-        val snapshot = panelFlow(panel).value
+    fun setDirectoryDisplaySettings(settings: DirectoryDisplaySettings) {
+        val snapshot = _panel.value
         runCatching { graph.navigation.setDirectoryDisplaySettings(snapshot.path, settings) }
             .onSuccess {
-                _leftPanel.update { current ->
+                _panel.update { current ->
                     if (current.path == snapshot.path) current.withDirectoryDisplaySettings(settings) else current
                 }
-                _rightPanel.update { current ->
-                    if (current.path == snapshot.path) current.withDirectoryDisplaySettings(settings) else current
-                }
-                if (_leftPanel.value.path == snapshot.path) syncActiveTab(PanelId.LEFT)
-                if (_rightPanel.value.path == snapshot.path) syncActiveTab(PanelId.RIGHT)
+                if (_panel.value.path == snapshot.path) syncActiveTab()
             }
             .onFailure { message(it.message ?: "Katalogo vaizdo nustatymo išsaugoti nepavyko", true) }
     }
 
-    fun setSort(panel: PanelId, mode: SortMode) {
-        val snapshot = panelFlow(panel).value
+    fun setSort(mode: SortMode) {
+        val snapshot = _panel.value
         val next = if (snapshot.sortMode == mode) {
             DirectorySortSettings(
                 mode = mode,
@@ -1533,45 +1480,45 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 message(it.message ?: "Katalogo rūšiavimo nustatymo išsaugoti nepavyko", true)
                 return
             }
-        panelFlow(panel).update {
+        _panel.update {
             if (it.sortMode == mode) it.copy(sortDirection = if (it.sortDirection == SortDirection.ASCENDING) SortDirection.DESCENDING else SortDirection.ASCENDING)
             else it.copy(sortMode = mode, sortDirection = SortDirection.ASCENDING)
         }
-        syncActiveTab(panel)
-        refreshPanel(panel)
+        syncActiveTab()
+        refreshPanel()
     }
 
-    fun setSort(panel: PanelId, mode: SortMode, direction: SortDirection) {
-        val snapshot = panelFlow(panel).value
+    fun setSort(mode: SortMode, direction: SortDirection) {
+        val snapshot = _panel.value
         runCatching {
             graph.navigation.setDirectorySortSettings(snapshot.path, DirectorySortSettings(mode, direction))
         }.onFailure {
             message(it.message ?: "Katalogo rūšiavimo nustatymo išsaugoti nepavyko", true)
             return
         }
-        panelFlow(panel).update { it.copy(sortMode = mode, sortDirection = direction) }
-        syncActiveTab(panel)
-        refreshPanel(panel)
+        _panel.update { it.copy(sortMode = mode, sortDirection = direction) }
+        syncActiveTab()
+        refreshPanel()
     }
 
-    fun newTab(panel: PanelId) {
-        syncActiveTab(panel, persist = false)
-        val tabsFlow = tabsFlow(panel)
+    fun newTab() {
+        syncActiveTab(persist = false)
+        val tabsFlow = _tabs
         val current = tabsFlow.value
         if (current.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_PANEL) {
             message("Viename skydelyje galima turėti iki ${WorkspaceSessionRepository.MAX_TABS_PER_PANEL} kortelių", true)
             return
         }
-        val tab = graph.workspaceSession.newTab(panelFlow(panel).value.path)
+        val tab = graph.workspaceSession.newTab(_panel.value.path)
         tabsFlow.value = current.copy(tabs = current.tabs + tab, activeTabId = tab.id)
-        panelFlow(panel).value = tab.toPanelUiState()
+        _panel.value = tab.toPanelUiState()
         persistWorkspace()
-        refreshPanel(panel)
+        refreshPanel()
     }
 
-    fun duplicateTab(panel: PanelId) {
-        syncActiveTab(panel, persist = false)
-        val tabsFlow = tabsFlow(panel)
+    fun duplicateTab() {
+        syncActiveTab(persist = false)
+        val tabsFlow = _tabs
         val current = tabsFlow.value
         if (current.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_PANEL) {
             message("Kortelių riba pasiekta", true)
@@ -1580,26 +1527,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val source = current.activeTab
         val duplicate = source.copy(id = java.util.UUID.randomUUID().toString(), locked = false)
         tabsFlow.value = current.copy(tabs = current.tabs + duplicate, activeTabId = duplicate.id)
-        panelFlow(panel).value = duplicate.toPanelUiState()
+        _panel.value = duplicate.toPanelUiState()
         persistWorkspace()
-        refreshPanel(panel)
+        refreshPanel()
     }
 
-    fun activateTab(panel: PanelId, tabId: String) {
-        val tabsFlow = tabsFlow(panel)
+    fun activateTab(tabId: String) {
+        val tabsFlow = _tabs
         if (tabsFlow.value.activeTabId == tabId) return
-        syncActiveTab(panel, persist = false)
+        syncActiveTab(persist = false)
         val tab = tabsFlow.value.tabs.firstOrNull { it.id == tabId } ?: return
         tabsFlow.update { it.copy(activeTabId = tabId) }
-        panelFlow(panel).value = tab.toPanelUiState()
-        activatePanel(panel)
+        _panel.value = tab.toPanelUiState()
         persistWorkspace()
-        refreshPanel(panel)
+        refreshPanel()
     }
 
-    fun toggleTabLock(panel: PanelId) {
-        syncActiveTab(panel, persist = false)
-        tabsFlow(panel).update { workspace ->
+    fun toggleTabLock() {
+        syncActiveTab(persist = false)
+        _tabs.update { workspace ->
             workspace.copy(tabs = workspace.tabs.map { tab ->
                 if (tab.id == workspace.activeTabId) tab.copy(locked = !tab.locked) else tab
             })
@@ -1607,9 +1553,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         persistWorkspace()
     }
 
-    fun closeActiveTab(panel: PanelId) {
-        syncActiveTab(panel, persist = false)
-        val flow = tabsFlow(panel)
+    fun closeActiveTab() {
+        syncActiveTab(persist = false)
+        val flow = _tabs
         val workspace = flow.value
         val closing = workspace.activeTab
         if (closing.locked) {
@@ -1628,14 +1574,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeTabId = next.id,
             closedTabs = (listOf(closing.copy(locked = false)) + workspace.closedTabs).take(WorkspaceSessionRepository.MAX_CLOSED_TABS),
         )
-        panelFlow(panel).value = next.toPanelUiState()
+        _panel.value = next.toPanelUiState()
         persistWorkspace()
-        refreshPanel(panel)
+        refreshPanel()
     }
 
-    fun restoreClosedTab(panel: PanelId) {
-        val flow = tabsFlow(panel)
-        syncActiveTab(panel, persist = false)
+    fun restoreClosedTab() {
+        val flow = _tabs
+        syncActiveTab(persist = false)
         val workspace = flow.value
         val restored = workspace.closedTabs.firstOrNull() ?: run {
             message("Atkuriamų uždarytų kortelių nėra")
@@ -1650,130 +1596,57 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeTabId = restored.id,
             closedTabs = workspace.closedTabs.drop(1),
         )
-        panelFlow(panel).value = restored.toPanelUiState()
+        _panel.value = restored.toPanelUiState()
         persistWorkspace()
-        refreshPanel(panel)
+        refreshPanel()
     }
 
-    fun swapPanels() {
-        syncActiveTab(PanelId.LEFT, persist = false)
-        syncActiveTab(PanelId.RIGHT, persist = false)
-        leftPanelRefreshJob?.cancel()
-        rightPanelRefreshJob?.cancel()
-        val leftWorkspace = _leftTabs.value
-        val rightWorkspace = _rightTabs.value
-        val leftState = _leftPanel.value
-        val rightState = _rightPanel.value
-        _leftTabs.value = rightWorkspace
-        _rightTabs.value = leftWorkspace
-        _leftPanel.value = rightState.copy(selectedPaths = emptySet())
-        _rightPanel.value = leftState.copy(selectedPaths = emptySet())
-        persistWorkspace()
-        refreshPanel(PanelId.LEFT)
-        refreshPanel(PanelId.RIGHT)
-    }
 
-    fun comparePanels() {
-        val leftPath = _leftPanel.value.path
-        val rightPath = _rightPanel.value.path
-        _panelComparison.value = PanelComparisonUiState(open = true, running = true, leftPath = leftPath, rightPath = rightPath)
-        viewModelScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    val leftDirectory = File(leftPath).canonicalFile
-                    val rightDirectory = File(rightPath).canonicalFile
-                    require(leftDirectory.isDirectory && rightDirectory.isDirectory) { "Abu skydeliai turi rodyti pasiekiamus aplankus" }
-                    val leftFiles = leftDirectory.listFiles()?.toList().orEmpty()
-                    val rightFiles = rightDirectory.listFiles()?.toList().orEmpty()
-                    require(leftFiles.size <= 50_000 && rightFiles.size <= 50_000) { "Greito palyginimo riba – 50 000 elementų skydelyje" }
-                    val leftByName = leftFiles.associateBy(File::getName)
-                    val rightByName = rightFiles.associateBy(File::getName)
-                    (leftByName.keys + rightByName.keys).map { name ->
-                        val left = leftByName[name]
-                        val right = rightByName[name]
-                        val status = when {
-                            left == null -> PanelComparisonStatus.RIGHT_ONLY
-                            right == null -> PanelComparisonStatus.LEFT_ONLY
-                            left.isDirectory != right.isDirectory -> PanelComparisonStatus.DIFFERENT
-                            left.isDirectory -> PanelComparisonStatus.SAME
-                            left.length() == right.length() && left.lastModified() == right.lastModified() -> PanelComparisonStatus.SAME
-                            else -> PanelComparisonStatus.DIFFERENT
-                        }
-                        PanelComparisonEntry(
-                            name = name,
-                            status = status,
-                            leftPath = left?.absolutePath,
-                            rightPath = right?.absolutePath,
-                            detail = when (status) {
-                                PanelComparisonStatus.SAME -> if (left?.isDirectory == true) "Aplankas abiejose pusėse" else "Sutampa dydis ir keitimo data"
-                                PanelComparisonStatus.DIFFERENT -> "Skiriasi tipas, dydis arba keitimo data"
-                                PanelComparisonStatus.LEFT_ONLY -> "Tik kairiajame skydelyje"
-                                PanelComparisonStatus.RIGHT_ONLY -> "Tik dešiniajame skydelyje"
-                            },
-                        )
-                    }.sortedWith(compareBy<PanelComparisonEntry> { it.status == PanelComparisonStatus.SAME }.thenBy { it.name.lowercase() })
-                }
-            }.onSuccess { entries ->
-                if (_panelComparison.value.leftPath == leftPath && _panelComparison.value.rightPath == rightPath) {
-                    _panelComparison.value = PanelComparisonUiState(true, false, leftPath, rightPath, entries)
-                }
-            }.onFailure { error ->
-                _panelComparison.value = PanelComparisonUiState(true, false, leftPath, rightPath, error = error.message)
-            }
-        }
-    }
 
-    fun closePanelComparison() {
-        _panelComparison.value = PanelComparisonUiState()
-    }
 
-    fun toggleSelection(panel: PanelId, path: String) {
-        activatePanel(panel)
-        panelFlow(panel).update { state ->
+    fun toggleSelection(path: String) {
+        _panel.update { state ->
             val selection = state.selectedPaths.toMutableSet()
             if (!selection.add(path)) selection.remove(path)
             state.copy(selectedPaths = selection)
         }
     }
 
-    fun selectAll(panel: PanelId) {
-        panelFlow(panel).update { it.copy(selectedPaths = it.entries.map(FileEntry::absolutePath).toSet()) }
+    fun selectAll() {
+        _panel.update { it.copy(selectedPaths = it.entries.map(FileEntry::absolutePath).toSet()) }
     }
 
-    fun selectPaths(panel: PanelId, paths: Collection<String>) {
-        activatePanel(panel)
-        panelFlow(panel).update { state ->
+    fun selectPaths(paths: Collection<String>) {
+        _panel.update { state ->
             val available = state.entries.mapTo(hashSetOf(), FileEntry::absolutePath)
             state.copy(selectedPaths = paths.filterTo(linkedSetOf(), available::contains))
         }
     }
 
-    fun setSelection(panel: PanelId, paths: Collection<String>, selected: Boolean) {
+    fun setSelection(paths: Collection<String>, selected: Boolean) {
         if (paths.isEmpty()) return
-        activatePanel(panel)
-        panelFlow(panel).update { state ->
+        _panel.update { state ->
             val updated = state.selectedPaths.toMutableSet()
             if (selected) updated.addAll(paths) else updated.removeAll(paths.toSet())
             state.copy(selectedPaths = updated)
         }
     }
 
-    fun selectOnly(panel: PanelId, path: String) {
-        selectPaths(panel, listOf(path))
+    fun selectOnly(path: String) {
+        selectPaths(listOf(path))
     }
 
-    fun clearSelection(panel: PanelId) {
-        panelFlow(panel).update { it.copy(selectedPaths = emptySet()) }
+    fun clearSelection() {
+        _panel.update { it.copy(selectedPaths = emptySet()) }
     }
 
-    fun copySelection(panel: PanelId, move: Boolean) {
-        val selected = panelFlow(panel).value.selectedPaths.toList()
+    fun copySelection(move: Boolean) {
+        val selected = _panel.value.selectedPaths.toList()
         if (selected.isEmpty()) return
-        if (setLocalClipboard(selected, move = move, append = false)) clearSelection(panel)
+        if (setLocalClipboard(selected, move = move, append = false)) clearSelection()
     }
 
-    fun copyEntry(panel: PanelId, path: String, move: Boolean) {
-        activatePanel(panel)
+    fun copyEntry(path: String, move: Boolean) {
         setLocalClipboard(listOf(path), move = move, append = false)
     }
 
@@ -1781,10 +1654,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         setLocalClipboard(paths.distinct(), move = move, append = false)
     }
 
-    fun addSelectionToClipboard(panel: PanelId) {
-        val selected = panelFlow(panel).value.selectedPaths.toList()
+    fun addSelectionToClipboard() {
+        val selected = _panel.value.selectedPaths.toList()
         if (selected.isEmpty()) return
-        if (setLocalClipboard(selected, move = false, append = true)) clearSelection(panel)
+        if (setLocalClipboard(selected, move = false, append = true)) clearSelection()
     }
 
     private fun setLocalClipboard(paths: List<String>, move: Boolean, append: Boolean): Boolean {
@@ -2099,7 +1972,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun openCleanupFromHome() {
         _cleanupRequested.value = true
         _section.value = AppSection.ANALYZE
-        val activePath = activePanelState().path
+        val activePath = panelState().path
         val normalizedActivePath = runCatching { File(activePath).absoluteFile.toPath().normalize() }.getOrNull()
         val analysisRoot = _roots.value
             .filter { root ->
@@ -2315,13 +2188,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun paste(
-        panel: PanelId,
         conflictPolicy: ConflictPolicy = ConflictPolicy.KEEP_BOTH,
         verification: TransferVerification = TransferVerification.SIZE,
         failurePolicy: TransferFailurePolicy = TransferFailurePolicy.STOP,
     ) {
         val clipboard = _clipboard.value ?: return
-        val destination = panelFlow(panel).value.path
+        val destination = _panel.value.path
         val moving = clipboard.mode == ClipboardMode.MOVE
         if (clipboard.source == ClipboardSource.PRIVILEGED) {
             graph.operationManager.submit("Kopijuojama iš apsaugotos Android vietos") {
@@ -2337,7 +2209,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _clipboard.value = null
                     _shovelClipboard.value = null
                 }
-                refreshPanel(panel)
+                refreshPanel()
                 refreshRecentFiles()
                 if (_advancedBrowser.value.open) refreshAdvancedBrowser()
             }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
@@ -2361,14 +2233,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun moveSelectionToTrash(panel: PanelId) {
-        val requestedState = panelFlow(panel).value
+    fun moveSelectionToTrash() {
+        val requestedState = _panel.value
         val selected = requestedState.selectedPaths.toList()
         if (selected.isEmpty()) return
         graph.operationManager.submit("Keliama į šiukšlinę") {
             graph.trash.moveToTrash(selected, this)
-            clearSelection(panel)
-            if (panelFlow(panel).value.path == requestedState.path) refreshPanel(panel)
+            clearSelection()
+            if (_panel.value.path == requestedState.path) refreshPanel()
             refreshTrash()
         }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
     }
@@ -2386,29 +2258,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             graph.trash.moveToTrash(selected, this)
             refreshRecentFiles()
             refreshTrash()
-            refreshPanel(PanelId.LEFT)
-            refreshPanel(PanelId.RIGHT)
+            refreshPanel()
         }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
     }
 
-    fun deleteSelectionPermanently(panel: PanelId) {
-        val requestedState = panelFlow(panel).value
+    fun deleteSelectionPermanently() {
+        val requestedState = _panel.value
         val selected = requestedState.selectedPaths.toList()
         if (selected.isEmpty()) return
         graph.operationManager.submit("Trinama visam laikui") {
             graph.localFileOperator.deletePermanently(selected, this)
-            clearSelection(panel)
-            if (panelFlow(panel).value.path == requestedState.path) refreshPanel(panel)
+            clearSelection()
+            if (_panel.value.path == requestedState.path) refreshPanel()
         }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
     }
 
-    fun createDirectory(panel: PanelId, name: String) {
+    fun createDirectory(name: String) {
         viewModelScope.launch {
-            graph.localFiles.createDirectory(panelFlow(panel).value.path, name).fold(
+            graph.localFiles.createDirectory(_panel.value.path, name).fold(
                 onSuccess = { created ->
                     runCatching { graph.recentFiles.recordAdded(created.absolutePath) }
                         .onFailure { message(it.message ?: "Naujausių failų įrašo išsaugoti nepavyko", true) }
-                    refreshPanel(panel)
+                    refreshPanel()
                     refreshRecentFiles()
                 },
                 onFailure = { message(it.message ?: "Aplanko sukurti nepavyko", true) },
@@ -2416,13 +2287,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun createFile(panel: PanelId, name: String) {
+    fun createFile(name: String) {
         viewModelScope.launch {
-            graph.localFiles.createEmptyFile(panelFlow(panel).value.path, name).fold(
+            graph.localFiles.createEmptyFile(_panel.value.path, name).fold(
                 onSuccess = { created ->
                     runCatching { graph.recentFiles.recordAdded(created.absolutePath) }
                         .onFailure { message(it.message ?: "Naujausių failų įrašo išsaugoti nepavyko", true) }
-                    refreshPanel(panel)
+                    refreshPanel()
                     refreshRecentFiles()
                 },
                 onFailure = { message(it.message ?: "Failo sukurti nepavyko", true) },
@@ -2430,13 +2301,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun rename(panel: PanelId, path: String, name: String) {
+    fun rename(path: String, name: String) {
         viewModelScope.launch {
             graph.localFiles.rename(path, name).fold(
                 onSuccess = { renamed ->
                     runCatching { graph.recentFiles.record(renamed.absolutePath) }
-                    clearSelection(panel)
-                    refreshPanel(panel)
+                    clearSelection()
+                    refreshPanel()
                     refreshRecentFiles()
                 },
                 onFailure = { message(it.message ?: "Pervadinti nepavyko", true) },
@@ -2471,8 +2342,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         graph.operationManager.submit("Masinis pervadinimas") {
             val undo = graph.batchRename.execute(preview, this)
             _renameUndo.value = undo
-            _leftPanel.update { it.copy(selectedPaths = emptySet()) }
-            _rightPanel.update { it.copy(selectedPaths = emptySet()) }
+            _panel.update { it.copy(selectedPaths = emptySet()) }
             rerunSearchIfVisible()
             message(
                 "Pervadinta: ${undo.items.size}",
@@ -2509,7 +2379,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     .onFailure { message(it.message ?: "Naujausių failų įrašo išsaugoti nepavyko", true) }
             }
             _section.value = AppSection.FILES
-            navigate(_activePanel.value, entry.absolutePath)
+            navigate(entry.absolutePath)
             return
         }
         runCatching { _recents.value = graph.navigation.recordRecent(entry.absolutePath) }
@@ -2580,7 +2450,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val source = if (category.open && category.entries.any { it.absolutePath == current.absolutePath }) {
             category.entries
         } else {
-            panelFlow(_activePanel.value).value.entries
+            _panel.value.entries
         }
         return source.filter { entry ->
             !entry.isDirectory && entry.kind == current.kind && entry.kind in setOf(EntryKind.IMAGE, EntryKind.AUDIO, EntryKind.VIDEO)
@@ -2804,8 +2674,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         when (session.origin) {
                             is EditOrigin.Local -> {
-                                refreshPanel(PanelId.LEFT)
-                                refreshPanel(PanelId.RIGHT)
+                                refreshPanel()
                             }
                             is EditOrigin.Privileged -> refreshAdvancedBrowser()
                             is EditOrigin.Content -> Unit
@@ -3005,8 +2874,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         when (result.destination) {
                             is EditDestination.Local -> {
-                                refreshPanel(PanelId.LEFT)
-                                refreshPanel(PanelId.RIGHT)
+                                refreshPanel()
                             }
                             is EditDestination.Content -> Unit
                         }
@@ -3295,7 +3163,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 require(!destination.exists() && staging.renameTo(destination)) { "Išpakavimo užbaigti nepavyko" }
                 message("Archyvas išpakuotas į ${destination.absolutePath}")
                 closePreview()
-                refreshPanel(_activePanel.value)
+                refreshPanel()
             } finally {
                 password?.fill('\u0000')
                 if (staging.exists()) staging.deleteRecursively()
@@ -3307,7 +3175,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun createArchive(
-        panel: PanelId,
         name: String,
         format: ArchiveFormat,
         password: CharArray? = null,
@@ -3315,7 +3182,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         compressionLevel: Int = ArchiveCompressionRules.DEFAULT_LEVEL,
         maxOutputBytes: Long? = null,
     ) {
-        val state = panelFlow(panel).value
+        val state = _panel.value
         val createEmpty = sourcePaths != null && sourcePaths.isEmpty()
         val requestedPaths = (sourcePaths ?: state.selectedPaths).distinct()
         if (requestedPaths.isEmpty() && !createEmpty) {
@@ -3385,7 +3252,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 compressionLevel = validatedCompressionLevel,
                 maxOutputBytes = maxOutputBytes,
             )
-        }.onSuccess { clearSelection(panel) }
+        }.onSuccess { clearSelection() }
             .onFailure {
                 password?.fill('\u0000')
                 message(it.message ?: "Archyvo kūrimo pradėti nepavyko", true)
@@ -3396,7 +3263,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         graph.fileSelectionInfo.scan(paths)
     }
 
-    fun search(filters: SearchFilters, roots: List<String> = listOf(activePanelState().path)) {
+    fun search(filters: SearchFilters, roots: List<String> = listOf(panelState().path)) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _searchState.value = SearchUiState(filters = filters, roots = roots, running = true)
@@ -3483,14 +3350,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun revealSearchResult(entry: FileEntry) {
-        val panel = _activePanel.value
         val parent = entry.file.parentFile ?: return
         _section.value = AppSection.FILES
-        navigate(panel, parent.absolutePath)
-        panelFlow(panel).update { it.copy(selectedPaths = setOf(entry.absolutePath)) }
+        navigate(parent.absolutePath)
+        _panel.update { it.copy(selectedPaths = setOf(entry.absolutePath)) }
     }
 
-    fun analyze(path: String = activePanelState().path) {
+    fun analyze(path: String = panelState().path) {
         startAnalysis(listOf(path), allStorage = false)
     }
 
@@ -3645,15 +3511,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (_preview.value == target) closePreviewImmediately()
             when (target) {
                 is PreviewTarget.PrivilegedFile -> if (!target.localOrigin) refreshAdvancedBrowser() else {
-                    refreshPanel(PanelId.LEFT)
-                    refreshPanel(PanelId.RIGHT)
+                    refreshPanel()
                     refreshFileCategory()
                     refreshRecentFiles()
                     refreshTrash()
                 }
                 else -> {
-                    refreshPanel(PanelId.LEFT)
-                    refreshPanel(PanelId.RIGHT)
+                    refreshPanel()
                     refreshFileCategory()
                     refreshRecentFiles()
                     refreshTrash()
@@ -4091,7 +3955,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 graph.archives.extractEntries(archive, entryPaths, staging, this, password)
                 require(!destination.exists() && staging.renameTo(destination)) { "Išpakavimo užbaigti nepavyko" }
                 message("Pasirinkti archyvo įrašai išpakuoti į ${destination.absolutePath}")
-                refreshPanel(_activePanel.value)
+                refreshPanel()
             } finally {
                 password?.fill('\u0000')
                 if (staging.exists()) staging.deleteRecursively()
@@ -4137,7 +4001,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             graph.archives.extractEntries(archive, entryPaths, destination, this)
             val entries = graph.archives.deleteZipEntries(archive, entryPaths)
             updateArchivePreviewEntries(target, entries)
-            refreshPanel(_activePanel.value)
+            refreshPanel()
             message("Archyvo įrašai perkelti į ${destination.name}")
         }.onFailure { message(it.message ?: "Perkėlimo pradėti nepavyko", true) }
     }
@@ -4176,13 +4040,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         message("APK išsaugojimas atšauktas")
     }
 
-    fun shareSelection(panel: PanelId) {
-        val paths = panelFlow(panel).value.selectedPaths
+    fun shareSelection() {
+        val paths = _panel.value.selectedPaths
         if (paths.isEmpty()) return
         viewModelScope.launch {
             graph.localShare.share(paths).fold(
                 onSuccess = { count ->
-                    clearSelection(panel)
+                    clearSelection()
                     message(if (count == 1) "Atidarytas bendrinimo pasirinkimas" else "Bendrinimui paruošta: $count")
                 },
                 onFailure = { message(it.message ?: "Bendrinimo atidaryti nepavyko", true) },
@@ -4212,9 +4076,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun bookmarkSelection(panel: PanelId) {
-        bookmarkPaths(panelFlow(panel).value.selectedPaths)
-        clearSelection(panel)
+    fun bookmarkSelection() {
+        bookmarkPaths(_panel.value.selectedPaths)
+        clearSelection()
     }
 
     fun bookmarkPath(path: String) = bookmarkPaths(listOf(path))
@@ -4252,17 +4116,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.onFailure { message(it.message ?: "Žymelės pridėti nepavyko", true) }
     }
 
-    fun openQuickPath(path: String, panel: PanelId = _activePanel.value) {
+    fun openQuickPath(path: String) {
         val file = File(path)
-        if (file.isDirectory) navigate(panel, path)
+        if (file.isDirectory) navigate(path)
         else if (file.isFile) open(graph.localFiles.toEntry(file))
         else message("Vieta nebeegzistuoja", true)
     }
 
-    fun openQuickPathFromHome(path: String, panel: PanelId = _activePanel.value) {
+    fun openQuickPathFromHome(path: String) {
         val file = File(path)
         when {
-            file.isDirectory -> openLocalDirectoryFromHome(panel, path)
+            file.isDirectory -> openLocalDirectoryFromHome(path)
             file.isFile -> {
                 open(graph.localFiles.toEntry(file))
             }
@@ -4270,11 +4134,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun openHomeShortcut(shortcutId: String, path: String, panel: PanelId = _activePanel.value) {
-        openQuickPathFromHome(path, panel)
+    fun openHomeShortcut(shortcutId: String, path: String) {
+        openQuickPathFromHome(path)
     }
 
-    fun openStorageRoot(root: StorageRoot, panel: PanelId = _activePanel.value) {
+    fun openStorageRoot(root: StorageRoot) {
         val target = runCatching { File(root.path).canonicalPath }.getOrElse {
             message(it.message ?: "Saugykla nepasiekiama", true)
             return
@@ -4287,10 +4151,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        openLocalDirectoryFromHome(panel, target)
+        openLocalDirectoryFromHome(target)
     }
 
-    private fun openLocalDirectoryFromHome(panel: PanelId, targetPath: String) {
+    private fun openLocalDirectoryFromHome(targetPath: String) {
         val target = runCatching { File(targetPath).canonicalPath }.getOrElse {
             message(it.message ?: "Kelias nepasiekiamas", true)
             return
@@ -4304,8 +4168,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _filesHomeVisible.value = false
         val displaySettings = savedDirectoryDisplaySettings(target)
         val sortSettings = savedDirectorySortSettings(target)
-        fileScrollPositions.reset(tabsFlow(panel).value.activeTabId, target)
-        panelFlow(panel).update { state ->
+        fileScrollPositions.reset(_tabs.value.activeTabId, target)
+        _panel.update { state ->
             state.copy(
                 path = target,
                 entries = emptyList(),
@@ -4321,8 +4185,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ).withDirectoryDisplaySettings(displaySettings)
                 .withDirectorySortSettings(sortSettings)
         }
-        syncActiveTab(panel)
-        refreshPanel(panel)
+        syncActiveTab()
+        refreshPanel()
     }
 
     fun clearRecents() {
@@ -4354,7 +4218,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun restoreTrash(id: String) {
         viewModelScope.launch {
             graph.trash.restore(id).fold(
-                onSuccess = { refreshTrash(); refreshPanel(PanelId.LEFT); refreshPanel(PanelId.RIGHT) },
+                onSuccess = { refreshTrash(); refreshPanel() },
                 onFailure = { message(it.message ?: "Atkurti nepavyko", true) },
             )
         }
@@ -4369,10 +4233,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.onFailure { message(it.message ?: "Trynimo pradėti nepavyko", true) }
     }
 
-    private fun openClonedAppStorage(panel: PanelId) {
+    private fun openClonedAppStorage() {
         val normalLocation = ClonedAppStorage.normalLocation(File(initialPrimaryPath))
         if (normalLocation != null) {
-            openLocalDirectoryFromHome(panel, normalLocation.absolutePath)
+            openLocalDirectoryFromHome(normalLocation.absolutePath)
             return
         }
         if (graph.advancedAccess.state.value.activeBackend in setOf(
@@ -4421,7 +4285,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun revealLocalEntry(panel: PanelId, path: String) {
+    fun revealLocalEntry(path: String) {
         val file = runCatching { File(path).canonicalFile }.getOrElse {
             message("Vieta nebeegzistuoja", true)
             return
@@ -4430,10 +4294,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             message("Vieta nebeegzistuoja", true)
             return
         }
-        openLocalDirectoryFromHome(panel, parent.absolutePath)
+        openLocalDirectoryFromHome(parent.absolutePath)
         viewModelScope.launch {
-            panelRefreshJob(panel)?.join()
-            panelFlow(panel).update { state ->
+            panelRefreshJob?.join()
+            _panel.update { state ->
                 if (state.path == parent.absolutePath && state.entries.any { it.absolutePath == file.absolutePath }) {
                     state.copy(selectedPaths = setOf(file.absolutePath))
                 } else state
@@ -4615,8 +4479,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.onFailure { message(it.message ?: "Kopijavimo pradėti nepavyko", true) }
     }
 
-    fun copySafToLocal(entry: SafEntry, destinationPanel: PanelId = _activePanel.value) {
-        val destination = File(panelFlow(destinationPanel).value.path)
+    fun copySafToLocal(entry: SafEntry) {
+        val destination = File(_panel.value.path)
         graph.operationManager.submit("Kopijuojama iš Android vietos") {
             graph.safFiles.copyToLocal(entry.uri, destination, this).getOrThrow()
         }.onFailure { message(it.message ?: "Kopijavimo pradėti nepavyko", true) }
@@ -4645,7 +4509,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun dismissFinishedOperations() = graph.operationManager.dismissFinished()
 
-    fun activePanelState(): PanelUiState = panelFlow(_activePanel.value).value
+    fun panelState(): PanelUiState = _panel.value
 
     override fun onCleared() {
         workspaceSaveRequests.trySend(currentWorkspace())
@@ -4806,7 +4670,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sortDirection = settings.direction,
     )
 
-    private fun tabsFlow(panel: PanelId): MutableStateFlow<PanelWorkspace> = if (panel == PanelId.LEFT) _leftTabs else _rightTabs
 
     private fun PanelWorkspace.withGlobalDisplayDefaults(
         settings: DirectoryDisplaySettings,
@@ -4822,9 +4685,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         },
     )
 
-    private fun syncActiveTab(panel: PanelId, persist: Boolean = true) {
-        val state = panelFlow(panel).value
-        tabsFlow(panel).update { workspace ->
+    private fun syncActiveTab(persist: Boolean = true) {
+        val state = _panel.value
+        _tabs.update { workspace ->
             workspace.copy(
                 tabs = workspace.tabs.map { tab ->
                     if (tab.id == workspace.activeTabId) {
@@ -4845,7 +4708,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (persist) persistWorkspace()
     }
 
-    private fun currentWorkspace(): WorkspaceSession = WorkspaceSession(left = _leftTabs.value, right = _rightTabs.value)
+    private fun currentWorkspace(): WorkspaceSession = WorkspaceSession(workspace = _tabs.value)
 
     private fun persistWorkspace() {
         if (workspaceSaveRequests.trySend(currentWorkspace()).isFailure) {
@@ -4853,13 +4716,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun panelFlow(panel: PanelId): MutableStateFlow<PanelUiState> = if (panel == PanelId.LEFT) _leftPanel else _rightPanel
 
-    private fun panelRefreshJob(panel: PanelId): Job? = if (panel == PanelId.LEFT) leftPanelRefreshJob else rightPanelRefreshJob
 
-    private fun setPanelRefreshJob(panel: PanelId, job: Job) {
-        if (panel == PanelId.LEFT) leftPanelRefreshJob = job else rightPanelRefreshJob = job
-    }
 
     private fun PanelUiState.matchesListingRequest(request: PanelUiState): Boolean =
         path == request.path && includeHidden == request.includeHidden && sortMode == request.sortMode && sortDirection == request.sortDirection
