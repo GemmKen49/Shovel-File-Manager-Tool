@@ -484,7 +484,7 @@ fun FilesScreen(
             sourcePaths = request.sourcePaths,
             loadSummary = viewModel::loadFileSelectionInfo,
             onDismiss = { archiveRequest = null },
-            onCreate = { name, format, password, compressionLevel, maxOutputBytes ->
+            onCreate = { name, format, password, compressionLevel, maxOutputBytes, hideNames ->
                 viewModel.createArchive(
                     name,
                     format,
@@ -492,6 +492,7 @@ fun FilesScreen(
                     request.sourcePaths,
                     compressionLevel,
                     maxOutputBytes,
+                    hideNames,
                 )
                 archiveRequest = null
             },
@@ -1819,11 +1820,12 @@ private fun ArchiveDialog(
     sourcePaths: List<String>,
     loadSummary: suspend (Collection<String>) -> Result<FileSelectionSummary>,
     onDismiss: () -> Unit,
-    onCreate: (String, ArchiveFormat, CharArray?, Int, Long?) -> Unit,
+    onCreate: (String, ArchiveFormat, CharArray?, Int, Long?, Boolean) -> Unit,
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
     var format by remember { mutableStateOf(ArchiveFormat.ZIP) }
     var password by remember { mutableStateOf("") }
+    var hideNames by remember { mutableStateOf(false) }
     var compressionLevel by remember { mutableStateOf(ArchiveCompressionRules.DEFAULT_LEVEL) }
     var maximumSizeMib by remember { mutableStateOf("") }
     val adjustableCompression = format == ArchiveFormat.ZIP || format == ArchiveFormat.TAR_GZ
@@ -1846,9 +1848,11 @@ private fun ArchiveDialog(
                     onCreate(
                         name,
                         format,
-                        password.takeIf { format == ArchiveFormat.ZIP && it.isNotBlank() }?.toCharArray(),
+                        password.takeIf { (format == ArchiveFormat.ZIP || format == ArchiveFormat.SEVEN_Z) && it.isNotBlank() }
+                            ?.toCharArray(),
                         compressionLevel,
                         maximumBytes,
+                        hideNames && format == ArchiveFormat.SEVEN_Z && password.isNotBlank(),
                     )
                 },
                 enabled = name.isNotBlank() && maximumSizeValid,
@@ -1879,14 +1883,30 @@ private fun ArchiveDialog(
                         )
                     }
                 }
-                if (format == ArchiveFormat.ZIP) {
+                if (format == ArchiveFormat.ZIP || format == ArchiveFormat.SEVEN_Z) {
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
                         label = { LText("Slaptažodis (nebūtinas, AES-256)") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().testTag("archive_password"),
                     )
+                }
+                if (format == ArchiveFormat.SEVEN_Z && password.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                            LText("Hide file names", fontWeight = FontWeight.SemiBold)
+                            LText(
+                                "Also encrypts the file list, so nothing about the contents is visible without the password.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Switch(
+                            checked = hideNames,
+                            onCheckedChange = { hideNames = it },
+                            modifier = Modifier.testTag("archive_hide_names"),
+                        )
+                    }
                 }
                 LText(
                     if (adjustableCompression && maximumBytes != null) "Bus naudojamas stipriausias suspaudimas"

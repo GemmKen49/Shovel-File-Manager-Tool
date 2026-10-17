@@ -11,6 +11,7 @@ import net.lingala.zip4j.model.enums.AesKeyStrength
 import net.lingala.zip4j.model.enums.CompressionLevel
 import net.lingala.zip4j.model.enums.CompressionMethod
 import net.lingala.zip4j.model.enums.EncryptionMethod
+import org.apache.commons.compress.PasswordRequiredException
 import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
@@ -44,7 +45,7 @@ class ArchiveEngine(
         require(archiveFile.isFile) { "Archyvas nepasiekiamas" }
         when (detectFormat(archiveFile)) {
             ArchiveFormat.ZIP -> listZip(archiveFile, password)
-            ArchiveFormat.SEVEN_Z -> listSevenZ(archiveFile)
+            ArchiveFormat.SEVEN_Z -> listSevenZ(archiveFile, password)
             ArchiveFormat.RAR -> listRar(archiveFile)
             ArchiveFormat.TAR, ArchiveFormat.TAR_GZ -> listTar(archiveFile)
             ArchiveFormat.GZIP -> listOf(
@@ -71,7 +72,7 @@ class ArchiveEngine(
         publishingStorageChanges(onMutation, { affected }) {
         when (detectFormat(archiveFile)) {
             ArchiveFormat.ZIP -> extractZip(archiveFile, destinationDirectory, password, operation)
-            ArchiveFormat.SEVEN_Z -> extractSevenZ(archiveFile, destinationDirectory, operation)
+            ArchiveFormat.SEVEN_Z -> extractSevenZ(archiveFile, destinationDirectory, password, operation)
             ArchiveFormat.RAR -> extractRar(archiveFile, destinationDirectory, operation)
             ArchiveFormat.TAR, ArchiveFormat.TAR_GZ -> extractTar(archiveFile, destinationDirectory, operation)
             ArchiveFormat.GZIP -> extractGzip(archiveFile, destinationDirectory, operation, fallbackExtractedName)
@@ -108,17 +109,19 @@ class ArchiveEngine(
             }
             ArchiveFormat.SEVEN_Z -> {
                 var found = false
-                SevenZFile(archiveFile).use { archive ->
-                    while (true) {
-                        val entry = archive.nextEntry ?: break
-                        if (normalizedEntryPath(entry.name) != requested) continue
-                        require(!entry.isDirectory) { "A folder cannot be materialized as a file" }
-                        require(entry.size in 0..limits.maxSingleEntryBytes) { "Archive entry is too large" }
-                        writeExtractedTarget(destinationFile) { output ->
-                            copySevenZBounded(archive, output, entry.size, 0, operation, requested)
+                sevenZGuard(password) {
+                    openSevenZ(archiveFile, password).use { archive ->
+                        while (true) {
+                            val entry = archive.nextEntry ?: break
+                            if (normalizedEntryPath(entry.name) != requested) continue
+                            require(!entry.isDirectory) { "A folder cannot be materialized as a file" }
+                            require(entry.size in 0..limits.maxSingleEntryBytes) { "Archive entry is too large" }
+                            writeExtractedTarget(destinationFile) { output ->
+                                copySevenZBounded(archive, output, entry.size, 0, operation, requested)
+                            }
+                            found = true
+                            break
                         }
-                        found = true
-                        break
                     }
                 }
                 require(found) { "Archive entry was not found" }
@@ -228,19 +231,21 @@ class ArchiveEngine(
                     completed(normalized)
                 }
             }
-            ArchiveFormat.SEVEN_Z -> SevenZFile(archiveFile).use { archive ->
-                while (true) {
-                    val entry = archive.nextEntry ?: break
-                    val normalized = ArchiveMutationRules.normalizePath(entry.name)
-                    if (normalized !in chosenByPath) continue
-                    operation?.checkpoint()
-                    val target = prepareTarget(normalized, entry.isDirectory)
-                    if (!entry.isDirectory) {
-                        writeExtractedTarget(target) { output ->
-                            expanded = copySevenZBounded(archive, output, entry.size, expanded, operation, normalized)
+            ArchiveFormat.SEVEN_Z -> sevenZGuard(password) {
+                openSevenZ(archiveFile, password).use { archive ->
+                    while (true) {
+                        val entry = archive.nextEntry ?: break
+                        val normalized = ArchiveMutationRules.normalizePath(entry.name)
+                        if (normalized !in chosenByPath) continue
+                        operation?.checkpoint()
+                        val target = prepareTarget(normalized, entry.isDirectory)
+                        if (!entry.isDirectory) {
+                            writeExtractedTarget(target) { output ->
+                                expanded = copySevenZBounded(archive, output, entry.size, expanded, operation, normalized)
+                            }
                         }
+                        completed(normalized)
                     }
-                    completed(normalized)
                 }
             }
             ArchiveFormat.RAR -> Archive(archiveFile).use { archive ->
@@ -339,12 +344,18 @@ class ArchiveEngine(
         operation: OperationContext? = null,
         compressionLevel: Int = ArchiveCompressionRules.DEFAULT_LEVEL,
         maxOutputBytes: Long? = null,
+        hideNames: Boolean = false,
     ) = withContext(Dispatchers.IO) {
         var partial: File? = null
         try {
             require(sources.all(File::exists)) { "Kai kurie šaltiniai nebeegzistuoja" }
             require(format != ArchiveFormat.RAR && format != ArchiveFormat.GZIP) { "Šį formatą galima tik išpakuoti" }
-            require(password == null || format == ArchiveFormat.ZIP) { "Šifravimas palaikomas kuriant ZIP" }
+            require(password == null || format == ArchiveFormat.ZIP || format == ArchiveFormat.SEVEN_Z) {
+                "Encryption is supported for ZIP and 7z archives"
+            }
+            require(!hideNames || (password != null && format == ArchiveFormat.SEVEN_Z)) {
+                "File names can only be hidden in password protected 7z archives"
+            }
             require(sources.isNotEmpty() || password == null) { "Tuščias archyvas negali būti užšifruotas" }
             val validatedCompressionLevel = ArchiveCompressionRules.validated(compressionLevel)
             val validatedTarget = maxOutputBytes?.let { ArchiveTargetSizeRules.validatedBytes(it, limits) }
@@ -374,7 +385,7 @@ class ArchiveEngine(
                     operation,
                     effectiveCompressionLevel,
                 )
-                ArchiveFormat.SEVEN_Z -> createSevenZ(partialFile, sources, operation)
+                ArchiveFormat.SEVEN_Z -> createSevenZ(partialFile, sources, operation, password, hideNames)
                 ArchiveFormat.TAR -> createTar(partialFile, sources, gzip = false, operation, effectiveCompressionLevel)
                 ArchiveFormat.TAR_GZ -> createTar(partialFile, sources, gzip = true, operation, effectiveCompressionLevel)
                 ArchiveFormat.RAR, ArchiveFormat.GZIP -> error("Nepalaikomas kūrimo formatas")
@@ -468,18 +479,35 @@ class ArchiveEngine(
     }
 
     @Suppress("DEPRECATION")
-    private fun listSevenZ(file: File): List<ArchiveEntryInfo> {
+    private fun openSevenZ(file: File, password: CharArray?): SevenZFile =
+        if (password == null) SevenZFile(file) else SevenZFile(file, password)
+
+    /** Turns decoding failures into messages that say what to do about a locked 7z archive. */
+    private inline fun <T> sevenZGuard(password: CharArray?, block: () -> T): T = try {
+        block()
+    } catch (error: PasswordRequiredException) {
+        throw ArchivePasswordRequiredException("This 7z archive is password protected")
+    } catch (error: java.io.IOException) {
+        if (password != null) {
+            throw IllegalArgumentException("Wrong password, or the archive is damaged: ${error.message}", error)
+        }
+        throw error
+    }
+
+    private fun listSevenZ(file: File, password: CharArray?): List<ArchiveEntryInfo> {
         val result = mutableListOf<ArchiveEntryInfo>()
-        SevenZFile(file).use { archive ->
-            while (true) {
-                val entry = archive.nextEntry ?: break
-                require(result.size < limits.maxEntries) { "Archyve per daug įrašų" }
-                result += ArchiveEntryInfo(
-                    name = entry.name,
-                    directory = entry.isDirectory,
-                    sizeBytes = entry.size,
-                    modifiedAtMillis = entry.lastModifiedDate?.time,
-                )
+        sevenZGuard(password) {
+            openSevenZ(file, password).use { archive ->
+                while (true) {
+                    val entry = archive.nextEntry ?: break
+                    require(result.size < limits.maxEntries) { "Archyve per daug įrašų" }
+                    result += ArchiveEntryInfo(
+                        name = entry.name,
+                        directory = entry.isDirectory,
+                        sizeBytes = entry.size,
+                        modifiedAtMillis = entry.lastModifiedDate?.time,
+                    )
+                }
             }
         }
         return result
@@ -537,27 +565,28 @@ class ArchiveEngine(
         }
     }
 
-    @Suppress("DEPRECATION")
-    private suspend fun extractSevenZ(file: File, destination: File, operation: OperationContext?) {
+    private suspend fun extractSevenZ(file: File, destination: File, password: CharArray?, operation: OperationContext?) {
         var entries = 0
         var expanded = 0L
-        SevenZFile(file).use { archive ->
-            while (true) {
-                val entry = archive.nextEntry ?: break
-                entries += 1
-                require(entries <= limits.maxEntries) { "Archyve per daug įrašų" }
-                require(entry.size <= limits.maxSingleEntryBytes) { "Archyvo įrašas per didelis" }
-                operation?.checkpoint()
-                val target = SafeArchivePath.resolve(destination, entry.name, limits.maxDepth)
-                if (entry.isDirectory) {
-                    require(target.isDirectory || target.mkdirs()) { "Nepavyko sukurti ${entry.name}" }
-                } else {
-                    target.parentFile?.mkdirs()
-                    writeExtractedTarget(target) { output ->
-                        expanded = copySevenZBounded(archive, output, entry.size, expanded, operation, entry.name)
+        sevenZGuard(password) {
+            openSevenZ(file, password).use { archive ->
+                while (true) {
+                    val entry = archive.nextEntry ?: break
+                    entries += 1
+                    require(entries <= limits.maxEntries) { "Archyve per daug įrašų" }
+                    require(entry.size <= limits.maxSingleEntryBytes) { "Archyvo įrašas per didelis" }
+                    operation?.checkpoint()
+                    val target = SafeArchivePath.resolve(destination, entry.name, limits.maxDepth)
+                    if (entry.isDirectory) {
+                        require(target.isDirectory || target.mkdirs()) { "Nepavyko sukurti ${entry.name}" }
+                    } else {
+                        target.parentFile?.mkdirs()
+                        writeExtractedTarget(target) { output ->
+                            expanded = copySevenZBounded(archive, output, entry.size, expanded, operation, entry.name)
+                        }
                     }
+                    operation?.progress(itemDelta = 1, currentName = entry.name)
                 }
-                operation?.progress(itemDelta = 1, currentName = entry.name)
             }
         }
     }
@@ -731,7 +760,23 @@ class ArchiveEngine(
         }
     }
 
-    private suspend fun createSevenZ(file: File, sources: List<File>, operation: OperationContext?) {
+    private suspend fun createSevenZ(
+        file: File,
+        sources: List<File>,
+        operation: OperationContext?,
+        password: CharArray?,
+        hideNames: Boolean,
+    ) {
+        if (password != null) {
+            EncryptedSevenZWriter(
+                file = file,
+                password = password,
+                hideNames = hideNames,
+                compressionLevel = ArchiveCompressionRules.DEFAULT_LEVEL,
+                maxDepth = limits.maxDepth,
+            ).write(sources, operation)
+            return
+        }
         SevenZOutputFile(file).use { output ->
             sources.forEach { source -> addToSevenZ(output, source, source.name, operation, 0) }
         }

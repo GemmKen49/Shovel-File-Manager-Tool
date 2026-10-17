@@ -59,3 +59,7 @@ data class ArchiveLimits(
     val maxDepth: Int = 64,
     val maxCompressionRatio: Long = 1_000,
 )
+
+/** Thrown when an archive needs a password (or the entered one is missing) before it can be read. */
+class ArchivePasswordRequiredException(message: String = "This archive is password protected") :
+    IllegalArgumentException(message)

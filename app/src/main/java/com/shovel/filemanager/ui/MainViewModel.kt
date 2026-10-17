@@ -2393,7 +2393,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             when (entry.kind) {
                 com.shovel.filemanager.model.EntryKind.ARCHIVE -> runCatching { graph.archives.list(entry.file) }
                     .onSuccess { _preview.value = PreviewTarget.Archive(entry, it) }
-                    .onFailure { message(it.message ?: "Archyvo perskaityti nepavyko", true) }
+                    .onFailure { error ->
+                        if (error is com.shovel.filemanager.archive.ArchivePasswordRequiredException) {
+                            _archivePasswordRequest.value = entry
+                        } else {
+                            message(error.message ?: "Archyvo perskaityti nepavyko", true)
+                        }
+                    }
                 else -> {
                     val directlyExposed = withContext(Dispatchers.IO) { canExposeLocalPreview(entry.file) }
                     if (directlyExposed) _preview.value = PreviewTarget.LocalFile(entry)
@@ -3181,6 +3187,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sourcePaths: Collection<String>? = null,
         compressionLevel: Int = ArchiveCompressionRules.DEFAULT_LEVEL,
         maxOutputBytes: Long? = null,
+        hideNames: Boolean = false,
     ) {
         val state = _panel.value
         val createEmpty = sourcePaths != null && sourcePaths.isEmpty()
@@ -3251,6 +3258,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 operation = this,
                 compressionLevel = validatedCompressionLevel,
                 maxOutputBytes = maxOutputBytes,
+                hideNames = hideNames,
             )
         }.onSuccess { clearSelection() }
             .onFailure {
@@ -3888,11 +3896,52 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         message(if (merged.addedCount > 0) "Archyvo įrašai pridėti prie kopijavimo rinkinio: ${merged.addedCount}" else "Pasirinkti archyvo įrašai jau yra kopijavimo rinkinyje")
     }
 
+    private val _archivePasswordRequest = MutableStateFlow<FileEntry?>(null)
+
+    /** Set while a password protected archive waits for its password before it can be opened. */
+    val archivePasswordRequest: StateFlow<FileEntry?> = _archivePasswordRequest.asStateFlow()
+
+    // The password of the archive that is open in the preview. It stays in memory only until the preview closes.
+    private var archiveSession: Pair<String, CharArray>? = null
+
+    private fun archivePasswordFor(archive: File): CharArray? =
+        archiveSession?.takeIf { it.first == archive.absolutePath }?.second
+
+    private fun clearArchiveSession() {
+        archiveSession?.second?.fill('\u0000')
+        archiveSession = null
+    }
+
+    fun submitArchivePassword(password: CharArray) {
+        val entry = _archivePasswordRequest.value
+        if (entry == null) {
+            password.fill('\u0000')
+            return
+        }
+        viewModelScope.launch {
+            runCatching { graph.archives.list(entry.file, password) }
+                .onSuccess { entries ->
+                    clearArchiveSession()
+                    archiveSession = entry.file.absolutePath to password
+                    _archivePasswordRequest.value = null
+                    _preview.value = PreviewTarget.Archive(entry, entries)
+                }
+                .onFailure { error ->
+                    password.fill('\u0000')
+                    message(error.message ?: "Archyvo perskaityti nepavyko", true)
+                }
+        }
+    }
+
+    fun dismissArchivePasswordRequest() {
+        _archivePasswordRequest.value = null
+    }
+
     fun refreshArchivePreview() {
         val target = _preview.value ?: return
         val archiveFile = target.archiveFile() ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { graph.archives.list(archiveFile) }
+            runCatching { graph.archives.list(archiveFile, archivePasswordFor(archiveFile)) }
                 .onSuccess { entries -> updateArchivePreviewEntries(target, entries) }
                 .onFailure { message(it.message ?: "Archyvo perskaityti nepavyko", true) }
         }
@@ -3924,7 +3973,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val stage = File(getApplication<Application>().cacheDir, "archive-share-${UUID.randomUUID()}")
             runCatching {
-                graph.archives.extractEntries(archive, entryPaths, stage)
+                graph.archives.extractEntries(archive, entryPaths, stage, null, archivePasswordFor(archive))
                 val files = stage.walkTopDown().filter(File::isFile).take(MAX_ARCHIVE_SHARE_FILES + 1).toList()
                 require(files.isNotEmpty()) { "Pasirinktuose archyvo įrašuose nėra failų" }
                 require(files.size <= MAX_ARCHIVE_SHARE_FILES) { "Pasirinkta per daug archyvo failų bendrinimui" }
@@ -3952,7 +4001,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val staging = File(destinationParent, ".shovel-extract-${UUID.randomUUID()}")
         graph.operationManager.submit("Išpakuojami pasirinkti archyvo įrašai") {
             try {
-                graph.archives.extractEntries(archive, entryPaths, staging, this, password)
+                graph.archives.extractEntries(archive, entryPaths, staging, this, password ?: archivePasswordFor(archive))
                 require(!destination.exists() && staging.renameTo(destination)) { "Išpakavimo užbaigti nepavyko" }
                 message("Pasirinkti archyvo įrašai išpakuoti į ${destination.absolutePath}")
                 refreshPanel()
@@ -4512,6 +4561,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun panelState(): PanelUiState = _panel.value
 
     override fun onCleared() {
+        clearArchiveSession()
         workspaceSaveRequests.trySend(currentWorkspace())
         workspaceSaveRequests.close()
         // Let queued writes finish, then release the workers' reference to this screen.
@@ -4789,6 +4839,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         archiveReturnTarget = null
         _preview.value = null
+        clearArchiveSession()
         graph.applicationScope.launch {
             val editRemoved = graph.editSessions.discard(session)
             val privilegedPreviewRemoved = graph.privilegedFiles.discardPreview(target.privilegedCachedFile())
@@ -4842,7 +4893,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     requireNotNull(archiveMaterializationRoot),
                     "${UUID.randomUUID()}${extension.takeIf(String::isNotBlank)?.let { ".$it" }.orEmpty()}",
                 )
-                graph.archives.extractEntry(archive, info.name, destination)
+                graph.archives.extractEntry(archive, info.name, destination, null, archivePasswordFor(archive))
                 archiveMaterializedFiles[normalizedPath] = destination
                 destination
             }

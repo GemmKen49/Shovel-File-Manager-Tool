@@ -92,6 +92,7 @@ import com.shovel.filemanager.ui.components.BatchRenameDialog
 import com.shovel.filemanager.ui.components.BackgroundPlaybackBar
 import com.shovel.filemanager.ui.localization.LText
 import com.shovel.filemanager.ui.localization.UiTranslator
+import com.shovel.filemanager.ui.preview.ArchivePasswordDialog
 import com.shovel.filemanager.ui.screens.OperationsScreen
 import com.shovel.filemanager.ui.screens.AnalyzeScreen
 import com.shovel.filemanager.ui.screens.AdvancedStorageBrowserDialog
@@ -436,6 +437,14 @@ fun ShovelApp(
             backgroundPlaylist = viewModel.backgroundMediaPlaylist(target),
             onPreviousMedia = { viewModel.navigatePreviewMedia(-1) },
             onNextMedia = { viewModel.navigatePreviewMedia(1) },
+        )
+    }
+    val archivePasswordRequest by viewModel.archivePasswordRequest.collectAsStateWithLifecycle()
+    archivePasswordRequest?.let { entry ->
+        ArchivePasswordDialog(
+            archiveName = entry.name,
+            onConfirm = viewModel::submitArchivePassword,
+            onDismiss = viewModel::dismissArchivePasswordRequest,
         )
     }
 
