@@ -92,6 +92,7 @@ class AppGraph(application: Application) {
     val search = FileSearchEngine(localFiles)
     val similarImages by lazy { SimilarImageEngine() }
     val archives = ArchiveEngine(onMutation = sharedStorageIndex::changed)
+    val folderStats = com.shovel.filemanager.data.FolderStatsRepository(application, archives)
     val localShare by lazy { LocalShareManager(application, archives) }
     val appLock = AppLockRepository(application)
     val safFiles = SafFileRepository(application, sharedStorageIndex::changed)

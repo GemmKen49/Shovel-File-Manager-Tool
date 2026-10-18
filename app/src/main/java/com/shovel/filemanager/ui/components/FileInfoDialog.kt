@@ -1,5 +1,9 @@
 package com.shovel.filemanager.ui.components
 
+import com.shovel.filemanager.model.EntryKind
+import com.shovel.filemanager.data.sizeText
+import com.shovel.filemanager.data.itemsText
+import com.shovel.filemanager.data.FolderStats
 import android.widget.Toast
 
 import androidx.compose.foundation.layout.Arrangement
@@ -89,6 +93,7 @@ fun FileInfoDialog(
     entries: List<FileEntry>,
     loadSummary: suspend (Collection<String>) -> Result<FileSelectionSummary>,
     onDismiss: () -> Unit,
+    loadFolderStats: (suspend (FileEntry) -> FolderStats?)? = null,
 ) {
     val context = LocalContext.current
     val settingsError = uiText("Programos nustatymų atidaryti nepavyko")
@@ -99,6 +104,15 @@ fun FileInfoDialog(
     var loading by remember(paths) { mutableStateOf(true) }
     var summary by remember(paths) { mutableStateOf<FileSelectionSummary?>(null) }
     var error by remember(paths) { mutableStateOf<String?>(null) }
+    var folderStats by remember(paths) { mutableStateOf<FolderStats?>(null) }
+
+    LaunchedEffect(paths) {
+        folderStats = null
+        val target = single
+        if (target != null && loadFolderStats != null && (target.isDirectory || target.kind == EntryKind.ARCHIVE)) {
+            folderStats = loadFolderStats(target)
+        }
+    }
 
     LaunchedEffect(paths) {
         loading = true
@@ -145,6 +159,14 @@ fun FileInfoDialog(
                             uiText("Rašoma").takeIf { entry.isWritable },
                         ).ifEmpty { listOf(uiText("Neprieinama")) }.joinToString(" · "),
                     )
+                    folderStats?.let { stats ->
+                        InfoLine("Items", stats.itemsText(), Modifier.testTag("file_info_visible_items"))
+                        InfoLine(
+                            "Visible size",
+                            if (entry.isDirectory) stats.sizeText() else "${stats.sizeText()} unpacked",
+                            Modifier.testTag("file_info_visible_size"),
+                        )
+                    }
                 }
                 when {
                     loading -> Row(

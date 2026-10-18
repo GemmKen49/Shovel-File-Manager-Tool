@@ -522,6 +522,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val operations = graph.operationManager.operations
 
+    /** Whether the file list shows item counts and sizes under folders and archives. */
+    val folderDetailsEnabled: StateFlow<Boolean> = graph.folderStats.enabled
+
+    fun setFolderDetailsEnabled(enabled: Boolean) = graph.folderStats.setEnabled(enabled)
+
+    suspend fun folderStats(entry: FileEntry, includeHidden: Boolean): com.shovel.filemanager.data.FolderStats? =
+        graph.folderStats.statsFor(entry, includeHidden)
+
     /** Saved history of what each operation did, newest first. */
     val operationLogs: StateFlow<List<com.shovel.filemanager.operations.OperationLogSummary>> =
         graph.operationLogs.summaries

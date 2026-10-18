@@ -527,6 +527,26 @@ fun FilesScreen(
                 viewModel.applyDirectoryDisplaySettingsToAll(settings, mode, direction)
                 showDisplaySettings = false
             },
+            extraContent = {
+                HorizontalDivider()
+                val folderDetails by viewModel.folderDetailsEnabled.collectAsStateWithLifecycle()
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        LText("Folder details", fontWeight = FontWeight.SemiBold)
+                        LText(
+                            "Shows how many items are inside each folder and archive and how much space they use. " +
+                                "Hidden items follow the Show hidden setting. Applies to all folders.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = folderDetails,
+                        onCheckedChange = viewModel::setFolderDetailsEnabled,
+                        modifier = Modifier.testTag("display_folder_details"),
+                    )
+                }
+            },
         )
     }
     homeDisplayArea?.let { area ->
@@ -569,6 +589,7 @@ fun FilesScreen(
             entries = entries,
             loadSummary = viewModel::loadFileSelectionInfo,
             onDismiss = { infoTargets = null },
+            loadFolderStats = { entry -> viewModel.folderStats(entry, panelState.includeHidden) },
         )
     }
     if (showHomeCustomization) {
@@ -1083,6 +1104,7 @@ internal fun FileList(
 ) {
     val context = LocalContext.current
     val bookmarkedPaths = viewModel.homeCustomization.collectAsStateWithLifecycle().value.shortcuts.mapTo(hashSetOf()) { it.path }
+    val folderDetailsEnabled by viewModel.folderDetailsEnabled.collectAsStateWithLifecycle()
     val interfaceLanguage = LocalConfiguration.current.locales[0].language
     val chooserError = uiText("Programų pasirinkiklio atidaryti nepavyko")
     val dateFormat = rememberLocalizedDateTimeFormat(DateFormat.SHORT, DateFormat.SHORT)
@@ -1181,8 +1203,14 @@ internal fun FileList(
             contentPadding = PaddingValues(bottom = 88.dp),
         ) {
             items(state.entries, key = FileEntry::absolutePath, contentType = FileEntry::kind) { entry ->
-                val metadata = remember(entry, state.sortMode) {
-                    entryMeta(entry, dateFormat, showDirectorySize = state.sortMode == SortMode.SIZE)
+                val details = rememberFolderDetails(viewModel, entry, state.includeHidden, folderDetailsEnabled)
+                val metadata = remember(entry, state.sortMode, details) {
+                    entryMeta(
+                        entry,
+                        dateFormat,
+                        showDirectorySize = state.sortMode == SortMode.SIZE,
+                        details = folderDetailsText(entry, details),
+                    )
                 }
                 FileRow(
                     entry = entry,
@@ -1237,6 +1265,7 @@ internal fun FileGrid(
 ) {
     val context = LocalContext.current
     val bookmarkedPaths = viewModel.homeCustomization.collectAsStateWithLifecycle().value.shortcuts.mapTo(hashSetOf()) { it.path }
+    val folderDetailsEnabled by viewModel.folderDetailsEnabled.collectAsStateWithLifecycle()
     val interfaceLanguage = LocalConfiguration.current.locales[0].language
     val chooserError = uiText("Programų pasirinkiklio atidaryti nepavyko")
     val largestSizeBytes = remember(state.entries, state.sortMode) {
@@ -1336,8 +1365,10 @@ internal fun FileGrid(
             verticalArrangement = Arrangement.spacedBy((5f * state.spacingScalePercent / 100f).dp),
         ) {
             items(state.entries, key = FileEntry::absolutePath, contentType = FileEntry::kind) { entry ->
+                val details = rememberFolderDetails(viewModel, entry, state.includeHidden, folderDetailsEnabled)
                 FileTile(
                     entry = entry,
+                    detailText = folderDetailsText(entry, details),
                     selected = entry.absolutePath in state.selectedPaths,
                     showThumbnails = state.showThumbnails,
                     iconScalePercent = state.iconScalePercent,
@@ -1466,6 +1497,7 @@ private fun FileRow(
 @Composable
 private fun FileTile(
     entry: FileEntry,
+    detailText: String?,
     selected: Boolean,
     showThumbnails: Boolean,
     iconScalePercent: Int,
@@ -1493,7 +1525,7 @@ private fun FileTile(
     val innerPadding = (9f * spacingScalePercent / 100f).dp
     val sizeBarSlotHeight = if (largestSizeBytes != null) 10.dp else 0.dp
     val extraContentHeight = sizeBarSlotHeight
-    val metadata = if (!entry.isDirectory || largestSizeBytes != null && entry.metadataComplete) {
+    val metadata = detailText ?: if (!entry.isDirectory || largestSizeBytes != null && entry.metadataComplete) {
         FileSystemRules.humanBytes(entry.sizeBytes)
     } else {
         null
@@ -2034,13 +2066,20 @@ internal fun sortLabel(mode: SortMode): String = when (mode) {
     SortMode.TYPE -> "Pagal tipą"
 }
 
-private fun entryMeta(entry: FileEntry, dateFormat: DateFormat, showDirectorySize: Boolean = false): String {
+private fun entryMeta(
+    entry: FileEntry,
+    dateFormat: DateFormat,
+    showDirectorySize: Boolean = false,
+    details: String? = null,
+): String {
     if (!entry.metadataComplete) return if (entry.isDirectory) "Aplankas · kraunami duomenys…" else "Kraunami duomenys…"
     val date = entry.modifiedAtMillis.takeIf { it > 0 }?.let { dateFormat.format(Date(it)) }
     val size = when {
+        // The details line already carries the folder's size.
+        entry.isDirectory && details != null -> "Folder"
         entry.isDirectory && showDirectorySize -> "Aplankas · ${FileSystemRules.humanBytes(entry.sizeBytes)}"
         entry.isDirectory -> "Aplankas"
         else -> FileSystemRules.humanBytes(entry.sizeBytes)
     }
-    return listOfNotNull(size, date).joinToString(" · ")
+    return listOfNotNull(size, details, date).joinToString(" · ")
 }
