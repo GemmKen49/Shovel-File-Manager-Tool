@@ -1,7 +1,10 @@
 package com.shovel.filemanager
 
-import androidx.annotation.RequiresApi
-import android.os.Build
+import com.shovel.filemanager.ui.StartupSplash
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
 import android.content.Intent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -44,30 +47,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Android 12+ removes its splash as soon as the app is ready. This keeps it up until the shovel
-     * animation has finished playing, then fades it out.
-     */
-    @RequiresApi(Build.VERSION_CODES.S)
-    private fun holdSplashUntilAnimationEnds() {
-        splashScreen.setOnExitAnimationListener { splashView ->
-            val start = splashView.iconAnimationStart
-            val duration = splashView.iconAnimationDuration
-            val remainingMillis = if (start != null && duration != null) {
-                duration.toMillis() - java.time.Duration.between(start, java.time.Instant.now()).toMillis()
-            } else {
-                0L
-            }
-            val fadeOut = Runnable {
-                splashView.animate().alpha(0f).setDuration(150L).withEndAction { splashView.remove() }.start()
-            }
-            if (remainingMillis > 0L) splashView.postDelayed(fadeOut, remainingMillis) else fadeOut.run()
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) holdSplashUntilAnimationEnds()
         pendingViewRequest.value = intent.toIncomingViewRequest()
         pendingStorageRefresh.value = intent.action in storageChangeActions
         enableEdgeToEdge()
@@ -78,6 +59,8 @@ class MainActivity : AppCompatActivity() {
             val filesHomeVisible = mainViewModel.filesHomeVisible.collectAsStateWithLifecycle()
             val panel = mainViewModel.panel.collectAsStateWithLifecycle()
             val storageRoots = mainViewModel.roots.collectAsStateWithLifecycle()
+            // The start-up animation plays whenever the screen is opened fresh, not after a rotation.
+            val showStartupSplash = rememberSaveable { mutableStateOf(savedInstanceState == null) }
             LaunchedEffect(pendingStorageRefresh.value) {
                 if (pendingStorageRefresh.value) {
                     mainViewModel.refreshStorageRoots()
@@ -102,11 +85,16 @@ class MainActivity : AppCompatActivity() {
             }
             ShovelTheme(settings = appearance.value) {
                 CompositionLocalProvider(LocalStorageRoots provides storageRoots.value) {
-                    ShovelApp(
-                        viewModel = mainViewModel,
-                        incomingViewRequest = pendingViewRequest.value,
-                        onIncomingViewRequestConsumed = { pendingViewRequest.value = null },
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        ShovelApp(
+                            viewModel = mainViewModel,
+                            incomingViewRequest = pendingViewRequest.value,
+                            onIncomingViewRequestConsumed = { pendingViewRequest.value = null },
+                        )
+                        if (showStartupSplash.value) {
+                            StartupSplash(onFinished = { showStartupSplash.value = false })
+                        }
+                    }
                 }
             }
         }

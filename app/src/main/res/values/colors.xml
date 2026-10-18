@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Colour of the blank screen shown while the app starts; the in-app animation uses the same one. -->
+    <color name="shovel_splash_background">#0B1625</color>
+</resources>

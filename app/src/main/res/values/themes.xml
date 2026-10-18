@@ -6,6 +6,7 @@
         <item name="android:statusBarColor">#0B1320</item>
         <item name="android:navigationBarColor">#07101C</item>
         <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/shovel_splash_background</item>
     </style>
     <!-- External GET_CONTENT requests keep their caller visible behind Shovel's picker dialog. -->
     <style name="Theme.ShovelFilePicker" parent="Theme.Shovel">
