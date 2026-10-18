@@ -21,18 +21,11 @@ jobs:
           unzip -o update.zip
           rm update.zip
 
-      - name: Remove files that are no longer used
-        run: |
-          set -euo pipefail
-          rm -f app/src/main/res/drawable/splash_icon.xml
-          rm -f app/src/main/res/drawable/splash_icon_vector.xml
-          rm -f app/src/main/res/values-v33/themes.xml
-
       - name: Commit and push
         run: |
           set -euo pipefail
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add -A
-          git commit -m "Play the start-up animation inside the app"
+          git commit -m "Add folder details (item count and size)"
           git push
