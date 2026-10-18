@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Start-up animation for the Android 12+ system splash screen (about 0.9 seconds):
+    the shovel drops in, sticks into the ground, wobbles once and a little dirt pops out.
+-->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:drawable="@drawable/splash_icon_vector">
+
+    <!-- Fall from above -->
+    <target android:name="shovel">
+        <aapt:attr name="android:animation">
+            <set android:ordering="together">
+                <objectAnimator
+                    android:duration="380"
+                    android:interpolator="@android:interpolator/accelerate_quad"
+                    android:propertyName="translateY"
+                    android:valueFrom="-90"
+                    android:valueTo="0"
+                    android:valueType="floatType" />
+                <!-- One wobble after landing -->
+                <set android:ordering="sequentially">
+                    <objectAnimator
+                        android:duration="110"
+                        android:interpolator="@android:interpolator/decelerate_quad"
+                        android:propertyName="rotation"
+                        android:startOffset="380"
+                        android:valueFrom="0"
+                        android:valueTo="-6"
+                        android:valueType="floatType" />
+                    <objectAnimator
+                        android:duration="130"
+                        android:interpolator="@android:interpolator/accelerate_decelerate"
+                        android:propertyName="rotation"
+                        android:valueFrom="-6"
+                        android:valueTo="4"
+                        android:valueType="floatType" />
+                    <objectAnimator
+                        android:duration="110"
+                        android:interpolator="@android:interpolator/decelerate_quad"
+                        android:propertyName="rotation"
+                        android:valueFrom="4"
+                        android:valueTo="0"
+                        android:valueType="floatType" />
+                </set>
+            </set>
+        </aapt:attr>
+    </target>
+
+    <!-- The ground parts around the blade -->
+    <target android:name="ground">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="80"
+                android:propertyName="pathData"
+                android:startOffset="380"
+                android:valueFrom="M12,79 H38 L43,79 H65 L70,79 H96 V94 H12 Z"
+                android:valueTo="M12,79 H38 L43,84 H65 L70,79 H96 V94 H12 Z"
+                android:valueType="pathType" />
+        </aapt:attr>
+    </target>
+    <target android:name="ground_light">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="80"
+                android:propertyName="pathData"
+                android:startOffset="380"
+                android:valueFrom="M12,79 H38 L43,79 H65 L70,79 H96 V82 H71 L66,82 H42 L37,82 H12 Z"
+                android:valueTo="M12,79 H38 L43,84 H65 L70,79 H96 V82 H71 L66,87 H42 L37,82 H12 Z"
+                android:valueType="pathType" />
+        </aapt:attr>
+    </target>
+
+    <target android:name="dirt_left_big">
+        <aapt:attr name="android:animation">
+            <set android:ordering="together">
+                <objectAnimator
+                    android:duration="520"
+                    android:interpolator="@android:interpolator/decelerate_quad"
+                    android:propertyName="translateX"
+                    android:startOffset="380"
+                    android:valueFrom="0"
+                    android:valueTo="-22"
+                    android:valueType="floatType" />
+                <set android:ordering="sequentially">
+                    <objectAnimator
+                        android:duration="220"
+                        android:interpolator="@android:interpolator/decelerate_quad"
+                        android:propertyName="translateY"
+                        android:startOffset="380"
+                        android:valueFrom="0"
+                        android:valueTo="-17"
+                        android:valueType="floatType" />
+                    <objectAnimator
+                        android:duration="300"
+                        android:interpolator="@android:interpolator/accelerate_quad"
+                        android:propertyName="translateY"
+                        android:valueFrom="-17"
+                        android:valueTo="4"
+                        android:valueType="floatType" />
+                </set>
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="dirt_left_big_path">
+        <aapt:attr name="android:animation">
+            <set android:ordering="sequentially">
+                <objectAnimator
+                    android:duration="20"
+                    android:propertyName="fillAlpha"
+                    android:startOffset="380"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+                <objectAnimator
+                    android:duration="180"
+                    android:propertyName="fillAlpha"
+                    android:startOffset="720"
+                    android:valueFrom="1"
+                    android:valueTo="0"
+                    android:valueType="floatType" />
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="dirt_right_big">
+        <aapt:attr name="android:animation">
+            <set android:ordering="together">
+                <objectAnimator
+                    android:duration="520"
+                    android:interpolator="@android:interpolator/decelerate_quad"
+                    android:propertyName="translateX"
+                    android:startOffset="380"
+                    android:valueFrom="0"
+                    android:valueTo="22"
+                    android:valueType="floatType" />
+                <set android:ordering="sequentially">
+                    <objectAnimator
+                        android:duration="220"
+                        android:interpolator="@android:interpolator/decelerate_quad"
+                        android:propertyName="translateY"
+                        android:startOffset="380"
+                        android:valueFrom="0"
+                        android:valueTo="-19"
+                        android:valueType="floatType" />
+                    <objectAnimator
+                        android:duration="300"
+                        android:interpolator="@android:interpolator/accelerate_quad"
+                        android:propertyName="translateY"
+                        android:valueFrom="-19"
+                        android:valueTo="5"
+                        android:valueType="floatType" />
+                </set>
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="dirt_right_big_path">
+        <aapt:attr name="android:animation">
+            <set android:ordering="sequentially">
+                <objectAnimator
+                    android:duration="20"
+                    android:propertyName="fillAlpha"
+                    android:startOffset="380"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+                <objectAnimator
+                    android:duration="180"
+                    android:propertyName="fillAlpha"
+                    android:startOffset="720"
+                    android:valueFrom="1"
+                    android:valueTo="0"
+                    android:valueType="floatType" />
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="dirt_left_small">
+        <aapt:attr name="android:animation">
+            <set android:ordering="together">
+                <objectAnimator
+                    android:duration="520"
+                    android:interpolator="@android:interpolator/decelerate_quad"
+                    android:propertyName="translateX"
+                    android:startOffset="380"
+                    android:valueFrom="0"
+                    android:valueTo="-12"
+                    android:valueType="floatType" />
+                <set android:ordering="sequentially">
+                    <objectAnimator
+                        android:duration="220"
+                        android:interpolator="@android:interpolator/decelerate_quad"
+                        android:propertyName="translateY"
+                        android:startOffset="380"
+                        android:valueFrom="0"
+                        android:valueTo="-23"
+                        android:valueType="floatType" />
+                    <objectAnimator
+                        android:duration="300"
+                        android:interpolator="@android:interpolator/accelerate_quad"
+                        android:propertyName="translateY"
+                        android:valueFrom="-23"
+                        android:valueTo="3"
+                        android:valueType="floatType" />
+                </set>
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="dirt_left_small_path">
+        <aapt:attr name="android:animation">
+            <set android:ordering="sequentially">
+                <objectAnimator
+                    android:duration="20"
+                    android:propertyName="fillAlpha"
+                    android:startOffset="380"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+                <objectAnimator
+                    android:duration="180"
+                    android:propertyName="fillAlpha"
+                    android:startOffset="700"
+                    android:valueFrom="1"
+                    android:valueTo="0"
+                    android:valueType="floatType" />
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="dirt_right_small">
+        <aapt:attr name="android:animation">
+            <set android:ordering="together">
+                <objectAnimator
+                    android:duration="520"
+                    android:interpolator="@android:interpolator/decelerate_quad"
+                    android:propertyName="translateX"
+                    android:startOffset="380"
+                    android:valueFrom="0"
+                    android:valueTo="13"
+                    android:valueType="floatType" />
+                <set android:ordering="sequentially">
+                    <objectAnimator
+                        android:duration="220"
+                        android:interpolator="@android:interpolator/decelerate_quad"
+                        android:propertyName="translateY"
+                        android:startOffset="380"
+                        android:valueFrom="0"
+                        android:valueTo="-21"
+                        android:valueType="floatType" />
+                    <objectAnimator
+                        android:duration="300"
+                        android:interpolator="@android:interpolator/accelerate_quad"
+                        android:propertyName="translateY"
+                        android:valueFrom="-21"
+                        android:valueTo="3"
+                        android:valueType="floatType" />
+                </set>
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="dirt_right_small_path">
+        <aapt:attr name="android:animation">
+            <set android:ordering="sequentially">
+                <objectAnimator
+                    android:duration="20"
+                    android:propertyName="fillAlpha"
+                    android:startOffset="380"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+                <objectAnimator
+                    android:duration="180"
+                    android:propertyName="fillAlpha"
+                    android:startOffset="700"
+                    android:valueFrom="1"
+                    android:valueTo="0"
+                    android:valueType="floatType" />
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector>

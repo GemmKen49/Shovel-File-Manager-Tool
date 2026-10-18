@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Start-up splash artwork. Android shows the middle 192dp circle of this 288dp canvas,
+    so the shovel and the ground are kept inside that circle.
+    The shovel starts above the canvas (translateY) and the animation drops it into the ground.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+
+    <group
+        android:name="scene"
+        android:scaleX="2"
+        android:scaleY="2"
+        android:translateX="36"
+        android:translateY="38">
+
+        <group
+            android:name="shovel"
+            android:pivotX="54"
+            android:pivotY="86"
+            android:translateY="-90">
+
+            <!-- Wooden handle grip -->
+            <path
+                android:fillColor="#9B6238"
+                android:pathData="M46,14 C46,11.8 47.8,10 50,10 H58 C60.2,10 62,11.8 62,14 V18 C62,20.2 60.2,22 58,22 H50 C47.8,22 46,20.2 46,18 Z" />
+
+            <!-- Grip shadow -->
+            <path
+                android:fillColor="#754626"
+                android:pathData="M54,10 H58 C60.2,10 62,11.8 62,14 V18 C62,20.2 60.2,22 58,22 H54 Z" />
+
+            <!-- Wooden shaft -->
+            <path
+                android:fillColor="#9B6238"
+                android:pathData="M51,20 H57 V55 H51 Z" />
+
+            <!-- Shaft shadow -->
+            <path
+                android:fillColor="#754626"
+                android:pathData="M54,20 H57 V55 H54 Z" />
+
+            <!-- Diamond shovel blade -->
+            <path
+                android:fillColor="#5DD6C0"
+                android:pathData="M47,51 H61 L68,67 C70,72 68,75 64,78 L54,86 L44,78 C40,75 38,72 40,67 Z" />
+
+            <!-- Blade shadow -->
+            <path
+                android:fillColor="#32A997"
+                android:pathData="M54,51 H61 L68,67 C70,72 68,75 64,78 L54,86 Z" />
+        </group>
+
+        <!-- Ground: flat until the shovel lands, then it parts around the blade -->
+        <path
+            android:name="ground"
+            android:fillColor="#6D4B35"
+            android:pathData="M12,79 H38 L43,79 H65 L70,79 H96 V94 H12 Z" />
+
+        <path
+            android:name="ground_light"
+            android:fillColor="#A8794F"
+            android:pathData="M12,79 H38 L43,79 H65 L70,79 H96 V82 H71 L66,82 H42 L37,82 H12 Z" />
+
+        <path
+            android:fillColor="#4B3427"
+            android:pathData="M12,85 H35 V87 H12 Z M73,85 H96 V87 H73 Z" />
+
+        <!-- Dirt that pops out when the shovel lands -->
+        <group android:name="dirt_left_big">
+            <path
+                android:name="dirt_left_big_path"
+                android:fillColor="#A8794F"
+                android:fillAlpha="0"
+                android:pathData="M43,75 h4 v4 h-4 z" />
+        </group>
+        <group android:name="dirt_right_big">
+            <path
+                android:name="dirt_right_big_path"
+                android:fillColor="#A8794F"
+                android:fillAlpha="0"
+                android:pathData="M62,75 h4 v4 h-4 z" />
+        </group>
+        <group android:name="dirt_left_small">
+            <path
+                android:name="dirt_left_small_path"
+                android:fillColor="#6D4B35"
+                android:fillAlpha="0"
+                android:pathData="M48,77 h3 v3 h-3 z" />
+        </group>
+        <group android:name="dirt_right_small">
+            <path
+                android:name="dirt_right_small_path"
+                android:fillColor="#6D4B35"
+                android:fillAlpha="0"
+                android:pathData="M57,77 h3 v3 h-3 z" />
+        </group>
+    </group>
+</vector>
