@@ -9,6 +9,7 @@ import com.shovel.filemanager.data.sizeText
 import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.FileEntry
 import com.shovel.filemanager.ui.MainViewModel
+import kotlinx.coroutines.delay
 
 internal sealed interface FolderDetailsState {
     object None : FolderDetailsState
@@ -16,7 +17,13 @@ internal sealed interface FolderDetailsState {
     data class Ready(val stats: FolderStats) : FolderDetailsState
 }
 
-/** Loads the folder/archive details for one visible row. The work stops by itself when the row scrolls away. */
+// Rows that only flash past during a fling must not start any file access.
+private const val SCAN_START_DELAY_MILLIS = 150L
+
+/**
+ * Loads the folder/archive details for one visible row. Known numbers show immediately and are refreshed quietly;
+ * the work stops by itself when the row scrolls away.
+ */
 @Composable
 internal fun rememberFolderDetails(
     viewModel: MainViewModel,
@@ -26,10 +33,13 @@ internal fun rememberFolderDetails(
 ): FolderDetailsState {
     val relevant = enabled && entry.metadataComplete && (entry.isDirectory || entry.kind == EntryKind.ARCHIVE)
     val state: State<FolderDetailsState> = produceState<FolderDetailsState>(
-        initialValue = if (relevant) FolderDetailsState.Loading else FolderDetailsState.None,
+        initialValue = when {
+            !relevant -> FolderDetailsState.None
+            else -> viewModel.cachedFolderStats(entry, includeHidden)?.let { FolderDetailsState.Ready(it) }
+                ?: FolderDetailsState.Loading
+        },
         entry.absolutePath,
         entry.modifiedAtMillis,
-        entry.sizeBytes,
         includeHidden,
         relevant,
     ) {
@@ -37,9 +47,9 @@ internal fun rememberFolderDetails(
             value = FolderDetailsState.None
             return@produceState
         }
-        value = FolderDetailsState.Loading
-        val stats = viewModel.folderStats(entry, includeHidden)
-        value = if (stats == null) FolderDetailsState.None else FolderDetailsState.Ready(stats)
+        delay(SCAN_START_DELAY_MILLIS)
+        val final = viewModel.loadFolderStats(entry, includeHidden) { stats -> value = FolderDetailsState.Ready(stats) }
+        if (final == null) value = FolderDetailsState.None
     }
     return state.value
 }
@@ -49,7 +59,8 @@ internal fun folderDetailsText(entry: FileEntry, details: FolderDetailsState): S
     FolderDetailsState.None -> null
     FolderDetailsState.Loading -> "Counting…"
     is FolderDetailsState.Ready -> {
-        val size = details.stats.sizeText()
-        "${details.stats.itemsText()} · ${if (entry.isDirectory) size else "$size unpacked"}"
+        val stats = details.stats
+        val size = if (stats.sizeReady) stats.sizeText() else "…"
+        "${stats.itemsText()} · ${if (entry.isDirectory || !stats.sizeReady) size else "$size unpacked"}"
     }
 }

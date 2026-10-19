@@ -530,6 +530,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun folderStats(entry: FileEntry, includeHidden: Boolean): com.shovel.filemanager.data.FolderStats? =
         graph.folderStats.statsFor(entry, includeHidden)
 
+    /** Reports the cached numbers, then the quick count, then the final numbers through [onUpdate]. */
+    suspend fun loadFolderStats(
+        entry: FileEntry,
+        includeHidden: Boolean,
+        onUpdate: (com.shovel.filemanager.data.FolderStats) -> Unit,
+    ): com.shovel.filemanager.data.FolderStats? = graph.folderStats.load(entry, includeHidden, onUpdate)
+
+    fun cachedFolderStats(entry: FileEntry, includeHidden: Boolean): com.shovel.filemanager.data.FolderStats? =
+        graph.folderStats.cached(entry, includeHidden)
+
     /** Saved history of what each operation did, newest first. */
     val operationLogs: StateFlow<List<com.shovel.filemanager.operations.OperationLogSummary>> =
         graph.operationLogs.summaries
