@@ -35,7 +35,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 70
-        versionName = "1.3.1"
+        versionName = "1.3.2"
 
         buildConfigField("String", "UPDATE_REPOSITORY", "\"GemmKen49/Shovel-File-Manager-Tool\"")
 
