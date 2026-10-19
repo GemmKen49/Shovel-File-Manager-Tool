@@ -2,7 +2,7 @@
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>
 
-Required Notice: Copyright 2026 AF File Manager contributors
+Required Notice: Copyright 2026 AF File Manager contributors (https://github.com/sinegard/AF-File-Manager)
 
 ## Acceptance
 
