@@ -18,6 +18,9 @@ jobs:
         with:
           cache-provider: basic
 
+      - name: Show installed NDKs (build time diagnostics)
+        run: ls -1 "$ANDROID_HOME/ndk" 2>/dev/null || echo "no NDK preinstalled on this runner"
+
       - name: Restore signing key
         shell: bash
         env:
@@ -32,10 +35,17 @@ jobs:
           SHOVEL_KEYSTORE_PASSWORD: ${{ secrets.AF_KEYSTORE_PASSWORD }}
           SHOVEL_KEY_ALIAS: ${{ secrets.AF_KEY_ALIAS }}
           SHOVEL_KEY_PASSWORD: ${{ secrets.AF_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease -PshovelTargetAbi=arm64-v8a --no-daemon
+        run: ./gradlew :app:assembleRelease -PshovelTargetAbi=arm64-v8a --no-daemon --profile
 
       - uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-profile
+          path: build/reports/profile/*.html
+          if-no-files-found: ignore
