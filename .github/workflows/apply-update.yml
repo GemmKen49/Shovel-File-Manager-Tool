@@ -27,5 +27,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add -A
-          git commit -m "Faster folder details"
+          git commit -m "Faster folder details, clearer archive size limit errors"
           git push
