@@ -1,5 +1,6 @@
 package com.shovel.filemanager.archive
 
+import com.shovel.filemanager.core.FileSystemRules
 import com.github.junrar.Archive
 import com.shovel.filemanager.operations.OperationContext
 import com.shovel.filemanager.operations.publishingStorageChanges
@@ -39,6 +40,16 @@ class ArchiveEngine(
 ) {
     companion object {
         private const val BUFFER_SIZE = 256 * 1_024
+        private const val ZIP_ENTRY_OVERHEAD_BYTES = 512L
+        private const val ZIP_FIXED_OVERHEAD_BYTES = 64L * 1_024
+        // Already compressed data still shrinks by up to ~3% in a ZIP, so the early check allows for that.
+        private const val INCOMPRESSIBLE_SLACK_DIVISOR = 33L
+        private val ALREADY_COMPRESSED_EXTENSIONS = setOf(
+            "mp4", "m4v", "mkv", "webm", "avi", "mov", "wmv", "flv", "3gp", "mpg", "mpeg",
+            "mp3", "aac", "m4a", "ogg", "oga", "opus", "wma", "amr",
+            "jpg", "jpeg", "webp", "heic", "heif", "avif",
+            "zip", "7z", "rar", "gz", "tgz", "bz2", "xz", "zst", "lz4", "jar", "apk", "apks", "aab",
+        )
     }
 
     suspend fun list(archiveFile: File, password: CharArray? = null): List<ArchiveEntryInfo> = withContext(Dispatchers.IO) {
@@ -362,18 +373,30 @@ class ArchiveEngine(
             require(validatedTarget == null || ArchiveTargetSizeRules.supported(format)) {
                 "Pasirinkto formato archyvo dydžio riboti negalima"
             }
+            require(!outputFile.exists()) { "Toks archyvas jau egzistuoja" }
+            val parent = outputFile.parentFile
+            require(parent != null && (parent.isDirectory || parent.mkdirs())) { "Archyvo aplankas nepasiekiamas" }
+            val scan = validateCreateSources(sources, outputFile, operation)
+            if (validatedTarget != null) {
+                // Video, photos and music are already compressed, so a limit below their size can never be met.
+                // Say so now instead of after minutes of pointless compression.
+                val bestCase = scan.incompressibleBytes - scan.incompressibleBytes / INCOMPRESSIBLE_SLACK_DIVISOR
+                require(bestCase <= validatedTarget) {
+                    "The selected files include ${FileSystemRules.humanBytes(scan.incompressibleBytes)} of already " +
+                        "compressed media (video, photos, music or archives) that cannot shrink, so they cannot fit " +
+                        "in ${FileSystemRules.humanBytes(validatedTarget)}. Raise the size limit or leave it empty."
+                }
+            }
             // A size target is a maximum, not an exact promise. Go directly to the strongest
             // supported compression instead of rewriting a potentially multi-gigabyte archive
-            // once for every intermediate level.
-            val effectiveCompressionLevel = if (validatedTarget == null) {
+            // once for every intermediate level. If everything fits as it is, there is no need to try hard.
+            val fitsAsIs = validatedTarget != null &&
+                scan.bytes + scan.bytes / 100 + scan.entries * ZIP_ENTRY_OVERHEAD_BYTES + ZIP_FIXED_OVERHEAD_BYTES <= validatedTarget
+            val effectiveCompressionLevel = if (validatedTarget == null || fitsAsIs) {
                 validatedCompressionLevel
             } else {
                 ArchiveCompressionRules.MAX_LEVEL
             }
-            require(!outputFile.exists()) { "Toks archyvas jau egzistuoja" }
-            val parent = outputFile.parentFile
-            require(parent != null && (parent.isDirectory || parent.mkdirs())) { "Archyvo aplankas nepasiekiamas" }
-            validateCreateSources(sources, outputFile, operation)
             val partialFile = File(parent, ".${outputFile.name}.partial")
             partial = partialFile
             require(!partialFile.exists()) { "Laikinas archyvo failas jau egzistuoja" }
@@ -392,7 +415,9 @@ class ArchiveEngine(
             }
             require(partialFile.isFile && partialFile.length() > 0) { "Archyvas nesukurtas" }
             require(validatedTarget == null || partialFile.length() <= validatedTarget) {
-                "Archyvo nepavyko suspausti iki pasirinkto dydžio"
+                "The archive came out at ${FileSystemRules.humanBytes(partialFile.length())}, above the " +
+                    "${FileSystemRules.humanBytes(validatedTarget ?: 0L)} limit. Files such as video cannot shrink much. " +
+                    "Raise the size limit or leave it empty."
             }
             require(!outputFile.exists()) { "Toks archyvas jau egzistuoja" }
             require(partialFile.renameTo(outputFile)) { "Archyvo užbaigti nepavyko" }
@@ -406,6 +431,8 @@ class ArchiveEngine(
     private data class CreateSourceScan(
         var entries: Int = 0,
         var bytes: Long = 0L,
+        /** Bytes in files that are already compressed (video, photos, audio, archives) and barely shrink. */
+        var incompressibleBytes: Long = 0L,
         val canonicalPaths: MutableSet<String> = hashSetOf(),
     )
 
@@ -413,7 +440,7 @@ class ArchiveEngine(
         sources: List<File>,
         outputFile: File,
         operation: OperationContext?,
-    ) {
+    ): CreateSourceScan {
         val output = outputFile.canonicalFile
         val scan = CreateSourceScan()
         sources.forEach { source ->
@@ -424,6 +451,7 @@ class ArchiveEngine(
             scanCreateSource(source, depth = 0, scan, operation)
         }
         operation?.setTotals(scan.entries, scan.bytes)
+        return scan
     }
 
     private suspend fun scanCreateSource(
@@ -444,12 +472,17 @@ class ArchiveEngine(
             val size = canonical.length().coerceAtLeast(0L)
             require(size <= limits.maxSingleEntryBytes) { "Archyvo šaltinio failas per didelis" }
             scan.bytes = Math.addExact(scan.bytes, size)
+            if (isAlreadyCompressed(canonical.name)) scan.incompressibleBytes += size
             require(scan.bytes <= limits.maxExpandedBytes) { "Archyvo šaltiniai viršija dydžio ribą" }
             return
         }
         val children = canonical.listFiles() ?: throw SecurityException("Aplankas neperskaitomas")
         children.forEach { child -> scanCreateSource(child, depth + 1, scan, operation) }
     }
+
+    /** Formats that are already compressed (lossy media and archives); compressing them again gains almost nothing. */
+    private fun isAlreadyCompressed(name: String): Boolean =
+        name.substringAfterLast('.', "").lowercase() in ALREADY_COMPRESSED_EXTENSIONS
 
     fun detectFormat(file: File): ArchiveFormat {
         val lower = file.name.lowercase()

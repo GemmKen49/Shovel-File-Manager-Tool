@@ -37,6 +37,8 @@ data class FolderStats(
     val itemsTruncated: Boolean,
     val sizeTruncated: Boolean,
     val sizeReady: Boolean = true,
+    /** False for system folders such as /proc and /sys, where adding up sizes would be slow and meaningless. */
+    val sizeAvailable: Boolean = true,
 )
 
 /** "12 items", "1 item" or "50,000+ items". */
@@ -100,11 +102,21 @@ class FolderStatsRepository(context: Context, private val archives: ArchiveEngin
             if (unchanged && now - cached.atMillis < FRESH_MILLIS) return cached.stats
         }
         val result: FolderStats? = if (entry.isDirectory) {
-            val quick = withContext(scanDispatcher) { quickCount(entry.file, includeHidden) } ?: return null
-            if (cached?.stats == null) {
-                onUpdate(FolderStats(quick.first, 0L, quick.second, sizeTruncated = false, sizeReady = false))
+            // Resolve links first: "/sdcard" or "/etc" are links to folders, and a link is not walked as a folder.
+            val real = runCatching { entry.file.canonicalFile }.getOrDefault(entry.file)
+            val quick = withContext(scanDispatcher) { quickCount(real, includeHidden) } ?: return null
+            if (isVirtualFileSystem(real.path)) {
+                FolderStats(quick.first, 0L, quick.second, sizeTruncated = false, sizeReady = true, sizeAvailable = false)
+            } else {
+                if (cached?.stats == null) {
+                    onUpdate(FolderStats(quick.first, 0L, quick.second, sizeTruncated = false, sizeReady = false))
+                }
+                withContext(scanDispatcher) {
+                    scanTree(real, includeHidden, quick.first, quick.second) { bytesSoFar ->
+                        onUpdate(FolderStats(quick.first, bytesSoFar, quick.second, sizeTruncated = false, sizeReady = false))
+                    }
+                }
             }
-            withContext(scanDispatcher) { scanTree(entry.file, includeHidden, quick.first, quick.second) }
         } else {
             withContext(scanDispatcher) { scanArchive(entry.file, includeHidden) }
         }
@@ -122,15 +134,38 @@ class FolderStatsRepository(context: Context, private val archives: ArchiveEngin
     }
 
     /** Adds up every visible file below [root] with one attribute read per entry. Symlinks are not followed. */
-    private suspend fun scanTree(root: File, includeHidden: Boolean, directItems: Int, itemsTruncated: Boolean): FolderStats {
+    private suspend fun scanTree(
+        root: File,
+        includeHidden: Boolean,
+        directItems: Int,
+        itemsTruncated: Boolean,
+        onProgress: (Long) -> Unit,
+    ): FolderStats {
         val job = currentCoroutineContext()[Job]
         val rootPath = root.toPath()
+        val startNanos = System.nanoTime()
+        var lastPublishNanos = startNanos
         var visited = 0
         var totalBytes = 0L
         var sizeTruncated = false
+
+        // Every few hundred entries: stop if cancelled or out of time, and share the running total.
+        fun shouldStop(): Boolean {
+            if (job?.isActive == false) return true
+            val now = System.nanoTime()
+            if (now - startNanos > TIME_BUDGET_NANOS) {
+                sizeTruncated = true
+                return true
+            }
+            if (now - lastPublishNanos > PUBLISH_INTERVAL_NANOS) {
+                lastPublishNanos = now
+                onProgress(totalBytes)
+            }
+            return false
+        }
+
         val visitor = object : SimpleFileVisitor<Path>() {
             override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
-                if (job?.isActive == false) return FileVisitResult.TERMINATE
                 if (dir == rootPath) return FileVisitResult.CONTINUE
                 if (!includeHidden && isHiddenName(dir)) return FileVisitResult.SKIP_SUBTREE
                 visited += 1
@@ -138,6 +173,7 @@ class FolderStatsRepository(context: Context, private val archives: ArchiveEngin
                     sizeTruncated = true
                     return FileVisitResult.TERMINATE
                 }
+                if ((visited and CHECK_MASK) == 0 && shouldStop()) return FileVisitResult.TERMINATE
                 return FileVisitResult.CONTINUE
             }
 
@@ -149,7 +185,7 @@ class FolderStatsRepository(context: Context, private val archives: ArchiveEngin
                     sizeTruncated = true
                     return FileVisitResult.TERMINATE
                 }
-                if ((visited and CANCEL_CHECK_MASK) == 0 && job?.isActive == false) return FileVisitResult.TERMINATE
+                if ((visited and CHECK_MASK) == 0 && shouldStop()) return FileVisitResult.TERMINATE
                 return FileVisitResult.CONTINUE
             }
 
@@ -159,6 +195,10 @@ class FolderStatsRepository(context: Context, private val archives: ArchiveEngin
         currentCoroutineContext().ensureActive()
         return FolderStats(directItems, totalBytes, itemsTruncated, sizeTruncated, sizeReady = true)
     }
+
+    /** System folders whose "files" are generated on the fly: reading them is slow and their sizes mean nothing. */
+    private fun isVirtualFileSystem(path: String): Boolean =
+        VIRTUAL_ROOTS.any { root -> path == root || path.startsWith("$root/") }
 
     private fun isHiddenName(path: Path): Boolean = path.fileName?.toString()?.startsWith(".") == true
 
@@ -185,7 +225,10 @@ class FolderStatsRepository(context: Context, private val archives: ArchiveEngin
         const val SCAN_THREADS = 2
         const val MAX_CACHED = 2_000
         const val FRESH_MILLIS = 5 * 60_000L
-        const val CANCEL_CHECK_MASK = 0x3FF
+        const val CHECK_MASK = 0xFF
+        const val TIME_BUDGET_NANOS = 2_000_000_000L
+        const val PUBLISH_INTERVAL_NANOS = 250_000_000L
+        val VIRTUAL_ROOTS = listOf("/proc", "/sys", "/dev", "/acct", "/config", "/debug_ramdisk", "/d")
 
         // Two background-priority threads: scanning must never compete with scrolling or thumbnail loading.
         val scanDispatcher = Executors.newFixedThreadPool(SCAN_THREADS) { runnable ->

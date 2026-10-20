@@ -163,7 +163,11 @@ fun FileInfoDialog(
                         InfoLine("Items", stats.itemsText(), Modifier.testTag("file_info_visible_items"))
                         InfoLine(
                             "Visible size",
-                            if (entry.isDirectory) stats.sizeText() else "${stats.sizeText()} unpacked",
+                            when {
+                                !stats.sizeAvailable -> "Not calculated for system folders"
+                                entry.isDirectory -> stats.sizeText()
+                                else -> "${stats.sizeText()} unpacked"
+                            },
                             Modifier.testTag("file_info_visible_size"),
                         )
                     }

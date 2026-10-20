@@ -3,6 +3,7 @@ package com.shovel.filemanager.ui.screens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
+import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.data.FolderStats
 import com.shovel.filemanager.data.itemsText
 import com.shovel.filemanager.data.sizeText
@@ -60,7 +61,14 @@ internal fun folderDetailsText(entry: FileEntry, details: FolderDetailsState): S
     FolderDetailsState.Loading -> "Counting…"
     is FolderDetailsState.Ready -> {
         val stats = details.stats
-        val size = if (stats.sizeReady) stats.sizeText() else "…"
-        "${stats.itemsText()} · ${if (entry.isDirectory || !stats.sizeReady) size else "$size unpacked"}"
+        when {
+            !stats.sizeAvailable -> stats.itemsText()
+            // Still adding up: show the running total with an ellipsis.
+            !stats.sizeReady -> "${stats.itemsText()} · ${if (stats.totalBytes > 0L) FileSystemRules.humanBytes(stats.totalBytes) + "…" else "…"}"
+            else -> {
+                val size = stats.sizeText()
+                "${stats.itemsText()} · ${if (entry.isDirectory) size else "$size unpacked"}"
+            }
+        }
     }
 }
