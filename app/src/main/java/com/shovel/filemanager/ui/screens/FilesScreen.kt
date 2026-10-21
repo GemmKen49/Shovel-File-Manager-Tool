@@ -1203,7 +1203,7 @@ internal fun FileList(
             contentPadding = PaddingValues(bottom = 88.dp),
         ) {
             items(state.entries, key = FileEntry::absolutePath, contentType = FileEntry::kind) { entry ->
-                val details = rememberFolderDetails(viewModel, entry, state.includeHidden, folderDetailsEnabled)
+                val details = rememberFolderDetails(viewModel, entry, state.includeHidden, folderDetailsEnabled) { listState.isScrollInProgress }
                 val metadata = remember(entry, state.sortMode, details) {
                     entryMeta(
                         entry,
@@ -1365,7 +1365,7 @@ internal fun FileGrid(
             verticalArrangement = Arrangement.spacedBy((5f * state.spacingScalePercent / 100f).dp),
         ) {
             items(state.entries, key = FileEntry::absolutePath, contentType = FileEntry::kind) { entry ->
-                val details = rememberFolderDetails(viewModel, entry, state.includeHidden, folderDetailsEnabled)
+                val details = rememberFolderDetails(viewModel, entry, state.includeHidden, folderDetailsEnabled) { gridState.isScrollInProgress }
                 FileTile(
                     entry = entry,
                     detailText = folderDetailsText(entry, details),

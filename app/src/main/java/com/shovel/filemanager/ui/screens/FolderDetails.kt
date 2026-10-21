@@ -3,6 +3,8 @@ package com.shovel.filemanager.ui.screens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.data.FolderStats
 import com.shovel.filemanager.data.itemsText
@@ -11,6 +13,7 @@ import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.FileEntry
 import com.shovel.filemanager.ui.MainViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 internal sealed interface FolderDetailsState {
     object None : FolderDetailsState
@@ -31,7 +34,9 @@ internal fun rememberFolderDetails(
     entry: FileEntry,
     includeHidden: Boolean,
     enabled: Boolean,
+    isScrolling: () -> Boolean,
 ): FolderDetailsState {
+    val scrolling = rememberUpdatedState(isScrolling)
     val relevant = enabled && entry.metadataComplete && (entry.isDirectory || entry.kind == EntryKind.ARCHIVE)
     val state: State<FolderDetailsState> = produceState<FolderDetailsState>(
         initialValue = when {
@@ -49,6 +54,8 @@ internal fun rememberFolderDetails(
             return@produceState
         }
         delay(SCAN_START_DELAY_MILLIS)
+        // Never start file access while the list is moving; wait until it has come to rest.
+        snapshotFlow { scrolling.value() }.first { moving -> !moving }
         val final = viewModel.loadFolderStats(entry, includeHidden) { stats -> value = FolderDetailsState.Ready(stats) }
         if (final == null) value = FolderDetailsState.None
     }

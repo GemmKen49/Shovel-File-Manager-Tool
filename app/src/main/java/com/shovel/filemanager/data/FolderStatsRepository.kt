@@ -7,6 +7,7 @@ import com.shovel.filemanager.archive.ArchiveFormat
 import com.shovel.filemanager.core.FileSystemRules
 import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.FileEntry
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.currentCoroutineContext
@@ -89,7 +90,17 @@ class FolderStatsRepository(context: Context, private val archives: ArchiveEngin
      * Delivers progressively through [onUpdate]: the cached numbers first (if any), then the quick item count,
      * then the final numbers. Returns the final numbers, or null when this entry has nothing to show.
      */
-    suspend fun load(entry: FileEntry, includeHidden: Boolean, onUpdate: (FolderStats) -> Unit): FolderStats? {
+    suspend fun load(entry: FileEntry, includeHidden: Boolean, onUpdate: (FolderStats) -> Unit): FolderStats? =
+        try {
+            loadUnsafe(entry, includeHidden, onUpdate)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Odd file names, unreadable folders and vanished files must never take the app down: show nothing instead.
+            null
+        }
+
+    private suspend fun loadUnsafe(entry: FileEntry, includeHidden: Boolean, onUpdate: (FolderStats) -> Unit): FolderStats? {
         if (!entry.isDirectory && entry.kind != EntryKind.ARCHIVE) return null
         val key = keyOf(entry, includeHidden)
         val now = System.currentTimeMillis()
