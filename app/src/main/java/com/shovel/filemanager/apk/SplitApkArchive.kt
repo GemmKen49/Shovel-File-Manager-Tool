@@ -27,16 +27,16 @@ internal object SplitApkArchive {
             val iterator = zip.entries()
             while (iterator.hasMoreElements()) {
                 val entry = iterator.nextElement()
-                require(++entries <= MAX_ENTRIES && entry.name.length <= 1024 && names.add(entry.name)) { "Netinkamas APK rinkinys" }
-                require(!entry.name.startsWith('/') && '\\' !in entry.name && entry.name.split('/').none { it == ".." }) { "Netinkamas APK rinkinys" }
+                require(++entries <= MAX_ENTRIES && entry.name.length <= 1024 && names.add(entry.name)) { "Invalid APK bundle" }
+                require(!entry.name.startsWith('/') && '\\' !in entry.name && entry.name.split('/').none { it == ".." }) { "Invalid APK bundle" }
                 if (entry.isDirectory) continue
                 if (!entry.name.endsWith(".apk", true)) {
                     if (entry.name.endsWith(".obb", true)) extra = true
                     continue
                 }
-                require(entry.size in 1..MAX_PART_BYTES) { "APK rinkinys per didelis" }
+                require(entry.size in 1..MAX_PART_BYTES) { "The APK bundle exceeds the size or part limit" }
                 total += entry.size
-                require(total <= MAX_EXPANDED_BYTES && parts.size < MAX_PARTS) { "APK rinkinys per didelis" }
+                require(total <= MAX_EXPANDED_BYTES && parts.size < MAX_PARTS) { "The APK bundle exceeds the size or part limit" }
                 parts += SplitApkPart(entry.name, entry.size)
             }
             // A universal APK already is standalone; never manufacture one from signed splits.
@@ -44,18 +44,18 @@ internal object SplitApkArchive {
             if (universal.size == 1) return SplitApkPlan(universal, universal.single(), extra)
             val bases = parts.filter { it.name.substringAfterLast('/').lowercase(Locale.ROOT) in setOf("base.apk", "base-master.apk") }
             require(bases.size == 1 && parts.none { it.name.startsWith("standalones/") || it.name.startsWith("instant/") }) {
-                "Šiame rinkinyje yra keli diegimo variantai arba nėra pagrindinio APK. Išpakuokite originalias dalis."
+                "This bundle has multiple installation variants or no base APK. Extract the original parts."
             }
             return SplitApkPlan(parts.sortedBy { it.name }, bases.single(), extra)
         }
     }
 
     fun copyPart(archive: File, part: SplitApkPart, destination: File, limit: Long = MAX_PART_BYTES, checkActive: () -> Unit = {}) {
-        require(part.bytes <= limit) { "APK rinkinys per didelis" }
+        require(part.bytes <= limit) { "The APK bundle exceeds the size or part limit" }
         try {
             ZipFile(archive).use { zip ->
-                val entry = requireNotNull(zip.getEntry(part.name)) { "Netinkamas APK rinkinys" }
-                require(entry.size == part.bytes) { "Failas pasikeitė" }
+                val entry = requireNotNull(zip.getEntry(part.name)) { "Invalid APK bundle" }
+                require(entry.size == part.bytes) { "File changed" }
                 zip.getInputStream(entry).use { input -> destination.outputStream().use { output ->
                     val buffer = ByteArray(64 * 1024)
                     var written = 0L
@@ -65,10 +65,10 @@ internal object SplitApkArchive {
                         val count = input.read(buffer)
                         if (count < 0) break
                         written += count
-                        require(written <= part.bytes && written <= limit) { "APK rinkinys per didelis" }
+                        require(written <= part.bytes && written <= limit) { "The APK bundle exceeds the size or part limit" }
                         output.write(buffer, 0, count)
                     }
-                    require(written == part.bytes) { "Netinkamas APK rinkinys" }
+                    require(written == part.bytes) { "Invalid APK bundle" }
                 } }
             }
         } catch (error: Throwable) { destination.delete(); throw error }
@@ -76,7 +76,7 @@ internal object SplitApkArchive {
 
     private fun checkDirectoryBounds(file: File) {
         RandomAccessFile(file, "r").use { input ->
-            require(input.length() in 22..MAX_EXPANDED_BYTES) { "APK rinkinys per didelis" }
+            require(input.length() in 22..MAX_EXPANDED_BYTES) { "The APK bundle exceeds the size or part limit" }
             val tail = ByteArray(minOf(input.length(), 65_557).toInt())
             input.seek(input.length() - tail.size)
             input.readFully(tail)
@@ -84,9 +84,9 @@ internal object SplitApkArchive {
             fun u32(offset: Int) = (0..3).fold(0L) { value, byte -> value or ((tail[offset + byte].toLong() and 255) shl (byte * 8)) }
             val end = (tail.size - 22 downTo 0).firstOrNull { index ->
                 u32(index) == 0x06054b50L && index + 22 + u16(index + 20) == tail.size
-            } ?: throw IllegalArgumentException("Netinkamas APK rinkinys")
+            } ?: throw IllegalArgumentException("Invalid APK bundle")
             require(u16(end + 4) == 0 && u16(end + 6) == 0 && u16(end + 10) in 1..MAX_ENTRIES &&
-                u32(end + 12) <= 4 * 1024 * 1024) { "APK rinkinys per didelis" }
+                u32(end + 12) <= 4 * 1024 * 1024) { "The APK bundle exceeds the size or part limit" }
         }
     }
 }

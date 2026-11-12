@@ -15,7 +15,7 @@ object ArchiveCompressionRules {
     const val MAX_LEVEL = 9
 
     fun validated(level: Int): Int {
-        require(level in MIN_LEVEL..MAX_LEVEL) { "Netinkamas suspaudimo lygis" }
+        require(level in MIN_LEVEL..MAX_LEVEL) { "Invalid compression level" }
         return level
     }
 }
@@ -23,20 +23,20 @@ object ArchiveCompressionRules {
 /** Bounded user-facing target for formats whose compression strength Shovel controls. */
 object ArchiveTargetSizeRules {
     const val MIN_MIB = 1L
-    const val MAX_MIB = 8_192L
+    const val MAX_MIB = 65_536L
     private const val BYTES_PER_MIB = 1_024L * 1_024L
 
     fun parseMib(value: String): Long? {
         val normalized = value.trim()
         if (normalized.isEmpty()) return null
-        require(normalized.all(Char::isDigit)) { "Netinkama archyvo dydžio riba" }
-        val mib = normalized.toLongOrNull() ?: throw IllegalArgumentException("Netinkama archyvo dydžio riba")
-        require(mib in MIN_MIB..MAX_MIB) { "Archyvo dydžio riba turi būti nuo 1 iki 8192 MiB" }
+        require(normalized.all(Char::isDigit)) { "Invalid archive size limit" }
+        val mib = normalized.toLongOrNull() ?: throw IllegalArgumentException("Invalid archive size limit")
+        require(mib in MIN_MIB..MAX_MIB) { "The archive size limit must be from 1 to 65536 MiB" }
         return Math.multiplyExact(mib, BYTES_PER_MIB)
     }
 
     fun validatedBytes(value: Long, limits: ArchiveLimits): Long {
-        require(value in BYTES_PER_MIB..limits.maxExpandedBytes) { "Netinkama archyvo dydžio riba" }
+        require(value in BYTES_PER_MIB..limits.maxExpandedBytes) { "Invalid archive size limit" }
         return value
     }
 
@@ -54,8 +54,8 @@ data class ArchiveEntryInfo(
 
 data class ArchiveLimits(
     val maxEntries: Int = 100_000,
-    val maxExpandedBytes: Long = 8L * 1_024 * 1_024 * 1_024,
-    val maxSingleEntryBytes: Long = 4L * 1_024 * 1_024 * 1_024,
+    val maxExpandedBytes: Long = 64L * 1_024 * 1_024 * 1_024,
+    val maxSingleEntryBytes: Long = 16L * 1_024 * 1_024 * 1_024,
     val maxDepth: Int = 64,
     val maxCompressionRatio: Long = 1_000,
 )

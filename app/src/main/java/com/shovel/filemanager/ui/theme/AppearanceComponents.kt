@@ -200,7 +200,7 @@ internal fun ShovelAlertDialog(
                                 title?.let { slot -> ProvideTextStyle(MaterialTheme.typography.titleLarge, slot) }
                             }
                             IconButton(onClick = onDismissRequest) {
-                                Icon(Icons.Rounded.Close, contentDescription = uiText("Uždaryti"))
+                                Icon(Icons.Rounded.Close, contentDescription = uiText("Close"))
                             }
                         }
                         HorizontalDivider()

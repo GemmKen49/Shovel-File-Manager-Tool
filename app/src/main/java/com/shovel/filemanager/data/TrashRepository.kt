@@ -75,9 +75,9 @@ internal object TrashPathRules {
     fun normalize(relativePath: String): String {
         if (relativePath.isBlank()) return ""
         val parts = relativePath.split('/').filter(String::isNotEmpty)
-        require(parts.size <= MAX_DEPTH) { "Per gilus šiukšliadėžės katalogo kelias" }
-        require(parts.none { it == "." || it == ".." }) { "Netinkamas šiukšliadėžės katalogo kelias" }
-        require(parts.all { it.length <= MAX_SEGMENT_LENGTH }) { "Per ilgas šiukšliadėžės kelio segmentas" }
+        require(parts.size <= MAX_DEPTH) { "The trash folder path is too deep" }
+        require(parts.none { it == "." || it == ".." }) { "Invalid trash folder path" }
+        require(parts.all { it.length <= MAX_SEGMENT_LENGTH }) { "A trash path segment is too long" }
         return parts.joinToString("/")
     }
 
@@ -113,15 +113,15 @@ class TrashRepository(
 
         fun claim() {
             used += 1
-            require(used <= maximum) { "Per daug elementų" }
+            require(used <= maximum) { "Too many items" }
         }
     }
 
     private val mutationMutex: Mutex get() = processMutationMutex
 
     private val root: File by lazy {
-        (configuredRoot ?: requireNotNull(context.getExternalFilesDir("trash")) { "Šiukšliadėžės vieta nepasiekiama" })
-            .apply { require(isDirectory || mkdirs()) { "Šiukšliadėžės vietos sukurti nepavyko" } }
+        (configuredRoot ?: requireNotNull(context.getExternalFilesDir("trash")) { "Trash location is unavailable" })
+            .apply { require(isDirectory || mkdirs()) { "Could not create the Trash folder" } }
     }
 
     suspend fun list(): List<TrashItem> = withContext(Dispatchers.IO) {
@@ -141,22 +141,22 @@ class TrashRepository(
             runCatching {
                 val normalizedPath = TrashPathRules.normalize(relativePath)
                 if (itemId == null) {
-                    require(normalizedPath.isEmpty()) { "Šiukšliadėžės šaknies kelias turi būti tuščias" }
+                    require(normalizedPath.isEmpty()) { "The top-level Trash path must be empty" }
                     return@runCatching listInternal().map(::toRootBrowserEntry)
                 }
 
                 val item = listInternal().firstOrNull { it.id == itemId }
-                    ?: throw IllegalArgumentException("Šiukšliadėžės elementas neberastas")
+                    ?: throw IllegalArgumentException("The Trash item could not be found")
                 val storedRoot = File(item.storedPath).canonicalFile
-                require(FileSystemRules.isContained(root, storedRoot)) { "Netinkamas šiukšliadėžės turinio kelias" }
-                require(storedRoot.isDirectory) { "Šiukšliadėžės elementas nėra katalogas" }
+                require(FileSystemRules.isContained(root, storedRoot)) { "Invalid trash content path" }
+                require(storedRoot.isDirectory) { "Trash item is not a folder" }
                 val directory = if (normalizedPath.isEmpty()) storedRoot else File(storedRoot, normalizedPath).canonicalFile
-                require(FileSystemRules.isContained(storedRoot, directory)) { "Katalogas išeina už šiukšliadėžės elemento ribų" }
-                require(directory.isDirectory) { "Šiukšliadėžės katalogas neberastas" }
-                val children = directory.listFiles() ?: throw SecurityException("Šiukšliadėžės katalogas neperskaitomas")
-                require(children.size <= MAX_DIRECTORY_ENTRIES) { "Šiukšliadėžės kataloge per daug elementų" }
+                require(FileSystemRules.isContained(storedRoot, directory)) { "The folder escapes the trash item" }
+                require(directory.isDirectory) { "The Trash folder could not be found" }
+                val children = directory.listFiles() ?: throw SecurityException("The Trash folder cannot be read")
+                require(children.size <= MAX_DIRECTORY_ENTRIES) { "The Trash folder contains too many items" }
                 children.map { child ->
-                    require(FileSystemRules.isContained(storedRoot, child)) { "Nesaugus šiukšliadėžės katalogo elementas" }
+                    require(FileSystemRules.isContained(storedRoot, child)) { "Unsafe trash folder item" }
                     val childRelativePath = TrashPathRules.child(normalizedPath, child.name)
                     TrashBrowserEntry(
                         itemId = item.id,
@@ -177,15 +177,15 @@ class TrashRepository(
 
     suspend fun moveToTrash(paths: List<String>, operation: OperationContext): TrashMoveResult = withContext(Dispatchers.IO) {
         mutationMutex.withLock {
-            require(paths.isNotEmpty()) { "Nepasirinkta failų" }
+            require(paths.isNotEmpty()) { "No files selected" }
             val requested = paths.asSequence()
                 .map(String::trim)
                 .filter(String::isNotEmpty)
                 .distinct()
                 .take(MAX_TRASH_ITEMS + 1)
                 .toList()
-            require(requested.isNotEmpty()) { "Nepasirinkta failų" }
-            require(requested.size <= MAX_TRASH_ITEMS) { "Per daug elementų" }
+            require(requested.isNotEmpty()) { "No files selected" }
+            require(requested.size <= MAX_TRASH_ITEMS) { "Too many items" }
 
             val failures = mutableListOf<String>()
             val canonicalSources = requested.mapNotNull { path ->
@@ -207,7 +207,7 @@ class TrashRepository(
                 operation.checkpoint()
                 operation.progress(currentName = source.name)
                 try {
-                    require(source.exists()) { "Failas nebeegzistuoja: ${source.name}" }
+                    require(source.exists()) { "The file no longer exists: ${source.name}" }
                     val sourceScan = scan(source)
                     totalItems = Math.addExact(totalItems, sourceScan.first)
                     totalBytes = Math.addExact(totalBytes, sourceScan.second)
@@ -271,8 +271,8 @@ class TrashRepository(
         try {
             copyTree(source, partial, operation, 0)
             val copied = scan(partial)
-            require(copied == sourceScan) { "Šiukšlinės kopija nepatikrinta" }
-            require(partial.renameTo(stored)) { "Nepavyko užbaigti šiukšlinės kopijos" }
+            require(copied == sourceScan) { "The trash copy was not verified" }
+            require(partial.renameTo(stored)) { "Could not finish the trash copy" }
         } catch (error: Throwable) {
             cleanupQuietly(partial)
             throw error
@@ -310,12 +310,12 @@ class TrashRepository(
                 val metadata = File(root, "$id.json")
                 val item = readMetadata(metadata)
                 val stored = File(item.storedPath)
-                require(stored.exists()) { "Šiukšlinės turinys neberastas" }
+                require(stored.exists()) { "The trash content could not be found" }
                 val requested = File(item.originalPath)
                 requested.parentFile?.mkdirs()
                 val target = if (requested.exists()) FileSystemRules.keepBothTarget(requested) else requested
-                require(stored.renameTo(target)) { "Atkurti nepavyko" }
-                check(metadata.delete() || !metadata.exists()) { "Nepavyko pašalinti metaduomenų" }
+                require(stored.renameTo(target)) { "Could not restore" }
+                check(metadata.delete() || !metadata.exists()) { "Could not remove the metadata" }
                 onMutation(listOf(target))
                 target.absolutePath
             }
@@ -382,7 +382,7 @@ class TrashRepository(
         nowMillis: Long = System.currentTimeMillis(),
     ): EmptyTrashResult = withContext(Dispatchers.IO) {
         val days = period.days ?: return@withContext EmptyTrashResult(0, 0)
-        require(nowMillis >= 0L) { "Netinkamas dabartinis laikas" }
+        require(nowMillis >= 0L) { "Invalid current time" }
         val cutoff = (nowMillis - days * MILLIS_PER_DAY).coerceAtLeast(0L)
         mutationMutex.withLock {
             var deleted = 0
@@ -424,7 +424,7 @@ class TrashRepository(
                     break
                 }
                 val entry = iterator.next().toFile().absoluteFile
-                require(entry.parentFile == root.absoluteFile) { "Netinkamas šiukšlinės kelias" }
+                require(entry.parentFile == root.absoluteFile) { "Invalid trash path" }
                 entries += entry
             }
         }
@@ -493,11 +493,11 @@ class TrashRepository(
         operation: OperationContext? = null,
         budget: EntryBudget? = null,
     ) {
-        require(FileSystemRules.isContained(root, metadata)) { "Netinkamas šiukšliadėžės metaduomenų kelias" }
+        require(FileSystemRules.isContained(root, metadata)) { "Invalid trash metadata path" }
         val stored = File(item.storedPath)
-        require(FileSystemRules.isContained(root, stored)) { "Netinkamas šiukšliadėžės turinio kelias" }
+        require(FileSystemRules.isContained(root, stored)) { "Invalid trash content path" }
         if (stored.exists()) deleteTree(stored, stored, 0, operation, budget)
-        check(metadata.delete() || !metadata.exists()) { "Nepavyko pašalinti metaduomenų" }
+        check(metadata.delete() || !metadata.exists()) { "Could not remove the metadata" }
     }
 
     private fun writeMetadata(item: TrashItem) {
@@ -512,7 +512,7 @@ class TrashRepository(
             .put("directory", item.directory)
         try {
             temporary.writeText(json.toString(), Charsets.UTF_8)
-            require(temporary.renameTo(target)) { "Nepavyko įrašyti šiukšlinės metaduomenų" }
+            require(temporary.renameTo(target)) { "Could not save the trash metadata" }
         } catch (error: Throwable) {
             runCatching { temporary.delete() }
             throw error
@@ -520,10 +520,10 @@ class TrashRepository(
     }
 
     private fun readMetadata(file: File): TrashItem {
-        require(FileSystemRules.isContained(root, file)) { "Netinkamas šiukšlinės kelias" }
+        require(FileSystemRules.isContained(root, file)) { "Invalid trash path" }
         val json = JSONObject(file.readText(Charsets.UTF_8))
         val storedPath = json.getString("storedPath")
-        require(FileSystemRules.isContained(root, File(storedPath))) { "Netinkamas šiukšlinės turinio kelias" }
+        require(FileSystemRules.isContained(root, File(storedPath))) { "Invalid trash content path" }
         return TrashItem(
             id = json.getString("id"),
             originalPath = json.getString("originalPath"),
@@ -535,12 +535,12 @@ class TrashRepository(
     }
 
     private suspend fun copyTree(source: File, target: File, operation: OperationContext, depth: Int) {
-        require(depth <= 64) { "Per gilus aplankų medis" }
+        require(depth <= 64) { "The folder tree is too deep" }
         operation.checkpoint()
         if (source.isDirectory) {
-            require(target.mkdir()) { "Nepavyko sukurti laikino aplanko" }
+            require(target.mkdir()) { "Could not create the temporary local folder" }
             source.listFiles()?.forEach { copyTree(it, File(target, it.name), operation, depth + 1) }
-                ?: throw SecurityException("Aplankas neperskaitomas")
+                ?: throw SecurityException("The folder is not readable")
         } else {
             source.inputStream().use { input ->
                 target.outputStream().use { output ->
@@ -563,20 +563,20 @@ class TrashRepository(
         operation: OperationContext? = null,
         budget: EntryBudget? = null,
     ) {
-        require(depth <= 64) { "Per gilus aplankų medis" }
+        require(depth <= 64) { "The folder tree is too deep" }
         operation?.checkpoint()
         budget?.claim()
         val rootPath = containmentRoot.absoluteFile.toPath().normalize()
         val candidatePath = file.absoluteFile.toPath().normalize()
-        require(candidatePath.startsWith(rootPath)) { "Trynimo kelias išeina už leistinos ribos" }
+        require(candidatePath.startsWith(rootPath)) { "The deletion path escapes the allowed area" }
         if (Files.isSymbolicLink(candidatePath)) {
-            require(file.delete()) { "Nepavyko ištrinti ${file.name}" }
+            require(file.delete()) { "Could not delete ${file.name}" }
             operation?.progress(itemDelta = 1, currentName = file.name)
             return
         }
         if (file.isDirectory) file.listFiles()?.forEach { deleteTree(containmentRoot, it, depth + 1, operation, budget) }
         val bytes = if (file.isFile) file.length().coerceAtLeast(0L) else 0L
-        require(file.delete()) { "Nepavyko ištrinti ${file.name}" }
+        require(file.delete()) { "Could not delete ${file.name}" }
         operation?.progress(itemDelta = 1, byteDelta = bytes, currentName = file.name)
     }
 
@@ -588,11 +588,11 @@ class TrashRepository(
         while (pending.isNotEmpty()) {
             val current = pending.removeLast()
             entries += 1
-            require(entries <= MAX_SCAN_ENTRIES) { "Per daug elementų" }
+            require(entries <= MAX_SCAN_ENTRIES) { "Too many items" }
             val currentPath = current.toPath()
             if (Files.isSymbolicLink(currentPath)) continue
             if (current.isDirectory) current.listFiles()?.forEach(pending::add)
-                ?: throw SecurityException("Aplankas neperskaitomas")
+                ?: throw SecurityException("The folder is not readable")
             else bytes = Math.addExact(bytes, current.length())
         }
         return entries to bytes
@@ -607,11 +607,11 @@ class TrashRepository(
             operation?.checkpoint()
             val current = pending.removeLast()
             entries += 1
-            require(entries <= MAX_SCAN_ENTRIES) { "Per daug elementų" }
+            require(entries <= MAX_SCAN_ENTRIES) { "Too many items" }
             val currentPath = current.toPath()
             if (Files.isSymbolicLink(currentPath)) continue
             if (current.isDirectory) current.listFiles()?.forEach(pending::add)
-                ?: throw SecurityException("Aplankas neperskaitomas")
+                ?: throw SecurityException("The folder is not readable")
             else bytes = Math.addExact(bytes, current.length())
         }
         return entries to bytes

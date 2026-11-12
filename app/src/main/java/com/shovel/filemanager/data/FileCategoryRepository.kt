@@ -401,7 +401,7 @@ class FileCategoryRepository(
             var scanned = 0
             val moreRowsAvailable: Boolean
             val cursor = resolver.query(mediaQueryUri(offset, rowLimit + if (browseAll) 1 else 0), projection, queryArgs, cancellationSignal)
-                ?: throw java.io.IOException("Failų sąrašo įkelti nepavyko")
+                ?: throw java.io.IOException("Could not load the file list")
             cursor.use {
                 val pathIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
                 val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
@@ -532,7 +532,7 @@ class FileCategoryRepository(
                 var scanned = 0
                 var duplicate = false
                 val cursor = resolver.query(mediaQueryUri(0, cap + 1), projection, args, signal)
-                    ?: throw java.io.IOException("Aplankų sąrašo įkelti nepavyko")
+                    ?: throw java.io.IOException("Could not load the folder list")
                 val more: Boolean
                 cursor.use {
                     val pathIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
@@ -655,9 +655,9 @@ class FileCategoryRepository(
         val selected = entries
             .filter { !it.packageName.isNullOrBlank() }
             .distinctBy(FileEntry::packageName)
-        require(selected.isNotEmpty()) { "Pasirinkite bent vieną įdiegtą programą" }
+        require(selected.isNotEmpty()) { "Select at least one installed app" }
         require(selected.size <= InstalledAppBackupRules.MAX_SELECTED_APPS) {
-            "Vienu metu galima išsaugoti iki ${InstalledAppBackupRules.MAX_SELECTED_APPS} programų"
+            "You can save up to ${InstalledAppBackupRules.MAX_SELECTED_APPS} apps at a time"
         }
         operation.setTotals(selected.size, bytes = null)
         val temporaryRoot = Files.createTempDirectory(applicationContext.cacheDir.toPath(), "installed-app-export-").toFile()
@@ -682,8 +682,8 @@ class FileCategoryRepository(
         } finally {
             temporaryRoot.deleteRecursively()
         }
-        if (failed > 0) operation.completeWithErrors(failed, "Išsaugota: $exported · nepavyko: $failed")
-        else operation.note("Išsaugota programų: $exported")
+        if (failed > 0) operation.completeWithErrors(failed, "Saved: $exported · failed: $failed")
+        else operation.note("Apps saved: $exported")
         InstalledAppExportResult(exportedApps = exported, failedApps = failed)
     }
 
@@ -742,7 +742,7 @@ class FileCategoryRepository(
 
     @Suppress("DEPRECATION")
     internal suspend fun stageInstalledApp(entry: FileEntry, temporaryDirectory: File): File {
-        val packageName = requireNotNull(entry.packageName) { "Programos paketo nustatyti nepavyko" }
+        val packageName = requireNotNull(entry.packageName) { "Could not identify the app package" }
         val packageManager = applicationContext.packageManager
         val applicationInfo = if (Build.VERSION.SDK_INT >= 33) {
             packageManager.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0))
@@ -750,24 +750,24 @@ class FileCategoryRepository(
             packageManager.getApplicationInfo(packageName, 0)
         }
         val sources = buildList {
-            add(File(requireNotNull(applicationInfo.sourceDir) { "Programos APK nepasiekiamas" }))
+            add(File(requireNotNull(applicationInfo.sourceDir) { "The app APK is unavailable" }))
             applicationInfo.splitSourceDirs.orEmpty().forEach { add(File(it)) }
         }
-        require(sources.size <= InstalledAppBackupRules.MAX_PACKAGE_PARTS) { "Programos pakete per daug dalių" }
-        require(sources.all { it.isFile && it.canRead() }) { "Programos APK nepasiekiamas" }
+        require(sources.size <= InstalledAppBackupRules.MAX_PACKAGE_PARTS) { "The app package has too many parts" }
+        require(sources.all { it.isFile && it.canRead() }) { "The app APK is unavailable" }
         val totalBytes = sources.fold(0L) { total, source -> Math.addExact(total, source.length().coerceAtLeast(0L)) }
-        require(totalBytes <= InstalledAppBackupRules.MAX_APP_BYTES) { "Programos atsarginė kopija per didelė" }
-        require(temporaryDirectory.usableSpace > totalBytes + 32L * 1024L * 1024L) { "Laikinai kopijai nepakanka vietos" }
+        require(totalBytes <= InstalledAppBackupRules.MAX_APP_BYTES) { "The app backup is too large" }
+        require(temporaryDirectory.usableSpace > totalBytes + 32L * 1024L * 1024L) { "There is not enough space for the temporary copy" }
         val output = File(
             temporaryDirectory,
             InstalledAppBackupRules.fileName(entry.name, packageName, entry.appVersionName, split = sources.size > 1),
         )
         require(output.canonicalFile.toPath().startsWith(temporaryDirectory.canonicalFile.toPath())) {
-            "Netinkamas programos atsarginės kopijos vardas"
+            "Invalid app backup name"
         }
         if (sources.size == 1) {
             output.outputStream().buffered().use { sink -> copyStream(sources.single(), sink) }
-            require(output.length() == sources.single().length()) { "Programos APK kopijos dydis nesutampa" }
+            require(output.length() == sources.single().length()) { "The copied APK size does not match" }
             return output
         }
         val expectedEntries = linkedMapOf<String, Long>()
@@ -793,12 +793,12 @@ class FileCategoryRepository(
             }
         }
         ZipFile(output).use { archive ->
-            require(archive.size() == expectedEntries.size) { "Programos atsarginės kopijos patikrinti nepavyko" }
+            require(archive.size() == expectedEntries.size) { "Could not verify the app backup" }
             expectedEntries.forEach { (name, expectedBytes) ->
-                require(archive.getEntry(name)?.size == expectedBytes) { "Programos atsarginės kopijos patikrinti nepavyko" }
+                require(archive.getEntry(name)?.size == expectedBytes) { "Could not verify the app backup" }
             }
         }
-        require(output.isFile && output.length() > 0L) { "Programos atsarginės kopijos sukurti nepavyko" }
+        require(output.isFile && output.length() > 0L) { "Could not create the app backup" }
         return output
     }
 
@@ -813,7 +813,7 @@ class FileCategoryRepository(
                 output.write(buffer, 0, read)
                 copied = Math.addExact(copied, read.toLong())
             }
-            require(copied == source.length()) { "Programos APK kopijos dydis nesutampa" }
+            require(copied == source.length()) { "The copied APK size does not match" }
         }
     }
 

@@ -68,7 +68,7 @@ class UiPreferenceRepository(context: Context) {
             .put("olderThanDays", normalized.olderThanDays ?: JSONObject.NULL)
             .put("advancedExpanded", normalized.advancedExpanded)
         check(preferences.edit().putString(KEY_SEARCH, json.toString()).commit()) {
-            "Nustatymų įrašyti nepavyko"
+            "Could not save the settings"
         }
     }
 
@@ -87,7 +87,7 @@ class UiPreferenceRepository(context: Context) {
             .put("ascending", value.ascending)
             .put("dateRange", value.dateRange)
         check(preferences.edit().putString(KEY_RECENT_VIEW, json.toString()).commit()) {
-            "Nustatymų įrašyti nepavyko"
+            "Could not save the settings"
         }
     }
 
@@ -102,7 +102,7 @@ class UiPreferenceRepository(context: Context) {
         val json = JSONObject().put("version", 1)
             .put("hidden", value.hidden.sortedBy { it.ordinal }.map { it.name }.toJsonArray())
         check(preferences.edit().putString(KEY_FEATURES, json.toString()).commit()) {
-            "Nustatymų įrašyti nepavyko"
+            "Could not save the settings"
         }
     }
 

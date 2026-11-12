@@ -40,28 +40,28 @@ internal fun CustomPaletteDialog(
     var fields by remember { mutableStateOf(initial.values().map(CustomThemeRules::hex)) }
     var saveFailed by remember { mutableStateOf(false) }
     val parsed = remember(fields) { CustomThemeRules.parseDraft(fields) }
-    val labels = listOf("Pagrindinė spalva", "Antrinė spalva", "Trečioji spalva", "Fono spalva", "Kortelių spalva",
-        "Meniu ir dialogų spalva", "Mygtukų ir pasirinkimų spalva")
+    val labels = listOf("Primary color", "Secondary color", "Tertiary color", "Background color", "Card color",
+        "Menu and dialog color", "Button and selection color")
     ShovelModalDialog(
-        title = "Pasirinktinė paletė",
+        title = "Custom palette",
         icon = Icons.Rounded.Palette,
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("custom_palette_dialog"),
         actions = {
-            TextButton(onClick = { fields = CustomThemeColors().values().map(CustomThemeRules::hex); saveFailed = false }) { LText("Atstatyti") }
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = { fields = CustomThemeColors().values().map(CustomThemeRules::hex); saveFailed = false }) { LText("Reset") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             TextButton(
                 onClick = { parsed?.let { if (onSave(it)) onDismiss() else saveFailed = true } },
                 enabled = parsed != null,
                 modifier = Modifier.testTag("custom_palette_save"),
-            ) { LText("Išsaugoti") }
+            ) { LText("Save") }
         },
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            LText("Spalvas įrašykite #RRGGBB formatu. Teksto kontrastas pritaikomas automatiškai.", style = MaterialTheme.typography.bodySmall)
+            LText("Enter colors as #RRGGBB. Text contrast is adjusted automatically.", style = MaterialTheme.typography.bodySmall)
             fields.forEachIndexed { index, value ->
                 val color = CustomThemeRules.parseHex(value)
                 OutlinedTextField(
@@ -77,7 +77,7 @@ internal fun CustomPaletteDialog(
                     modifier = Modifier.fillMaxWidth().testTag("custom_color_$index"),
                 )
             }
-            if (saveFailed) LText("Išvaizdos nustatymo išsaugoti nepavyko", color = MaterialTheme.colorScheme.error)
+            if (saveFailed) LText("Could not save appearance settings", color = MaterialTheme.colorScheme.error)
         }
     }
 }

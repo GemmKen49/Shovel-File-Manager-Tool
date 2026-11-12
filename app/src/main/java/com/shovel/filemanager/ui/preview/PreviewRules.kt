@@ -37,21 +37,21 @@ internal object PdfTextRules {
     const val SCRATCH_ROOT_NAME = "pdf-text-selection"
 
     fun requireSourceSize(sizeBytes: Long?): Long? = sizeBytes?.also {
-        require(it in 1..MAX_SOURCE_BYTES) { "Failas per didelis peržiūrai" }
+        require(it in 1..MAX_SOURCE_BYTES) { "The file is too large to preview" }
     }
 
     fun requirePageIndex(pageIndex: Int, pageCount: Int): Int = pageIndex.also {
         require(pageCount in 1..PdfRenderRules.MAX_PAGE_COUNT && it in 0 until pageCount) {
-            "PDF puslapis nepasiekiamas"
+            "The PDF page is unavailable"
         }
     }
 
     fun requireTextLength(characters: Int): Int = characters.also {
-        require(it in 0..MAX_PAGE_TEXT_CHARS) { "Failas per didelis peržiūrai" }
+        require(it in 0..MAX_PAGE_TEXT_CHARS) { "The file is too large to preview" }
     }
 
     fun requireSelectionRectCount(rectangles: Int): Int = rectangles.also {
-        require(it in 0..MAX_SELECTION_RECTS) { "Failas per didelis peržiūrai" }
+        require(it in 0..MAX_SELECTION_RECTS) { "The file is too large to preview" }
     }
 
     fun pageClosestToViewportCenter(
@@ -59,8 +59,8 @@ internal object PdfTextRules {
         viewportStart: Int,
         viewportEnd: Int,
     ): Int {
-        require(visiblePages.isNotEmpty()) { "PDF puslapis nepasiekiamas" }
-        require(viewportEnd > viewportStart) { "PDF puslapis nepasiekiamas" }
+        require(visiblePages.isNotEmpty()) { "The PDF page is unavailable" }
+        require(viewportEnd > viewportStart) { "The PDF page is unavailable" }
         val viewportCenter = (viewportStart.toLong() + viewportEnd.toLong()) / 2L
         return visiblePages.minBy { page ->
             val pageCenter = page.offset.toLong() + page.size.toLong() / 2L
@@ -72,7 +72,7 @@ internal object PdfTextRules {
         visiblePages: List<PdfVisiblePage>,
         position: Float,
     ): PdfVisiblePage {
-        require(visiblePages.isNotEmpty() && position.isFinite()) { "PDF puslapis nepasiekiamas" }
+        require(visiblePages.isNotEmpty() && position.isFinite()) { "The PDF page is unavailable" }
         visiblePages.firstOrNull { page ->
             position >= page.offset && position < page.offset.toLong() + page.size.toLong()
         }?.let { return it }
@@ -84,7 +84,7 @@ internal object PdfTextRules {
 
 internal data class PdfPageSize(val width: Int, val height: Int) {
     init {
-        require(width > 0 && height > 0) { "Netinkamas PDF puslapio dydis" }
+        require(width > 0 && height > 0) { "Invalid PDF page size" }
     }
 
     val aspectRatio: Float get() = width.toFloat() / height
@@ -102,9 +102,9 @@ internal object PdfSelectionRules {
         displaySize: PdfDisplaySize,
         pageSize: PdfPageSize,
     ): PdfPagePoint {
-        require(displayPoint.x.isFinite() && displayPoint.y.isFinite()) { "PDF perskaityti nepavyko" }
-        require(displaySize.width.isFinite() && displaySize.width > 0f) { "Netinkamas PDF peržiūros plotis" }
-        require(displaySize.height.isFinite() && displaySize.height > 0f) { "PDF perskaityti nepavyko" }
+        require(displayPoint.x.isFinite() && displayPoint.y.isFinite()) { "Could not read the PDF" }
+        require(displaySize.width.isFinite() && displaySize.width > 0f) { "Invalid PDF preview width" }
+        require(displaySize.height.isFinite() && displaySize.height > 0f) { "Could not read the PDF" }
         return PdfPagePoint(
             x = (displayPoint.x / displaySize.width * pageSize.width).coerceIn(0f, pageSize.width.toFloat()),
             y = (displayPoint.y / displaySize.height * pageSize.height).coerceIn(0f, pageSize.height.toFloat()),
@@ -116,9 +116,9 @@ internal object PdfSelectionRules {
         displaySize: PdfDisplaySize,
         pageSize: PdfPageSize,
     ): PdfDisplayPoint {
-        require(pagePoint.x.isFinite() && pagePoint.y.isFinite()) { "PDF perskaityti nepavyko" }
-        require(displaySize.width.isFinite() && displaySize.width > 0f) { "Netinkamas PDF peržiūros plotis" }
-        require(displaySize.height.isFinite() && displaySize.height > 0f) { "PDF perskaityti nepavyko" }
+        require(pagePoint.x.isFinite() && pagePoint.y.isFinite()) { "Could not read the PDF" }
+        require(displaySize.width.isFinite() && displaySize.width > 0f) { "Invalid PDF preview width" }
+        require(displaySize.height.isFinite() && displaySize.height > 0f) { "Could not read the PDF" }
         return PdfDisplayPoint(
             x = pagePoint.x.coerceIn(0f, pageSize.width.toFloat()) / pageSize.width * displaySize.width,
             y = pagePoint.y.coerceIn(0f, pageSize.height.toFloat()) / pageSize.height * displaySize.height,
@@ -131,7 +131,7 @@ internal object PdfSelectionRules {
         stop: PdfDisplayPoint,
         hitRadius: Float,
     ): PdfSelectionHandle? {
-        require(hitRadius.isFinite() && hitRadius > 0f) { "PDF perskaityti nepavyko" }
+        require(hitRadius.isFinite() && hitRadius > 0f) { "Could not read the PDF" }
         val startDistance = distanceSquared(touch, start)
         val stopDistance = distanceSquared(touch, stop)
         val maximumDistance = hitRadius * hitRadius
@@ -145,7 +145,7 @@ internal object PdfSelectionRules {
     private fun distanceSquared(first: PdfDisplayPoint, second: PdfDisplayPoint): Float {
         require(
             first.x.isFinite() && first.y.isFinite() && second.x.isFinite() && second.y.isFinite(),
-        ) { "PDF perskaityti nepavyko" }
+        ) { "Could not read the PDF" }
         val x = first.x - second.x
         val y = first.y - second.y
         return x * x + y * y
@@ -170,9 +170,9 @@ internal object PdfRenderRules {
         viewportWidthPx: Int,
         zoom: Float,
     ): Pair<Int, Int> {
-        require(sourceWidth > 0 && sourceHeight > 0) { "Netinkamas PDF puslapio dydis" }
-        require(viewportWidthPx > 0) { "Netinkamas PDF peržiūros plotis" }
-        require(zoom.isFinite() && zoom > 0f) { "Netinkamas PDF mastelis" }
+        require(sourceWidth > 0 && sourceHeight > 0) { "Invalid PDF page size" }
+        require(viewportWidthPx > 0) { "Invalid PDF preview width" }
+        require(zoom.isFinite() && zoom > 0f) { "Invalid PDF zoom level" }
         val requestedWidth = viewportWidthPx.toDouble() * zoom
         val requestedScale = requestedWidth / sourceWidth
         val widthScale = MAX_WIDTH_PX.toDouble() / sourceWidth

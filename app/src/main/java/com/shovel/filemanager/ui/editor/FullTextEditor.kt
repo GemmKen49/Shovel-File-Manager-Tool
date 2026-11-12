@@ -115,7 +115,7 @@ fun FullTextEditor(
             currentSearchMatch = Color(0x99FB923C).toArgb(),
         )
     }
-    val editorContentDescription = uiText("Teksto redaktorius")
+    val editorContentDescription = uiText("Text editor")
 
     LaunchedEffect(controller, text, readOnly, wordWrap, fontSize, language, colors, query, matchCase, wholeWord, editorContentDescription) {
         controller.setTextFromModel(text)
@@ -135,32 +135,32 @@ fun FullTextEditor(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             IconButton(onClick = { controller.undo() }, enabled = canUndo && !readOnly) {
-                Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = uiText("Anuliuoti"))
+                Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = uiText("Undo"))
             }
             IconButton(onClick = { controller.redo() }, enabled = canRedo && !readOnly) {
-                Icon(Icons.AutoMirrored.Rounded.Redo, contentDescription = uiText("Pakartoti"))
+                Icon(Icons.AutoMirrored.Rounded.Redo, contentDescription = uiText("Redo"))
             }
             IconButton(onClick = { showSearch = !showSearch; if (!showSearch) showReplace = false }) {
-                Icon(Icons.Rounded.Search, contentDescription = uiText("Ieškoti"))
+                Icon(Icons.Rounded.Search, contentDescription = uiText("Search"))
             }
             IconButton(onClick = { showSearch = true; showReplace = true }) {
-                Icon(Icons.Rounded.FindReplace, contentDescription = uiText("Rasti ir pakeisti"))
+                Icon(Icons.Rounded.FindReplace, contentDescription = uiText("Find and replace"))
             }
             IconButton(onClick = { goToLineText = cursor.line.toString(); showGoToLine = true }) {
-                Icon(Icons.Rounded.FormatListNumbered, contentDescription = uiText("Eiti į eilutę"))
+                Icon(Icons.Rounded.FormatListNumbered, contentDescription = uiText("Go to line"))
             }
             IconButton(onClick = { wordWrap = !wordWrap }) {
                 Icon(
                     Icons.AutoMirrored.Rounded.WrapText,
-                    contentDescription = uiText("Laužyti ilgas eilutes"),
+                    contentDescription = uiText("Wrap long lines"),
                     tint = if (wordWrap) scheme.primary else scheme.onSurfaceVariant,
                 )
             }
             IconButton(onClick = { fontSize = (fontSize - 1f).coerceAtLeast(10f) }) {
-                Icon(Icons.Rounded.ZoomOut, contentDescription = uiText("Mažinti tekstą"))
+                Icon(Icons.Rounded.ZoomOut, contentDescription = uiText("Decrease text size"))
             }
             IconButton(onClick = { fontSize = (fontSize + 1f).coerceAtMost(28f) }) {
-                Icon(Icons.Rounded.ZoomIn, contentDescription = uiText("Didinti tekstą"))
+                Icon(Icons.Rounded.ZoomIn, contentDescription = uiText("Increase text size"))
             }
             Box {
                 TextButton(onClick = { showLanguageMenu = true }) { LText(language.label) }
@@ -193,11 +193,11 @@ fun FullTextEditor(
                 onPrevious = { controller.findNext(false) },
                 onNext = { controller.findNext(true) },
                 onReplace = {
-                    actionStatus = if (controller.replaceCurrent(replacement)) "Pakeistas vienas atitikmuo" else "Atitikmens nėra"
+                    actionStatus = if (controller.replaceCurrent(replacement)) "Replaced one match" else "No match"
                 },
                 onReplaceAll = {
                     val count = controller.replaceAll(replacement)
-                    actionStatus = "Pakeista: $count"
+                    actionStatus = "Replaced: $count"
                 },
                 onClose = { showSearch = false; showReplace = false; query = ""; actionStatus = null },
             )
@@ -252,8 +252,8 @@ fun FullTextEditor(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             LText("Eil. ${cursor.line}, stulp. ${cursor.column}", style = MaterialTheme.typography.labelSmall)
-            LText("${cursor.totalLines} eilučių", style = MaterialTheme.typography.labelSmall)
-            if (cursor.selectedCharacters > 0) LText("Pažymėta simbolių: ${cursor.selectedCharacters}", style = MaterialTheme.typography.labelSmall)
+            LText("${cursor.totalLines} lines", style = MaterialTheme.typography.labelSmall)
+            if (cursor.selectedCharacters > 0) LText("Characters selected: ${cursor.selectedCharacters}", style = MaterialTheme.typography.labelSmall)
             Box {
                 TextButton(onClick = { showEncodingMenu = true }, contentPadding = compactButtonPadding()) {
                     Text(encoding.label, style = MaterialTheme.typography.labelSmall)
@@ -281,7 +281,7 @@ fun FullTextEditor(
                 }
             }
             if (text.length > EditorSyntaxHighlighter.MAX_HIGHLIGHT_CHARS) {
-                LText("Dideliam failui sintaksės spalvinimas išjungtas", style = MaterialTheme.typography.labelSmall)
+                LText("Syntax highlighting is disabled for this large file", style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -289,13 +289,13 @@ fun FullTextEditor(
     if (showGoToLine) {
         AlertDialog(
             onDismissRequest = { showGoToLine = false },
-            title = { LText("Eiti į eilutę") },
+            title = { LText("Go to line") },
             text = {
                 OutlinedTextField(
                     value = goToLineText,
                     modifier = Modifier.fillMaxWidth(),
                     onValueChange = { value -> goToLineText = value.filter(Char::isDigit).take(9) },
-                    label = { LText("Eilutė") },
+                    label = { LText("Line") },
                     singleLine = true,
                 )
             },
@@ -306,9 +306,9 @@ fun FullTextEditor(
                         showGoToLine = false
                     },
                     enabled = goToLineText.toIntOrNull() != null,
-                ) { LText("Eiti") }
+                ) { LText("Go") }
             },
-            dismissButton = { TextButton(onClick = { showGoToLine = false }) { LText("Atšaukti") } },
+            dismissButton = { TextButton(onClick = { showGoToLine = false }) { LText("Cancel") } },
         )
     }
 }
@@ -340,7 +340,7 @@ private fun SearchReplaceBar(
                     value = query,
                     onValueChange = onQueryChanged,
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                    label = { LText("Ieškoti") },
+                    label = { LText("Search") },
                     singleLine = true,
                 )
                 Text(
@@ -348,12 +348,12 @@ private fun SearchReplaceBar(
                     style = MaterialTheme.typography.labelSmall,
                 )
                 IconButton(onClick = onPrevious, enabled = status.total > 0) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Ankstesnis"))
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Previous"))
                 }
                 IconButton(onClick = onNext, enabled = status.total > 0) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = uiText("Kitas"))
+                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = uiText("Next"))
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, contentDescription = uiText("Uždaryti")) }
+                IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, contentDescription = uiText("Close")) }
             }
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -361,9 +361,9 @@ private fun SearchReplaceBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Checkbox(checked = matchCase, onCheckedChange = onMatchCaseChanged, modifier = Modifier.size(34.dp))
-                LText("Skirti didžiąsias raides", style = MaterialTheme.typography.labelSmall)
+                LText("Match case", style = MaterialTheme.typography.labelSmall)
                 Checkbox(checked = wholeWord, onCheckedChange = onWholeWordChanged, modifier = Modifier.size(34.dp))
-                LText("Visas žodis", style = MaterialTheme.typography.labelSmall)
+                LText("Whole word", style = MaterialTheme.typography.labelSmall)
                 actionStatus?.let { LText(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) }
             }
             if (showReplace) {
@@ -372,11 +372,11 @@ private fun SearchReplaceBar(
                         value = replacement,
                         onValueChange = onReplacementChanged,
                         modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                        label = { LText("Pakeisti į") },
+                        label = { LText("Replace with") },
                         singleLine = true,
                     )
-                    OutlinedButton(onClick = onReplace, enabled = !readOnly && query.isNotEmpty()) { LText("Pakeisti") }
-                    Button(onClick = onReplaceAll, enabled = !readOnly && query.isNotEmpty()) { LText("Pakeisti visus") }
+                    OutlinedButton(onClick = onReplace, enabled = !readOnly && query.isNotEmpty()) { LText("Replace") }
+                    Button(onClick = onReplaceAll, enabled = !readOnly && query.isNotEmpty()) { LText("Replace all") }
                 }
             }
         }

@@ -31,7 +31,7 @@ class FileSelectionInfoScanner(
     }
 
     suspend fun scan(sourcePaths: Collection<String>): FileSelectionSummary = withContext(Dispatchers.IO) {
-        require(maxScannedNodes > 0 && maxRoots > 0) { "Netinkama skenavimo riba" }
+        require(maxScannedNodes > 0 && maxRoots > 0) { "Invalid scan limit" }
         val requested = sourcePaths.asSequence()
             .map(String::trim)
             .filter(String::isNotEmpty)
@@ -39,7 +39,7 @@ class FileSelectionInfoScanner(
             .distinct()
             .take(maxRoots + 1)
             .toList()
-        require(requested.isNotEmpty()) { "Nepasirinkta failų" }
+        require(requested.isNotEmpty()) { "No files selected" }
         var complete = requested.size <= maxRoots
         val selected = compactRoots(requested.take(maxRoots))
         val pending = ArrayDeque<PendingPath>()

@@ -52,20 +52,20 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
     )
 
     ShovelModalDialog(
-        title = "Masinis pervadinimas",
-        subtitle = "Pakeitimai bus vykdomi tik patvirtinus planą",
+        title = "Batch rename",
+        subtitle = "Changes run only after you confirm the plan",
         icon = Icons.Rounded.DriveFileRenameOutline,
         onDismissRequest = viewModel::closeBatchRename,
         expandedContent = true,
         modifier = Modifier.testTag("batch_rename_dialog"),
         actions = {
-            TextButton(onClick = viewModel::closeBatchRename) { LText("Atšaukti") }
+            TextButton(onClick = viewModel::closeBatchRename) { LText("Cancel") }
             Button(
                 onClick = viewModel::executeBatchRename,
                 enabled = numberInputsValid && !state.running && state.preview?.canExecute == true,
                 modifier = Modifier.testTag("batch_rename_execute"),
             ) {
-                LText("Pervadinti ${state.preview?.changedCount ?: 0}")
+                LText("Rename ${state.preview?.changedCount ?: 0}")
             }
         },
     ) {
@@ -82,38 +82,38 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
                                 value = spec.findText,
                                 onValueChange = { viewModel.updateBatchRenameSpec(spec.copy(findText = it)) },
                                 modifier = Modifier.fillMaxWidth().testTag("batch_rename_find"),
-                                label = { LText("Rasti pavadinime") },
+                                label = { LText("Find in name") },
                                 singleLine = true,
                             )
                             OutlinedTextField(
                                 value = spec.replacementText,
                                 onValueChange = { viewModel.updateBatchRenameSpec(spec.copy(replacementText = it)) },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { LText("Pakeisti į") },
+                                label = { LText("Replace with") },
                                 singleLine = true,
                             )
                             FilterChip(
                                 selected = spec.useRegex,
                                 onClick = { viewModel.updateBatchRenameSpec(spec.copy(useRegex = !spec.useRegex)) },
-                                label = { LText("Reguliarioji išraiška") },
+                                label = { LText("Regular expression") },
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedTextField(
                                     value = spec.prefix,
                                     onValueChange = { viewModel.updateBatchRenameSpec(spec.copy(prefix = it)) },
                                     modifier = Modifier.weight(1f).testTag("batch_rename_prefix"),
-                                    label = { LText("Prefiksas") },
+                                    label = { LText("Prefix") },
                                     singleLine = true,
                                 )
                                 OutlinedTextField(
                                     value = spec.suffix,
                                     onValueChange = { viewModel.updateBatchRenameSpec(spec.copy(suffix = it)) },
                                     modifier = Modifier.weight(1f),
-                                    label = { LText("Sufiksas") },
+                                    label = { LText("Suffix") },
                                     singleLine = true,
                                 )
                             }
-                            LText("Raidės", style = MaterialTheme.typography.labelLarge)
+                            LText("Letter case", style = MaterialTheme.typography.labelLarge)
                             ShovelActionRow {
                                 RenameCaseMode.entries.forEach { mode ->
                                     FilterChip(
@@ -126,7 +126,7 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
                             FilterChip(
                                 selected = spec.numberingEnabled,
                                 onClick = { viewModel.updateBatchRenameSpec(spec.copy(numberingEnabled = !spec.numberingEnabled)) },
-                                label = { LText("Pridėti numeravimą") },
+                                label = { LText("Add numbering") },
                             )
                             if (spec.numberingEnabled) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -139,7 +139,7 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
                                             }
                                         },
                                         modifier = Modifier.weight(1f),
-                                        label = { LText("Pradžia") },
+                                        label = { LText("Start") },
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                         isError = numberStartText.toIntOrNull()?.let { it !in 0..999_999_999 } != false,
                                         singleLine = true,
@@ -153,7 +153,7 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
                                             }
                                         },
                                         modifier = Modifier.weight(1f),
-                                        label = { LText("Skaitmenys") },
+                                        label = { LText("Digits") },
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                         isError = numberPaddingText.toIntOrNull()?.let { it !in 1..9 } != false,
                                         singleLine = true,
@@ -162,7 +162,7 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
                                         value = spec.numberSeparator,
                                         onValueChange = { viewModel.updateBatchRenameSpec(spec.copy(numberSeparator = it.take(8))) },
                                         modifier = Modifier.weight(1f),
-                                        label = { LText("Skirtukas") },
+                                        label = { LText("Separator") },
                                         singleLine = true,
                                     )
                                 }
@@ -171,8 +171,8 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
                                 value = spec.extensionOverride,
                                 onValueChange = { viewModel.updateBatchRenameSpec(spec.copy(extensionOverride = it)) },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { LText("Naujas failų plėtinys (nebūtinas)") },
-                                supportingText = { LText("Tuščia reikšmė palieka esamą plėtinį; aplankams netaikoma") },
+                                label = { LText("New file extension (optional)") },
+                                supportingText = { LText("An empty value keeps the current extension; folders are unaffected") },
                                 singleLine = true,
                             )
                         }
@@ -185,7 +185,7 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            LText("Peržiūra", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            LText("Preview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                             if (state.running) CircularProgressIndicator(modifier = Modifier.padding(3.dp))
                             state.preview?.let { LText("Keisis ${it.changedCount} / ${it.items.size}") }
                         }
@@ -195,7 +195,7 @@ fun BatchRenameDialog(viewModel: MainViewModel) {
                         item { ErrorText(error) }
                     }
                     if (!numberInputsValid) {
-                        item { ErrorText("Patikrinkite numeravimo pradžią ir skaitmenų skaičių") }
+                        item { ErrorText("Check the numbering start and digit count") }
                     }
                     state.preview?.errors?.forEach { error ->
                         item(key = "global:$error") { ErrorText(error) }
@@ -227,7 +227,7 @@ private fun RenamePreviewRow(item: BatchRenamePreviewItem) {
             )
         } else {
             LText(
-                "→ Nesikeičia",
+                "→ Unchanged",
                 color = if (issue != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -250,7 +250,7 @@ private fun ErrorText(text: String) {
 }
 
 private fun caseModeLabel(mode: RenameCaseMode): String = when (mode) {
-    RenameCaseMode.KEEP -> "Nekeisti"
-    RenameCaseMode.LOWERCASE -> "mažosios"
-    RenameCaseMode.UPPERCASE -> "DIDŽIOSIOS"
+    RenameCaseMode.KEEP -> "Unchanged"
+    RenameCaseMode.LOWERCASE -> "lowercase"
+    RenameCaseMode.UPPERCASE -> "UPPERCASE"
 }

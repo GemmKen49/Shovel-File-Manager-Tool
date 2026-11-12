@@ -26,12 +26,12 @@ class LocalShareManager(
     suspend fun share(paths: Collection<String>): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
             val sources = paths.asSequence().distinct().map(::File).toList()
-            require(sources.isNotEmpty()) { "Pasirinkite bent vieną elementą" }
-            require(sources.size <= MAX_DIRECT_ITEMS) { "Vienu kartu bendrinama per daug elementų" }
-            require(sources.all { it.exists() && it.canRead() }) { "Kai kurie pasirinkti elementai nepasiekiami" }
+            require(sources.isNotEmpty()) { "Select at least one item" }
+            require(sources.size <= MAX_DIRECT_ITEMS) { "Too many items selected for sharing at once" }
+            require(sources.all { it.exists() && it.canRead() }) { "Some selected items are unavailable" }
 
             val shareDirectory = File(application.cacheDir, "shares").apply {
-                require(isDirectory || mkdirs()) { "Laikinos bendrinimo vietos sukurti nepavyko" }
+                require(isDirectory || mkdirs()) { "Could not create the temporary sharing location" }
             }
             pruneOldStages(shareDirectory)
             val files = if (sources.any(File::isDirectory)) {
@@ -49,14 +49,14 @@ class LocalShareManager(
     suspend fun sharePrepared(files: Collection<File>): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
             val sources = files.asSequence().distinctBy { it.absolutePath }.toList()
-            require(sources.isNotEmpty() && sources.size <= MAX_DIRECT_ITEMS) { "Nėra bendrinamų failų" }
-            require(sources.all { it.isFile && it.canRead() }) { "Paruoštas failas nepasiekiamas" }
+            require(sources.isNotEmpty() && sources.size <= MAX_DIRECT_ITEMS) { "There are no files to share" }
+            require(sources.all { it.isFile && it.canRead() }) { "A prepared file is unavailable" }
             val shareRoot = File(application.cacheDir, "shares").apply {
-                require(isDirectory || mkdirs()) { "Laikinos bendrinimo vietos sukurti nepavyko" }
+                require(isDirectory || mkdirs()) { "Could not create the temporary sharing location" }
             }
             pruneOldStages(shareRoot)
             val stage = File(shareRoot, UUID.randomUUID().toString()).apply {
-                require(mkdirs()) { "Laikinos bendrinimo vietos sukurti nepavyko" }
+                require(mkdirs()) { "Could not create the temporary sharing location" }
             }
             val copied = sources.mapIndexed { index, source ->
                 val safeName = source.name.replace(Regex("[^A-Za-z0-9._() -]"), "_").ifBlank { "file-$index" }
@@ -65,7 +65,7 @@ class LocalShareManager(
                 source.inputStream().buffered().use { input ->
                     target.outputStream().buffered().use(input::copyTo)
                 }
-                require(target.length() == source.length()) { "Bendrinimo kopijos dydis nesutampa" }
+                require(target.length() == source.length()) { "The sharing copy size does not match" }
                 target
             }
             launchChooser(copied)

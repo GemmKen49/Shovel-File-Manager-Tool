@@ -61,7 +61,7 @@ fun DirectoryDisplaySettingsDialog(
     var draftSortMode by remember(initialSortMode) { mutableStateOf(initialSortMode ?: SortMode.NAME) }
     var draftSortDirection by remember(initialSortDirection) { mutableStateOf(initialSortDirection) }
     ShovelModalDialog(
-        title = "Rodinio nustatymai",
+        title = "Display settings",
         icon = Icons.Rounded.GridView,
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("display_settings_dialog"),
@@ -72,8 +72,8 @@ fun DirectoryDisplaySettingsDialog(
                     draftSortMode = SortMode.NAME
                     draftSortDirection = SortDirection.ASCENDING
                 },
-            ) { LText("Atstatyti") }
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            ) { LText("Reset") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             onApplyToAll?.let { applyToAll ->
                 TextButton(
                     onClick = {
@@ -85,14 +85,14 @@ fun DirectoryDisplaySettingsDialog(
                     },
                     modifier = Modifier.testTag("display_apply_all"),
                 ) {
-                    LText("Taikyti visiems")
+                    LText("Apply to all")
                 }
             }
             TextButton(onClick = {
                 onApply(DirectoryDisplayRules.requireValid(draft))
                 if (initialSortMode != null) onApplySort?.invoke(draftSortMode, draftSortDirection)
             }, modifier = Modifier.testTag("display_apply")) {
-                LText("Taikyti")
+                LText("Apply")
             }
         },
     ) {
@@ -100,26 +100,26 @@ fun DirectoryDisplaySettingsDialog(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-                LText("Išdėstymas", fontWeight = FontWeight.SemiBold)
+                LText("Layout", fontWeight = FontWeight.SemiBold)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = draft.layoutMode == DirectoryLayoutMode.LIST,
                         onClick = { draft = draft.copy(layoutMode = DirectoryLayoutMode.LIST) },
-                        label = { LText("Sąrašas") },
+                        label = { LText("List") },
                         leadingIcon = { Icon(Icons.AutoMirrored.Rounded.List, contentDescription = null) },
                         modifier = Modifier.weight(1f).testTag("display_mode_list"),
                     )
                     FilterChip(
                         selected = draft.layoutMode == DirectoryLayoutMode.GRID,
                         onClick = { draft = draft.copy(layoutMode = DirectoryLayoutMode.GRID) },
-                        label = { LText("Tinklelis") },
+                        label = { LText("Grid") },
                         leadingIcon = { Icon(Icons.Rounded.GridView, contentDescription = null) },
                         modifier = Modifier.weight(1f).testTag("display_mode_grid"),
                     )
                 }
 
                 PercentageSlider(
-                    title = "Piktogramų ir aplankų dydis",
+                    title = "Icon and folder size",
                     value = draft.iconScalePercent,
                     range = DirectoryDisplayRules.MIN_ICON_SCALE_PERCENT..DirectoryDisplayRules.MAX_ICON_SCALE_PERCENT,
                     steps = 6,
@@ -127,7 +127,7 @@ fun DirectoryDisplaySettingsDialog(
                     onValueChange = { draft = draft.copy(iconScalePercent = it) },
                 )
                 PercentageSlider(
-                    title = "Elementų tarpai",
+                    title = "Item spacing",
                     value = draft.spacingScalePercent,
                     range = DirectoryDisplayRules.MIN_SPACING_SCALE_PERCENT..DirectoryDisplayRules.MAX_SPACING_SCALE_PERCENT,
                     steps = 7,
@@ -136,7 +136,7 @@ fun DirectoryDisplaySettingsDialog(
                 )
 
                 if (draft.layoutMode == DirectoryLayoutMode.GRID) {
-                    LText("Tinklelio stulpeliai", fontWeight = FontWeight.SemiBold)
+                    LText("Grid columns", fontWeight = FontWeight.SemiBold)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         gridColumnRange.chunked(3).forEach { counts ->
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -152,24 +152,24 @@ fun DirectoryDisplaySettingsDialog(
                             }
                         }
                     }
-                    LText("Tinklelio stilius", fontWeight = FontWeight.SemiBold)
+                    LText("Grid style", fontWeight = FontWeight.SemiBold)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
                             selected = draft.gridStyle == DirectoryGridStyle.CARDS,
                             onClick = { draft = draft.copy(gridStyle = DirectoryGridStyle.CARDS) },
-                            label = { LText("Kortelės") },
+                            label = { LText("Cards") },
                             modifier = Modifier.weight(1f).testTag("display_grid_style_cards"),
                         )
                         FilterChip(
                             selected = draft.gridStyle == DirectoryGridStyle.CLASSIC,
                             onClick = { draft = draft.copy(gridStyle = DirectoryGridStyle.CLASSIC) },
-                            label = { LText("Klasikinis") },
+                            label = { LText("Classic") },
                             modifier = Modifier.weight(1f).testTag("display_grid_style_classic"),
                         )
                     }
                     if (draftSortMode == SortMode.SIZE) {
                         LText(
-                            "Failai rūšiuojami pagal dydį. Aplankai lieka pagal pavadinimą, kad naršant nereikėtų lėtai skenuoti viso jų turinio.",
+                            "Files are sorted by size. Folders remain sorted by name so browsing does not require a slow scan of all their contents.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -182,9 +182,9 @@ fun DirectoryDisplaySettingsDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                            LText("Failų miniatiūros", fontWeight = FontWeight.SemiBold)
+                            LText("File thumbnails", fontWeight = FontWeight.SemiBold)
                             LText(
-                                "Išsaugoma atskirai šiam katalogui",
+                                "Saved separately for this folder",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -198,7 +198,7 @@ fun DirectoryDisplaySettingsDialog(
                 }
 
                 if (initialSortMode != null) {
-                    LText("Rūšiavimas", fontWeight = FontWeight.SemiBold)
+                    LText("Sorting", fontWeight = FontWeight.SemiBold)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         SortMode.entries.chunked(2).forEach { modes ->
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -218,13 +218,13 @@ fun DirectoryDisplaySettingsDialog(
                         FilterChip(
                             selected = draftSortDirection == SortDirection.ASCENDING,
                             onClick = { draftSortDirection = SortDirection.ASCENDING },
-                            label = { LText("Didėjančiai") },
+                            label = { LText("Ascending") },
                             modifier = Modifier.weight(1f).testTag("display_sort_ascending"),
                         )
                         FilterChip(
                             selected = draftSortDirection == SortDirection.DESCENDING,
                             onClick = { draftSortDirection = SortDirection.DESCENDING },
-                            label = { LText("Mažėjančiai") },
+                            label = { LText("Descending") },
                             modifier = Modifier.weight(1f).testTag("display_sort_descending"),
                         )
                     }
@@ -235,10 +235,10 @@ fun DirectoryDisplaySettingsDialog(
 }
 
 private fun directorySortLabel(mode: SortMode): String = when (mode) {
-    SortMode.NAME -> "Pagal pavadinimą"
-    SortMode.MODIFIED -> "Pagal datą"
-    SortMode.SIZE -> "Pagal dydį"
-    SortMode.TYPE -> "Pagal tipą"
+    SortMode.NAME -> "By name"
+    SortMode.MODIFIED -> "By date"
+    SortMode.SIZE -> "By size"
+    SortMode.TYPE -> "By type"
 }
 
 @Composable

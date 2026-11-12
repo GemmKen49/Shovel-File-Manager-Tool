@@ -115,7 +115,7 @@ fun ShovelModalDialog(
                             }
                         }
                         IconButton(onClick = onClose) {
-                            Icon(Icons.Rounded.Close, contentDescription = uiText("Uždaryti"))
+                            Icon(Icons.Rounded.Close, contentDescription = uiText("Close"))
                         }
                     }
                     HorizontalDivider()

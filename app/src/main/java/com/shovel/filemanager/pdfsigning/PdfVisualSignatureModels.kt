@@ -51,21 +51,21 @@ object VisualSignatureRules {
     )
 
     fun validate(drawing: SignatureDrawing): SignatureDrawing {
-        require(!drawing.isEmpty) { "Parašas tuščias" }
-        require(drawing.strokes.size <= MAX_STROKES) { "Paraše per daug brūkšnių" }
-        require(drawing.pointCount <= MAX_POINTS) { "Paraše per daug taškų" }
+        require(!drawing.isEmpty) { "The signature is empty" }
+        require(drawing.strokes.size <= MAX_STROKES) { "The signature contains too many strokes" }
+        require(drawing.pointCount <= MAX_POINTS) { "The signature contains too many points" }
         drawing.strokes.forEach { stroke ->
-            require(stroke.points.isNotEmpty()) { "Paraše yra tuščias brūkšnys" }
+            require(stroke.points.isNotEmpty()) { "The signature contains an empty stroke" }
             stroke.points.forEach { point ->
-                require(point.x.isFinite() && point.y.isFinite()) { "Parašo taškas netinkamas" }
-                require(point.x in 0f..1f && point.y in 0f..1f) { "Parašo taškas yra už piešimo srities" }
+                require(point.x.isFinite() && point.y.isFinite()) { "The signature point is invalid" }
+                require(point.x in 0f..1f && point.y in 0f..1f) { "The signature point is outside the drawing area" }
             }
         }
         return drawing
     }
 
     fun defaultPlacement(pageIndex: Int, pageAspectRatio: Float): PdfSignaturePlacement {
-        require(pageIndex >= 0) { "PDF puslapis nepasiekiamas" }
+        require(pageIndex >= 0) { "The PDF page is unavailable" }
         val width = 0.55f
         val height = heightForWidth(width, pageAspectRatio)
         return PdfSignaturePlacement(
@@ -97,7 +97,7 @@ object VisualSignatureRules {
         requestedWidth: Float,
         pageAspectRatio: Float,
     ): PdfSignaturePlacement {
-        require(pageAspectRatio.isFinite() && pageAspectRatio > 0f) { "PDF puslapio geometrija netinkama" }
+        require(pageAspectRatio.isFinite() && pageAspectRatio > 0f) { "The PDF page geometry is invalid" }
         val availableWidth = (1f - placement.left).coerceAtLeast(MIN_WIDTH)
         val availableHeightAsWidth = ((1f - placement.top) * ASPECT_RATIO / pageAspectRatio)
             .coerceAtLeast(MIN_WIDTH)
@@ -119,14 +119,14 @@ object VisualSignatureRules {
     )
 
     fun validatePlacement(placement: PdfSignaturePlacement, pageCount: Int): PdfSignaturePlacement {
-        require(pageCount in 1..5_000) { "PDF puslapių skaičius nepalaikomas" }
-        require(placement.pageIndex in 0 until pageCount) { "PDF puslapis nepasiekiamas" }
+        require(pageCount in 1..5_000) { "Unsupported PDF page count" }
+        require(placement.pageIndex in 0 until pageCount) { "The PDF page is unavailable" }
         val values = listOf(placement.left, placement.top, placement.width, placement.height)
-        require(values.all(Float::isFinite)) { "Parašo vieta netinkama" }
-        require(placement.width in MIN_WIDTH..MAX_WIDTH && placement.height > 0f) { "Parašo dydis netinkamas" }
-        require(placement.left >= 0f && placement.top >= 0f) { "Parašo vieta netinkama" }
-        require(placement.left + placement.width <= 1.0001f) { "Parašas netelpa PDF puslapyje" }
-        require(placement.top + placement.height <= 1.0001f) { "Parašas netelpa PDF puslapyje" }
+        require(values.all(Float::isFinite)) { "The signature position is invalid" }
+        require(placement.width in MIN_WIDTH..MAX_WIDTH && placement.height > 0f) { "The signature size is invalid" }
+        require(placement.left >= 0f && placement.top >= 0f) { "The signature position is invalid" }
+        require(placement.left + placement.width <= 1.0001f) { "The signature does not fit on the PDF page" }
+        require(placement.top + placement.height <= 1.0001f) { "The signature does not fit on the PDF page" }
         return placement
     }
 
@@ -142,10 +142,10 @@ object VisualSignatureRules {
         pageRotation: Int,
         placement: PdfSignaturePlacement,
     ): PdfImageMatrix {
-        require(listOf(cropLeft, cropBottom, cropWidth, cropHeight).all(Float::isFinite)) { "PDF puslapio geometrija netinkama" }
-        require(cropWidth > 0f && cropHeight > 0f) { "PDF puslapio geometrija netinkama" }
+        require(listOf(cropLeft, cropBottom, cropWidth, cropHeight).all(Float::isFinite)) { "The PDF page geometry is invalid" }
+        require(cropWidth > 0f && cropHeight > 0f) { "The PDF page geometry is invalid" }
         val rotation = ((pageRotation % 360) + 360) % 360
-        require(rotation % 90 == 0) { "PDF puslapio pasukimas nepalaikomas" }
+        require(rotation % 90 == 0) { "The PDF page rotation is unsupported" }
         val p = validatePlacement(placement, max(placement.pageIndex + 1, 1))
         return when (rotation) {
             0 -> PdfImageMatrix(
@@ -184,7 +184,7 @@ object VisualSignatureRules {
     }
 
     private fun heightForWidth(width: Float, pageAspectRatio: Float): Float {
-        require(pageAspectRatio.isFinite() && pageAspectRatio > 0f) { "PDF puslapio geometrija netinkama" }
+        require(pageAspectRatio.isFinite() && pageAspectRatio > 0f) { "The PDF page geometry is invalid" }
         return (width * pageAspectRatio / ASPECT_RATIO).coerceIn(0.04f, 0.45f)
     }
 

@@ -123,15 +123,15 @@ fun ToolsScreen(
 
     Column(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-            LText("Įrankiai ir saugumas", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            LText("Jokių reklamų, sekimo SDK ar privalomos paskyros.", style = MaterialTheme.typography.bodySmall)
+            LText("Tools and security", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            LText("No ads, tracking SDKs, or mandatory account.", style = MaterialTheme.typography.bodySmall)
         }
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f).testTag("tools_list"),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-        item { SettingsSectionHeader("Išvaizda", "appearance", "appearance" in expandedSections) { toggleSection("appearance") } }
+        item { SettingsSectionHeader("Appearance", "appearance", "appearance" in expandedSections) { toggleSection("appearance") } }
         if ("appearance" in expandedSections) {
         item {
             AppearanceSettingsCard(
@@ -148,9 +148,9 @@ fun ToolsScreen(
         }
         }
 
-        item { SettingsSectionHeader("Šiukšliadėžė", "actions", "actions" in expandedSections) { toggleSection("actions") } }
+        item { SettingsSectionHeader("Trash", "actions", "actions" in expandedSections) { toggleSection("actions") } }
         if ("actions" in expandedSections) {
-        item { SectionHeader("Šiukšliadėžė", trash.size.toString()) }
+        item { SectionHeader("Trash", trash.size.toString()) }
         item {
             Card(
                 onClick = viewModel::openTrashBrowser,
@@ -168,39 +168,39 @@ fun ToolsScreen(
                         tint = MaterialTheme.colorScheme.primary,
                     )
                     Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        LText("Atidaryti šiukšliadėžę", fontWeight = FontWeight.SemiBold)
+                        LText("Open trash", fontWeight = FontWeight.SemiBold)
                         LText(
-                            if (trash.isEmpty()) "Šiukšliadėžė tuščia" else "${trash.size} elementų · galima atkurti arba išvalyti viską",
+                            if (trash.isEmpty()) "Trash is empty" else "${trash.size} items · restore them or empty everything",
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                    LText("Atidaryti", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    LText("Open", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
 
         }
-        item { SettingsSectionHeader("Privatumas", "privacy", "privacy" in expandedSections) { toggleSection("privacy") } }
+        item { SettingsSectionHeader("Privacy", "privacy", "privacy" in expandedSections) { toggleSection("privacy") } }
         if ("privacy" in expandedSections) {
-        item { SectionHeader("Programos užraktas", if (appLockEnabled) "Įjungtas" else "Išjungtas") }
+        item { SectionHeader("App lock", if (appLockEnabled) "Enabled" else "Disabled") }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
                 Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.Fingerprint, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
                     Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        LText("Biometrinis arba įrenginio užraktas", fontWeight = FontWeight.SemiBold)
-                        LText("Grįžus iš fono failų langas bus užrakintas. Keitimą patvirtina Android.", style = MaterialTheme.typography.bodySmall)
+                        LText("Biometric or device lock", fontWeight = FontWeight.SemiBold)
+                        LText("The file window locks after returning from the background. Android confirms the change.", style = MaterialTheme.typography.bodySmall)
                     }
                     Switch(checked = appLockEnabled, onCheckedChange = onToggleAppLock)
                 }
             }
         }
         if (featureVisibility.isVisible(OptionalFeature.ADVANCED_ACCESS) || advancedAccess.connected) {
-        item { SectionHeader("Pažengusio naudotojo režimas", "Neprivalomas") }
+        item { SectionHeader("Advanced-user mode", "Optional") }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
                 Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    LText("Apsaugotų Android aplankų prieiga", fontWeight = FontWeight.SemiBold)
+                    LText("Protected Android folder access", fontWeight = FontWeight.SemiBold)
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         listOf(AdvancedAccessMode.OFF, AdvancedAccessMode.AUTO).forEach { mode ->
                             FilterChip(
@@ -231,9 +231,9 @@ fun ToolsScreen(
                         ),
                     )
                     StatusLine("Root", capabilityLabel(advancedAccess.rootPermission))
-                    StatusLine("Aktyvi prieiga", if (advancedAccess.connected) "Prisijungta · UID ${advancedAccess.serviceUid}" else "Neprisijungta")
+                    StatusLine("Active access", if (advancedAccess.connected) "Connected · UID ${advancedAccess.serviceUid}" else "Not connected")
                     advancedAccess.androidDataAccessible?.let { accessible ->
-                        StatusLine("Android/data", if (accessible) "Pasiekiamas" else "Nepasiekiamas šiuo režimu")
+                        StatusLine("Android/data", if (accessible) "Accessible" else "Not accessible in this mode")
                     }
                     if (!advancedAccess.connected) Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(
@@ -242,16 +242,16 @@ fun ToolsScreen(
                         ) {
                             LText(
                                 when {
-                                    !advancedAccess.shizukuRunning -> "Patikrinti Shizuku"
-                                    advancedAccess.shizukuPermission == CapabilityState.GRANTED -> "Jungtis per Shizuku"
-                                    else -> "Suteikti Shizuku leidimą"
+                                    !advancedAccess.shizukuRunning -> "Check Shizuku"
+                                    advancedAccess.shizukuPermission == CapabilityState.GRANTED -> "Connect through Shizuku"
+                                    else -> "Grant Shizuku permission"
                                 },
                             )
                         }
                         OutlinedButton(
                             onClick = viewModel::requestRootAccess,
                             enabled = advancedAccess.rootPermission != CapabilityState.UNAVAILABLE && !advancedAccess.connecting,
-                        ) { LText("Jungtis per root") }
+                        ) { LText("Connect through root") }
                     }
                     if (advancedAccess.connected) {
                         listOf("data", "obb").forEach { folder ->
@@ -261,14 +261,14 @@ fun ToolsScreen(
                                 modifier = Modifier.fillMaxWidth().testTag("open_android_$folder"),
                             ) {
                                 Icon(Icons.Rounded.FolderSpecial, contentDescription = null)
-                                LText(if (folder == "data") "Atidaryti Android/data" else "Atidaryti Android/obb", modifier = Modifier.padding(start = 6.dp))
+                                LText(if (folder == "data") "Open Android/data" else "Open Android/obb", modifier = Modifier.padding(start = 6.dp))
                             }
                         }
                     }
                     if (advancedAccess.connecting) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     advancedAccess.error?.let { LText(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                     LText(
-                        "Pagal nutylėjimą ši prieiga išjungta. Įprastas režimas neapeina Android ribojimų. Shizuku ir root naudojami tik pasirinkus šį režimą ir suteikus leidimą.",
+                        "This access is off by default. Normal mode does not bypass Android restrictions. Shizuku and root are used only after you select this mode and grant permission.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -277,11 +277,11 @@ fun ToolsScreen(
 
         }
 
-        item { SectionHeader("Privatumas", "Be reklamų") }
+        item { SectionHeader("Privacy", "Ad-free") }
         item {
             InfoCard(
-                "Vietiniai duomenys lieka įrenginyje",
-                "Programa neturi interneto prieigos. Analitika ir reklamos SDK nepridėti.",
+                "Local data stays on the device",
+                "The app has no internet access. No analytics or ad SDKs are included.",
                 Icons.Rounded.Security,
             )
         }
@@ -297,7 +297,7 @@ internal fun SettingsSectionHeader(title: String, id: String, expanded: Boolean,
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             LText(title, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                contentDescription = uiText(if (expanded) "Sutraukti" else "Išskleisti"))
+                contentDescription = uiText(if (expanded) "Collapse" else "Expand"))
         }
     }
 }
@@ -310,8 +310,8 @@ internal fun FeatureVisibilitySettings(
 ) {
     Card(Modifier.fillMaxWidth().testTag("feature_visibility_settings")) {
         Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            LText("Matomos funkcijos", fontWeight = FontWeight.Bold)
-            LText("Paslėpimas nekeičia failų ar nustatymų ir nestabdo vykstančių užduočių.", style = MaterialTheme.typography.bodySmall)
+            LText("Visible features", fontWeight = FontWeight.Bold)
+            LText("Hiding a feature does not change files or settings, or stop running tasks.", style = MaterialTheme.typography.bodySmall)
             OptionalFeature.entries.forEach { feature ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     LText(feature.label, modifier = Modifier.weight(1f).padding(end = 8.dp))
@@ -319,29 +319,29 @@ internal fun FeatureVisibilitySettings(
                         modifier = Modifier.testTag("feature_${feature.name.lowercase()}"))
                 }
             }
-            TextButton(onClick = onReset, modifier = Modifier.testTag("feature_visibility_reset")) { LText("Atkurti numatytąsias") }
+            TextButton(onClick = onReset, modifier = Modifier.testTag("feature_visibility_reset")) { LText("Restore defaults") }
         }
     }
 }
 
 private fun advancedModeLabel(mode: AdvancedAccessMode): String = when (mode) {
-    AdvancedAccessMode.OFF -> "Išjungta"
-    AdvancedAccessMode.AUTO -> "Automatiškai"
+    AdvancedAccessMode.OFF -> "Off"
+    AdvancedAccessMode.AUTO -> "Automatic"
     AdvancedAccessMode.SHIZUKU -> "Shizuku"
     AdvancedAccessMode.ROOT -> "Root"
 }
 
 private fun capabilityLabel(state: CapabilityState): String = when (state) {
-    CapabilityState.UNAVAILABLE -> "Neaptikta"
-    CapabilityState.AVAILABLE -> "Galima paprašyti leidimo"
-    CapabilityState.GRANTED -> "Leidimas suteiktas"
-    CapabilityState.DENIED -> "Leidimas atmestas"
+    CapabilityState.UNAVAILABLE -> "Not detected"
+    CapabilityState.AVAILABLE -> "Permission can be requested"
+    CapabilityState.GRANTED -> "Permission granted"
+    CapabilityState.DENIED -> "Permission denied"
 }
 
 private fun shizukuStatus(managerDetected: Boolean, running: Boolean, permission: CapabilityState): String = when {
     running -> capabilityLabel(permission)
-    managerDetected -> "Programa aptikta, tarnyba nepaleista"
-    else -> "Tarnyba nepaleista"
+    managerDetected -> "App detected; service not running"
+    else -> "Service not running"
 }
 
 @Composable
@@ -366,9 +366,9 @@ internal fun AppearanceSettingsCard(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            LText("Išvaizda", fontWeight = FontWeight.SemiBold)
+            LText("Appearance", fontWeight = FontWeight.SemiBold)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                LText("Dydis", style = MaterialTheme.typography.labelLarge)
+                LText("Size", style = MaterialTheme.typography.labelLarge)
                 Text("${interfaceScaleDraft.roundToInt()}%", style = MaterialTheme.typography.labelLarge)
             }
             val scaleRange = AppearanceRules.MIN_INTERFACE_SCALE_PERCENT.toFloat()..
@@ -403,13 +403,13 @@ internal fun AppearanceSettingsCard(
                     modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
                 )
             }
-            LText("Temos režimas", style = MaterialTheme.typography.labelLarge)
+            LText("Theme mode", style = MaterialTheme.typography.labelLarge)
             ShovelActionRow {
                 AppThemeMode.entries.forEach { mode ->
                     val label = when (mode) {
-                        AppThemeMode.SYSTEM -> "Sistema"
-                        AppThemeMode.LIGHT -> "Šviesi"
-                        AppThemeMode.DARK -> "Tamsi"
+                        AppThemeMode.SYSTEM -> "System"
+                        AppThemeMode.LIGHT -> "Light"
+                        AppThemeMode.DARK -> "Dark"
                     }
                     FilterChip(
                         selected = settings.themeMode == mode,
@@ -420,7 +420,7 @@ internal fun AppearanceSettingsCard(
                 }
             }
 
-            LText("Spalvų paletė", style = MaterialTheme.typography.labelLarge)
+            LText("Color palette", style = MaterialTheme.typography.labelLarge)
             AppColorPalette.entries.chunked(2).forEach { paletteRow ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     paletteRow.forEach { palette ->
@@ -456,21 +456,21 @@ internal fun AppearanceSettingsCard(
                                 }
                                 LText(
                                     when (palette) {
-                                        AppColorPalette.DEFAULT -> "Numatytoji"
-                                        AppColorPalette.DYNAMIC -> "Dinaminė"
+                                        AppColorPalette.DEFAULT -> "Default"
+                                        AppColorPalette.DYNAMIC -> "Dynamic"
                                         AppColorPalette.CATPPUCCIN -> "Catppuccin"
-                                        AppColorPalette.ORANGE -> "Oranžinė"
-                                        AppColorPalette.MATERIAL_BLUE -> "Material mėlyna"
+                                        AppColorPalette.ORANGE -> "Orange"
+                                        AppColorPalette.MATERIAL_BLUE -> "Material blue"
                                         AppColorPalette.AURA -> "Aura"
                                         AppColorPalette.TOKYO -> "Tokyo"
                                         AppColorPalette.YIN_YANG -> "Yin Yang"
-                                        AppColorPalette.RED -> "Raudona"
-                                        AppColorPalette.CUSTOM -> "Pasirinktinė paletė"
+                                        AppColorPalette.RED -> "Red"
+                                        AppColorPalette.CUSTOM -> "Custom palette"
                                     },
                                     style = MaterialTheme.typography.labelLarge,
                                 )
                                 if (!supported) {
-                                    LText("Reikia Android 12+", style = MaterialTheme.typography.labelSmall)
+                                    LText("Requires Android 12+", style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
@@ -485,8 +485,8 @@ internal fun AppearanceSettingsCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    LText("AMOLED juodas režimas", fontWeight = FontWeight.Medium)
-                    LText("Tamsioje temoje fonas tampa visiškai juodas.", style = MaterialTheme.typography.bodySmall)
+                    LText("AMOLED black mode", fontWeight = FontWeight.Medium)
+                    LText("Uses a pure-black background in dark mode.", style = MaterialTheme.typography.bodySmall)
                 }
                 Switch(
                     checked = settings.amoledBlack,
@@ -547,14 +547,14 @@ private fun PasswordDialog(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { LText("Slaptafrazė") },
+                    label = { LText("Passphrase") },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = repeated,
                     onValueChange = { repeated = it },
-                    label = { LText("Pakartokite") },
+                    label = { LText("Repeat") },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
                 )
@@ -568,8 +568,8 @@ private fun PasswordDialog(
                     repeated = ""
                 },
                 enabled = valid,
-            ) { LText("Šifruoti") }
+            ) { LText("Encrypt") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { LText("Atšaukti") } },
+        dismissButton = { TextButton(onClick = onDismiss) { LText("Cancel") } },
     )
 }

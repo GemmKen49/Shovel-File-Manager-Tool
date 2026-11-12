@@ -9,20 +9,20 @@ object PrivilegedPathRules {
     const val MAX_VISIBLE_ENTRIES = 20_000
 
     fun normalizeAbsolute(raw: String): String {
-        require(raw.isNotBlank() && raw.startsWith('/')) { "Reikalingas absoliutus Android kelias" }
-        require('\u0000' !in raw && '\\' !in raw) { "Netinkamas Android kelias" }
+        require(raw.isNotBlank() && raw.startsWith('/')) { "An absolute Android path is required" }
+        require('\u0000' !in raw && '\\' !in raw) { "Invalid Android path" }
         val segments = ArrayDeque<String>()
         raw.split('/').forEach { segment ->
             when (segment) {
                 "", "." -> Unit
-                ".." -> require(segments.isNotEmpty()) { "Kelias išeina už šaknies" }.also { segments.removeLast() }
+                ".." -> require(segments.isNotEmpty()) { "The path escapes its root" }.also { segments.removeLast() }
                 else -> {
-                    require(segment.length <= 255 && segment.none(Char::isISOControl)) { "Netinkamas kelio segmentas" }
+                    require(segment.length <= 255 && segment.none(Char::isISOControl)) { "Invalid path segment" }
                     segments.addLast(segment)
                 }
             }
         }
-        require(segments.size <= MAX_DEPTH) { "Per gilus Android kelias" }
+        require(segments.size <= MAX_DEPTH) { "The Android path is too deep" }
         return "/" + segments.joinToString("/")
     }
 
@@ -30,8 +30,8 @@ object PrivilegedPathRules {
         val normalized = normalizeAbsolute(path)
         val root = allowedRoots.map(::normalizeAbsolute).firstOrNull { candidate ->
             candidate == "/" || normalized == candidate || normalized.startsWith("$candidate/")
-        } ?: throw SecurityException("Kelias nepatenka į leistiną privilegijuotą sritį")
-        if (!allowRoot) require(normalized != root) { "Pačios privilegijuotos srities keisti negalima" }
+        } ?: throw SecurityException("The path is outside the allowed privileged area")
+        if (!allowRoot) require(normalized != root) { "The privileged root itself cannot be changed" }
         return normalized
     }
 

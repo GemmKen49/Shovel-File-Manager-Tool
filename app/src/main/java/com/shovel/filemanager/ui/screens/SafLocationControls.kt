@@ -35,10 +35,10 @@ internal fun SafLocationActionButtons(
 ) {
     val key = location.uri.hashCode().toUInt().toString(16)
     IconButton(onClick = onEdit, modifier = Modifier.testTag("saf_location_edit_$key")) {
-        Icon(Icons.Rounded.Edit, contentDescription = uiText("Redaguoti jungtį"))
+        Icon(Icons.Rounded.Edit, contentDescription = uiText("Edit connection"))
     }
     IconButton(onClick = onRemove, modifier = Modifier.testTag("saf_location_remove_$key")) {
-        Icon(Icons.Rounded.Delete, contentDescription = uiText("Pašalinti vietą"))
+        Icon(Icons.Rounded.Delete, contentDescription = uiText("Remove location"))
     }
 }
 
@@ -51,19 +51,19 @@ internal fun SafLocationEditDialog(
     var title by remember(location.uri, location.title) { mutableStateOf(location.title) }
     val normalized = remember(title) { runCatching { SafLocationRules.normalizeTitle(title) }.getOrNull() }
     ShovelModalDialog(
-        title = "Redaguoti jungtį",
+        title = "Edit connection",
         icon = Icons.Rounded.Edit,
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("saf_location_edit_dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
-            ShovelButton(onClick = { normalized?.let(onSave) }, enabled = normalized != null) { LText("Išsaugoti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
+            ShovelButton(onClick = { normalized?.let(onSave) }, enabled = normalized != null) { LText("Save") }
         },
     ) {
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
-            label = { LText("Pavadinimas") },
+            label = { LText("Name") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp)
                 .testTag("saf_location_title"),
@@ -79,10 +79,10 @@ internal fun SafLocationRemovalDialog(
 ) {
     ShovelAlertDialog(
         onDismissRequest = onDismiss,
-        title = { LText("Pašalinti pasirinktą vietą?") },
-        text = { LText("Bus atšauktas Shovel ilgalaikis leidimas vietai „${location.title}“. Failai nebus trinami.") },
-        confirmButton = { ShovelButton(onClick = onRemove) { LText("Pašalinti") } },
-        dismissButton = { TextButton(onClick = onDismiss) { LText("Atšaukti") } },
+        title = { LText("Remove the selected location?") },
+        text = { LText("Shovel will lose its long-term permission for \"${location.title}\". Your files will not be deleted.") },
+        confirmButton = { ShovelButton(onClick = onRemove) { LText("Remove") } },
+        dismissButton = { TextButton(onClick = onDismiss) { LText("Cancel") } },
         modifier = Modifier.testTag("saf_location_remove_dialog"),
     )
 }

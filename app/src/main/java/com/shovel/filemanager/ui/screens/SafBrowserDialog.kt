@@ -162,12 +162,12 @@ fun SafBrowserDialog(
                 ) {
                     Box {
                         IconButton(onClick = { menu = true }) {
-                            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Aplanko veiksmai"))
+                            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Folder actions"))
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             if (selectedLocalPath != null) {
                                 DropdownMenuItem(
-                                    text = { LText("Kopijuoti pasirinktą vietinį elementą čia") },
+                                    text = { LText("Copy the selected local item here") },
                                     leadingIcon = { Icon(Icons.Rounded.FileUpload, contentDescription = null) },
                                     onClick = { menu = false; viewModel.copyLocalToSaf(selectedLocalPath) },
                                 )
@@ -193,7 +193,7 @@ fun SafBrowserDialog(
                             )
                             HorizontalDivider()
                             DropdownMenuItem(
-                                text = { LText("Atnaujinti") },
+                                text = { LText("Refresh") },
                                 leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
                                 enabled = !state.loading,
                                 onClick = { menu = false; viewModel.refreshSafBrowser() },
@@ -229,13 +229,13 @@ fun SafBrowserDialog(
                     } else if (state.entries.isEmpty() && state.error == null) {
                         Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Rounded.Folder, contentDescription = null, modifier = Modifier.size(56.dp))
-                            LText("Aplankas tuščias", style = MaterialTheme.typography.titleMedium)
+                            LText("Folder is empty", style = MaterialTheme.typography.titleMedium)
                         }
                     } else if (displayedEntries.isEmpty()) {
                         Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Rounded.Folder, contentDescription = null, modifier = Modifier.size(56.dp))
-                            LText("Atitikmenų nerasta", style = MaterialTheme.typography.titleMedium)
-                            LText("Pabandykite kitą pavadinimą", style = MaterialTheme.typography.bodySmall)
+                            LText("No matches found", style = MaterialTheme.typography.titleMedium)
+                            LText("Try another name", style = MaterialTheme.typography.bodySmall)
                         }
                     } else if (state.grid) {
                         LazyVerticalGrid(
@@ -281,7 +281,7 @@ fun SafBrowserDialog(
                         if (state.grid) LazyGridFastScroller(gridState) else LazyListFastScroller(listState)
                     }
                     FloatingActionButton(onClick = { create = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp)) {
-                        Icon(Icons.Rounded.Add, contentDescription = uiText("Sukurti"))
+                        Icon(Icons.Rounded.Add, contentDescription = uiText("Create"))
                     }
                 }
             }
@@ -297,9 +297,9 @@ fun SafBrowserDialog(
     }
     rename?.let { entry ->
         SafNameDialog(
-            title = "Pervadinti",
+            title = "Rename",
             initial = entry.name,
-            confirm = "Pervadinti",
+            confirm = "Rename",
             onDismiss = { rename = null },
             onConfirm = { name -> viewModel.renameSafEntry(entry, name); rename = null },
         )
@@ -313,8 +313,8 @@ fun SafBrowserDialog(
             onDismiss = { delete = null },
             onConfirm = { viewModel.deleteSafEntry(entry); delete = null },
             loadSummary = { viewModel.loadSafSelectionInfo(listOf(entry.uri)) },
-            confirmLabel = "Ištrinti",
-            explanation = "Elementas bus trinamas per Android dokumentų teikėją ir nepateks į Shovel šiukšlinę.",
+            confirmLabel = "Delete",
+            explanation = "The item will be deleted through Android's document provider and will not enter Shovel Trash.",
         )
     }
     if (showDisplaySettings) {
@@ -386,7 +386,7 @@ private fun SafEntryRow(
             }
         }
         Box {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Veiksmai")) }
+            IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Actions")) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 SafEntryMenuItems(
                     entry = entry,
@@ -440,7 +440,7 @@ private fun SafEntryGridItem(
             },
             actions = {
                 IconButton(onClick = { menu = true }, modifier = Modifier.align(Alignment.TopEnd)) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Veiksmai"))
+                    Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Actions"))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     SafEntryMenuItems(
@@ -469,29 +469,29 @@ private fun SafEntryMenuItems(
     onDownload: () -> Unit,
 ) {
     DropdownMenuItem(
-        text = { LText(if (entry.directory) "Atidaryti aplanką" else "Peržiūrėti čia") },
+        text = { LText(if (entry.directory) "Open folder" else "Preview here") },
         leadingIcon = { Icon(if (entry.directory) Icons.Rounded.Folder else Icons.Rounded.Visibility, contentDescription = null) },
         onClick = { dismiss(); onOpen() },
     )
     DropdownMenuItem(
-        text = { LText("Kopijuoti į aktyvų langą") },
+        text = { LText("Copy to active pane") },
         leadingIcon = { Icon(Icons.Rounded.FileDownload, contentDescription = null) },
         onClick = { dismiss(); onDownload() },
     )
     HorizontalDivider()
     DropdownMenuItem(
-        text = { LText("Pervadinti") },
+        text = { LText("Rename") },
         leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
         enabled = entry.canWrite,
         onClick = { dismiss(); onRename() },
     )
     DropdownMenuItem(
-        text = { LText("Informacija") },
+        text = { LText("Info") },
         leadingIcon = { Icon(Icons.Rounded.Info, contentDescription = null) },
         onClick = { dismiss(); onInfo() },
     )
     DropdownMenuItem(
-        text = { LText("Ištrinti") },
+        text = { LText("Delete") },
         leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
         enabled = entry.canWrite,
         onClick = { dismiss(); onDelete() },
@@ -533,9 +533,9 @@ internal fun SafInfoDialog(entry: SafEntry, onDismiss: () -> Unit) {
         actions = {},
     ) {
         Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            LText(if (entry.directory) "Aplankas" else entry.mimeType ?: "Failas")
-            if (!entry.directory) SafInfoLine("Dydis", FileSystemRules.humanBytes(entry.sizeBytes))
-            entry.modifiedAtMillis.takeIf { it > 0L }?.let { SafInfoLine("Pakeista", dateFormat.format(Date(it))) }
+            LText(if (entry.directory) "Folder" else entry.mimeType ?: "File")
+            if (!entry.directory) SafInfoLine("Size", FileSystemRules.humanBytes(entry.sizeBytes))
+            entry.modifiedAtMillis.takeIf { it > 0L }?.let { SafInfoLine("Modified", dateFormat.format(Date(it))) }
             Text(entry.uri, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -555,16 +555,16 @@ internal fun SafCreateDialog(onDismiss: () -> Unit, onFolder: (String) -> Unit, 
     ShovelModalDialog(
         onDismissRequest = onDismiss,
         icon = Icons.Rounded.CreateNewFolder,
-        title = "Sukurti",
+        title = "Create",
         modifier = Modifier.testTag("saf_create_dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
-            OutlinedButton(onClick = { onFile(name) }, enabled = name.isNotBlank()) { LText("Failą") }
-            Button(onClick = { onFolder(name) }, enabled = name.isNotBlank()) { LText("Aplanką") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
+            OutlinedButton(onClick = { onFile(name) }, enabled = name.isNotBlank()) { LText("File") }
+            Button(onClick = { onFolder(name) }, enabled = name.isNotBlank()) { LText("Folder") }
         },
     ) {
         OutlinedTextField(
-            value = name, onValueChange = { name = it }, label = { LText("Pavadinimas") }, singleLine = true,
+            value = name, onValueChange = { name = it }, label = { LText("Name") }, singleLine = true,
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp),
         )
     }
@@ -585,12 +585,12 @@ internal fun SafNameDialog(
         icon = Icons.Rounded.Edit,
         modifier = Modifier.testTag("saf_name_dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             Button(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) { LText(confirm) }
         },
     ) {
         OutlinedTextField(
-            value = name, onValueChange = { name = it }, label = { LText("Pavadinimas") }, singleLine = true,
+            value = name, onValueChange = { name = it }, label = { LText("Name") }, singleLine = true,
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp),
         )
     }

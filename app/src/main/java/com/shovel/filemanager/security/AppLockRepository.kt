@@ -16,7 +16,7 @@ class AppLockRepository(context: Context) {
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
 
     fun setEnabled(enabled: Boolean) {
-        check(preferences.edit().putBoolean(KEY_ENABLED, enabled).commit()) { "Užrakto nustatymo įrašyti nepavyko" }
+        check(preferences.edit().putBoolean(KEY_ENABLED, enabled).commit()) { "Could not save the lock setting" }
         _enabled.value = enabled
     }
 }

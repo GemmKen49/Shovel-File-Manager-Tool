@@ -57,14 +57,14 @@ internal fun extractPdfBoxPageText(
 ): String {
     val scratchRoot = context.cacheDir.resolve(PdfTextRules.SCRATCH_ROOT_NAME)
     val scratchDirectory = scratchRoot.resolve(UUID.randomUUID().toString())
-    require(scratchDirectory.mkdirs()) { "Nepavyko paruošti privačios PDF darbo vietos" }
+    require(scratchDirectory.mkdirs()) { "Could not prepare the private PDF workspace" }
     try {
         val sourceBytes = source.localFile?.length()?.also(PdfTextRules::requireSourceSize)
             ?: source.sizeBytes
         val requiredBytes = (sourceBytes ?: PdfTextRules.MAX_SOURCE_BYTES)
             .coerceAtMost(PdfTextRules.MAX_SOURCE_BYTES) + MIN_FREE_BYTES
         require(scratchDirectory.usableSpace <= 0L || scratchDirectory.usableSpace >= requiredBytes) {
-            "Nepakanka vietos saugiai PDF darbo kopijai"
+            "Not enough space for a safe PDF working copy"
         }
         val memory = MemoryUsageSetting.setupMixed(MAX_MAIN_MEMORY_BYTES, MAX_SCRATCH_BYTES)
             .setTempDir(scratchDirectory)
@@ -121,7 +121,7 @@ private class BoundedPdfInputStream(
 
     private fun account(bytes: Int) {
         consumed = Math.addExact(consumed, bytes.toLong())
-        if (consumed > maximumBytes) throw IOException("Failas per didelis peržiūrai")
+        if (consumed > maximumBytes) throw IOException("The file is too large to preview")
     }
 }
 

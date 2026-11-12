@@ -214,7 +214,7 @@ internal fun CleanupReviewDialog(
                 folderLoading = false
             },
             onFailure = { error ->
-                folderError = error.message ?: "Aplanko turinio įkelti nepavyko"
+                folderError = error.message ?: "Could not load the folder contents"
                 folderLoading = false
             },
         )
@@ -235,15 +235,15 @@ internal fun CleanupReviewDialog(
                     IconButton(onClick = navigateBack, modifier = Modifier.testTag("cleanup_back")) {
                         Icon(
                             Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = uiText(if (currentFolderPath == null) "Uždaryti" else "Atgal"),
+                            contentDescription = uiText(if (currentFolderPath == null) "Close" else "Back"),
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         if (currentFolderPath == null) {
-                            LText("Saugaus valymo peržiūra", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            LText("Nieko nepasirenkama ir netrinama automatiškai", style = MaterialTheme.typography.bodySmall)
+                            LText("Safe cleanup review", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            LText("Nothing is selected or deleted automatically", style = MaterialTheme.typography.bodySmall)
                         } else {
-                            LText("Aplanko turinys", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            LText("Folder contents", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Text(
                                 currentFolderPath,
                                 style = MaterialTheme.typography.bodySmall,
@@ -264,7 +264,7 @@ internal fun CleanupReviewDialog(
                         ) {
                             Icon(
                                 Icons.Rounded.SelectAll,
-                                contentDescription = uiText(if (allSelected) "Atžymėti visus" else "Pasirinkti visus"),
+                                contentDescription = uiText(if (allSelected) "Deselect all" else "Select all"),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         }
@@ -285,7 +285,7 @@ internal fun CleanupReviewDialog(
                         ) {
                             Icon(
                                 Icons.Rounded.SelectAll,
-                                contentDescription = uiText("Pasirinkti dublikatų kopijas"),
+                                contentDescription = uiText("Select duplicate copies"),
                             )
                         }
                     }
@@ -311,9 +311,9 @@ internal fun CleanupReviewDialog(
                 if (currentFolderPath != null || category != CleanupCategory.TYPE_USAGE) {
                     Card(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                         Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            LText("Pažymėta: ${selected.size}", fontWeight = FontWeight.SemiBold)
-                            LText("Galima atlaisvinti: ${FileSystemRules.humanBytes(selectedBytes)}", style = MaterialTheme.typography.bodySmall)
-                            LText("Pasirinkti elementai bus perkelti į atkuriamą Shovel šiukšlinę.", style = MaterialTheme.typography.bodySmall)
+                            LText("Selected: ${selected.size}", fontWeight = FontWeight.SemiBold)
+                            LText("Can free up: ${FileSystemRules.humanBytes(selectedBytes)}", style = MaterialTheme.typography.bodySmall)
+                            LText("Selected items will be moved to Shovel's recoverable trash.", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -324,7 +324,7 @@ internal fun CleanupReviewDialog(
                             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     CircularProgressIndicator()
-                                    LText("Skaičiuojami aplankų dydžiai…")
+                                    LText("Calculating folder sizes…")
                                 }
                             }
                         }
@@ -335,7 +335,7 @@ internal fun CleanupReviewDialog(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    LText("Aplanko turinio įkelti nepavyko", fontWeight = FontWeight.SemiBold)
+                                    LText("Could not load the folder contents", fontWeight = FontWeight.SemiBold)
                                     folderError?.let { LText(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                                     OutlinedButton(
                                         onClick = {
@@ -349,13 +349,13 @@ internal fun CleanupReviewDialog(
                                             )
                                             folderRetry += 1
                                         },
-                                    ) { LText("Bandyti dar kartą") }
+                                    ) { LText("Try again") }
                                 }
                             }
                         }
                         folderListing != null && candidates.isEmpty() -> {
                             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                LText("Šiame kataloge nėra failų.")
+                                LText("There are no files in this folder.")
                             }
                         }
                         folderListing != null -> {
@@ -366,7 +366,7 @@ internal fun CleanupReviewDialog(
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
                                     ) {
                                         LText(
-                                            "Rodomas dalinis turinys arba daliniai aplankų dydžiai, nes pasiekta saugi skenavimo riba.",
+                                            "Some contents or folder sizes are partial because the safe scan limit was reached.",
                                             modifier = Modifier.padding(10.dp),
                                             style = MaterialTheme.typography.bodySmall,
                                         )
@@ -415,19 +415,19 @@ internal fun CleanupReviewDialog(
                         if (similarImagesRunning) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 CircularProgressIndicator()
-                                LText("Lyginamos nuotraukos…")
+                                LText("Comparing photos…")
                             }
                         } else {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                LText("Panašumas tikrinamas įrenginyje. Tai gali užtrukti, todėl analizė paleidžiama tik paprašius.")
-                                OutlinedButton(onClick = onAnalyzeSimilarImages) { LText("Ieškoti panašių nuotraukų") }
+                                LText("Similarity is checked on the device. It can take time, so analysis starts only when requested.")
+                                OutlinedButton(onClick = onAnalyzeSimilarImages) { LText("Find similar photos") }
                             }
                         }
                     }
                 } else if (candidates.isEmpty()) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LText(if (category == CleanupCategory.SIMILAR_IMAGES) "Panašių nuotraukų grupių nerasta" else "Šioje grupėje elementų nerasta")
+                            LText(if (category == CleanupCategory.SIMILAR_IMAGES) "No groups of similar photos were found" else "No items were found in this category")
                             similarImagesError?.let { LText(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                         }
                     }
@@ -454,13 +454,13 @@ internal fun CleanupReviewDialog(
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        TextButton(onClick = { selected = emptySet() }, enabled = selected.isNotEmpty()) { LText("Atžymėti visus") }
+                        TextButton(onClick = { selected = emptySet() }, enabled = selected.isNotEmpty()) { LText("Deselect all") }
                         Button(
                             onClick = { confirmTrash = true },
                             enabled = selected.isNotEmpty(),
                             modifier = Modifier.testTag("cleanup_move_selected"),
                         ) {
-                            LText("Perkelti į šiukšlinę (${selected.size})")
+                            LText("Move to trash (${selected.size})")
                         }
                     }
                 }
@@ -476,7 +476,7 @@ internal fun CleanupReviewDialog(
         }
         DeleteConfirmationDialog(
             names = selectedSnapshot.map { File(it).name }, permanent = false,
-            title = "Perkelti pasirinktus elementus į šiukšlinę?",
+            title = "Move the selected items to trash?",
             onDismiss = { confirmTrash = false },
             onConfirm = {
                 confirmTrash = false
@@ -485,14 +485,14 @@ internal fun CleanupReviewDialog(
                 selected = emptySet()
             },
             loadSummary = { loadSelectionInfo(selectedSnapshot) },
-            explanation = "Elementus vėliau bus galima atkurti arba ištrinti visam laikui.",
+            explanation = "Items can later be restored or permanently deleted.",
             confirmTestTag = "cleanup_confirm_move",
             extraContent = {
                 if (protectedSelection.retained.isNotEmpty() && onMoveAllToTrash != null) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         androidx.compose.material3.Checkbox(checked = keepOneCopy, onCheckedChange = { keepOneCopy = it },
                             modifier = Modifier.testTag("cleanup_keep_one_copy"))
-                        LText("Iš kiekvienos vienodų ar panašių failų grupės palikite bent vieną failą",
+                        LText("Keep at least one file from every identical or similar group",
                             modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -589,7 +589,7 @@ private fun CleanupCandidateRow(
             IconButton(onClick = onOpen) {
                 Icon(
                     if (candidate.directory) Icons.Rounded.FolderOpen else Icons.Rounded.Visibility,
-                    contentDescription = uiText(if (candidate.directory) "Atidaryti aplanką" else "Peržiūrėti čia"),
+                    contentDescription = uiText(if (candidate.directory) "Open folder" else "Preview here"),
                 )
             }
         }
@@ -612,7 +612,7 @@ private fun cleanupCandidates(
                 name = File(usage.path).name.ifBlank { usage.path },
                 sizeBytes = usage.sizeBytes,
                 directory = true,
-                groupLabel = "${usage.fileCount} failų",
+                groupLabel = "${usage.fileCount} files",
                 entry = cleanupEntry(usage.path, usage.sizeBytes, directory = true),
             )
         }
@@ -626,7 +626,7 @@ private fun cleanupCandidates(
                 path = path,
                 name = File(path).name,
                 sizeBytes = group.sizeBytes,
-                groupLabel = "Vienodų failų grupė ${index + 1}",
+                groupLabel = "Identical files group ${index + 1}",
                 entry = cleanupEntry(path, group.sizeBytes),
             )
         }
@@ -641,7 +641,7 @@ private fun cleanupCandidates(
         )
     }
     CleanupCategory.SIMILAR_IMAGES -> similarImages.flatMapIndexed { index, group ->
-        group.files.map { it.toCleanupCandidate(groupLabel = "Panašių nuotraukų grupė ${index + 1}") }
+        group.files.map { it.toCleanupCandidate(groupLabel = "Similar photos group ${index + 1}") }
     }
 }.distinctBy(CleanupCandidate::path)
 
@@ -674,7 +674,7 @@ private fun DirectoryContentUsage.toCleanupCandidate() = CleanupCandidate(
     sizeBytes = entry.sizeBytes,
     directory = entry.isDirectory,
     groupLabel = if (entry.isDirectory) {
-        if (entry.metadataComplete) "$fileCount failų" else "Bent $fileCount failų"
+        if (entry.metadataComplete) "$fileCount files" else "At least $fileCount files"
     } else {
         null
     },
@@ -748,15 +748,15 @@ private fun cleanupPathContains(parent: String, candidate: String): Boolean {
 }
 
 private fun cleanupCategoryLabel(category: CleanupCategory): String = when (category) {
-    CleanupCategory.TYPE_USAGE -> "Failų tipų pasiskirstymas"
-    CleanupCategory.LARGEST_FOLDERS -> "Didžiausi aplankai"
-    CleanupCategory.LARGE -> "Didžiausi failai"
-    CleanupCategory.OLDEST -> "Seniausiai keisti failai"
-    CleanupCategory.OLD_MEDIA -> "Sena medija ir ekrano kopijos"
-    CleanupCategory.PACKAGES -> "APK ir archyvai"
-    CleanupCategory.DUPLICATES -> "Vienodi failai"
-    CleanupCategory.EMPTY_FOLDERS -> "Tušti aplankai"
-    CleanupCategory.SIMILAR_IMAGES -> "Panašios nuotraukos"
+    CleanupCategory.TYPE_USAGE -> "File-type distribution"
+    CleanupCategory.LARGEST_FOLDERS -> "Largest folders"
+    CleanupCategory.LARGE -> "Largest files"
+    CleanupCategory.OLDEST -> "Oldest modified files"
+    CleanupCategory.OLD_MEDIA -> "Old media and screenshots"
+    CleanupCategory.PACKAGES -> "APKs and archives"
+    CleanupCategory.DUPLICATES -> "Identical files"
+    CleanupCategory.EMPTY_FOLDERS -> "Empty folders"
+    CleanupCategory.SIMILAR_IMAGES -> "Similar photos"
 }
 
 private fun cleanupCategoryIcon(category: CleanupCategory): ImageVector = when (category) {
@@ -776,12 +776,12 @@ internal fun isOldMediaCleanupCandidate(entry: FileEntry): Boolean {
 }
 
 private fun cleanupKindLabel(kind: com.shovel.filemanager.model.EntryKind): String = when (kind) {
-    com.shovel.filemanager.model.EntryKind.DIRECTORY -> "Aplankai"
-    com.shovel.filemanager.model.EntryKind.IMAGE -> "Nuotraukos"
-    com.shovel.filemanager.model.EntryKind.VIDEO -> "Vaizdo įrašai"
-    com.shovel.filemanager.model.EntryKind.AUDIO -> "Garso failai"
-    com.shovel.filemanager.model.EntryKind.DOCUMENT -> "Dokumentai"
-    com.shovel.filemanager.model.EntryKind.ARCHIVE -> "Archyvai"
+    com.shovel.filemanager.model.EntryKind.DIRECTORY -> "Folders"
+    com.shovel.filemanager.model.EntryKind.IMAGE -> "Pictures"
+    com.shovel.filemanager.model.EntryKind.VIDEO -> "Videos"
+    com.shovel.filemanager.model.EntryKind.AUDIO -> "Audio"
+    com.shovel.filemanager.model.EntryKind.DOCUMENT -> "Documents"
+    com.shovel.filemanager.model.EntryKind.ARCHIVE -> "Archives"
     com.shovel.filemanager.model.EntryKind.APK -> "APK"
-    com.shovel.filemanager.model.EntryKind.OTHER -> "Kita"
+    com.shovel.filemanager.model.EntryKind.OTHER -> "Other"
 }

@@ -135,7 +135,7 @@ fun AdvancedStorageBrowserDialog(
             Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
                 DirectoryBrowserToolbar(
                     title = uiText(state.title),
-                    path = state.path.ifBlank { uiText("Jungiama") },
+                    path = state.path.ifBlank { uiText("Connecting") },
                     backEnabled = true,
                     forwardEnabled = false,
                     upEnabled = viewModel.canNavigateAdvancedUp(),
@@ -154,21 +154,21 @@ fun AdvancedStorageBrowserDialog(
                 ) {
                     Box {
                         IconButton(onClick = { menu = true }) {
-                            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Aplanko veiksmai"))
+                            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Folder actions"))
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(
-                                text = { LText("Naujas aplankas") },
+                                text = { LText("New folder") },
                                 leadingIcon = { Icon(Icons.Rounded.CreateNewFolder, contentDescription = null) },
                                 onClick = { menu = false; createDirectory = true },
                             )
                             DropdownMenuItem(
-                                text = { LText("Naujas failas") },
+                                text = { LText("New file") },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Rounded.InsertDriveFile, contentDescription = null) },
                                 onClick = { menu = false; createFile = true },
                             )
                             DropdownMenuItem(
-                                text = { LText("Įklijuoti") },
+                                text = { LText("Paste") },
                                 leadingIcon = { Icon(Icons.Rounded.ContentPaste, contentDescription = null) },
                                 enabled = clipboard != null && state.path.isNotBlank(),
                                 onClick = { menu = false; viewModel.pasteIntoAdvanced() },
@@ -198,7 +198,7 @@ fun AdvancedStorageBrowserDialog(
                             )
                             HorizontalDivider()
                             DropdownMenuItem(
-                                text = { LText("Atnaujinti") },
+                                text = { LText("Refresh") },
                                 leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
                                 enabled = !state.loading,
                                 onClick = { menu = false; viewModel.refreshAdvancedBrowser() },
@@ -238,18 +238,18 @@ fun AdvancedStorageBrowserDialog(
                         modifier = Modifier.testTag("advanced_selection_bar"),
                     ) {
                         IconButton(onClick = { viewModel.copyAdvancedSelection(move = false) }) {
-                            Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
+                            Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Copy"))
                         }
                         IconButton(onClick = { viewModel.copyAdvancedSelection(move = true) }) {
-                            Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti"))
+                            Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Move"))
                         }
                         if (state.selectedPaths.size == 1) {
                             IconButton(onClick = { renameTarget = state.entries.firstOrNull { it.absolutePath in state.selectedPaths } }) {
-                                Icon(Icons.Rounded.DriveFileRenameOutline, contentDescription = uiText("Pervadinti"))
+                                Icon(Icons.Rounded.DriveFileRenameOutline, contentDescription = uiText("Rename"))
                             }
                         }
                         IconButton(onClick = { confirmDelete = true }) {
-                            Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Ištrinti visam laikui"), tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Delete permanently"), tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -266,16 +266,16 @@ fun AdvancedStorageBrowserDialog(
                         }
                         state.error != null && state.entries.isEmpty() -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                LText("Aplanko atidaryti nepavyko", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                                LText("Could not open the folder", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
                                 LText(state.error, style = MaterialTheme.typography.bodySmall)
-                                Button(onClick = viewModel::refreshAdvancedBrowser) { LText("Bandyti dar kartą") }
+                                Button(onClick = viewModel::refreshAdvancedBrowser) { LText("Try again") }
                             }
                         }
                         state.entries.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            LText("Aplankas tuščias")
+                            LText("Folder is empty")
                         }
                         displayedEntries.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            LText("Atitikmenų nerasta")
+                            LText("No matches found")
                         }
                         state.grid -> AdvancedGrid(
                             state = state,
@@ -293,16 +293,16 @@ fun AdvancedStorageBrowserDialog(
         }
     }
 
-    if (createDirectory) NameDialog("Naujas aplankas", "Aplanko pavadinimas", { createDirectory = false }) { name ->
+    if (createDirectory) NameDialog("New folder", "Folder name", { createDirectory = false }) { name ->
         createDirectory = false
         viewModel.createAdvancedDirectory(name)
     }
-    if (createFile) NameDialog("Naujas failas", "Failo pavadinimas", { createFile = false }) { name ->
+    if (createFile) NameDialog("New file", "File name", { createFile = false }) { name ->
         createFile = false
         viewModel.createAdvancedFile(name)
     }
     renameTarget?.let { entry ->
-        NameDialog("Pervadinti", "Naujas pavadinimas", { renameTarget = null }, initial = entry.name) { name ->
+        NameDialog("Rename", "New name", { renameTarget = null }, initial = entry.name) { name ->
             renameTarget = null
             viewModel.renameAdvanced(entry.absolutePath, name)
         }
@@ -314,7 +314,7 @@ fun AdvancedStorageBrowserDialog(
             onDismiss = { confirmDelete = false },
             onConfirm = { confirmDelete = false; viewModel.deleteAdvancedSelectionPermanently() },
             loadSummary = { viewModel.loadAdvancedSelectionInfo(state.selectedPaths) },
-            explanation = "Šių apsaugotų failų nebus galima atkurti iš Shovel šiukšlinės.",
+            explanation = "These protected files cannot be restored from Shovel Trash.",
         )
     }
     if (showDisplaySettings) {
@@ -529,16 +529,16 @@ private fun NameDialog(title: String, label: String, onDismiss: () -> Unit, init
         onDismissRequest = onDismiss,
         title = { LText(title) },
         text = { OutlinedTextField(value = value, onValueChange = { value = it }, label = { LText(label) }, singleLine = true) },
-        confirmButton = { Button(onClick = { onConfirm(value) }, enabled = value.isNotBlank()) { LText("Patvirtinti") } },
-        dismissButton = { TextButton(onClick = onDismiss) { LText("Atšaukti") } },
+        confirmButton = { Button(onClick = { onConfirm(value) }, enabled = value.isNotBlank()) { LText("Confirm") } },
+        dismissButton = { TextButton(onClick = onDismiss) { LText("Cancel") } },
     )
 }
 
-private fun entryMeta(entry: FileEntry): String = if (entry.isDirectory) "Aplankas" else FileSystemRules.humanBytes(entry.sizeBytes)
+private fun entryMeta(entry: FileEntry): String = if (entry.isDirectory) "Folder" else FileSystemRules.humanBytes(entry.sizeBytes)
 
 private fun advancedBackendLabel(backend: AdvancedAccessBackend): String = when (backend) {
-    AdvancedAccessBackend.NONE -> "Prieiga neaktyvi"
-    AdvancedAccessBackend.SHIZUKU_SHELL -> "Shizuku · shell prieiga"
-    AdvancedAccessBackend.SHIZUKU_ROOT -> "Shizuku · root prieiga"
-    AdvancedAccessBackend.ROOT -> "Root prieiga"
+    AdvancedAccessBackend.NONE -> "Access is inactive"
+    AdvancedAccessBackend.SHIZUKU_SHELL -> "Shizuku · shell access"
+    AdvancedAccessBackend.SHIZUKU_ROOT -> "Shizuku · root access"
+    AdvancedAccessBackend.ROOT -> "Root access"
 }

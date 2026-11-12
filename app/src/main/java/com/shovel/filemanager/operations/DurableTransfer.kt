@@ -86,26 +86,26 @@ class DurableTransferPlanner {
         id: String = UUID.randomUUID().toString(),
         createdAtMillis: Long = System.currentTimeMillis(),
     ): DurableTransferPlan {
-        require(sourcePaths.isNotEmpty()) { "Nepasirinkta failų" }
-        require(sourcePaths.size <= MAX_SOURCE_PATHS) { "Pasirinkta daugiau kaip $MAX_SOURCE_PATHS pradinių kelių" }
-        require(conflictPolicy != ConflictPolicy.ASK) { "Konfliktų sprendimas turi būti pasirinktas prieš planavimą" }
+        require(sourcePaths.isNotEmpty()) { "No files selected" }
+        require(sourcePaths.size <= MAX_SOURCE_PATHS) { "More than $MAX_SOURCE_PATHS source paths were selected" }
+        require(conflictPolicy != ConflictPolicy.ASK) { "Conflict handling must be selected before planning" }
         require(!move || failurePolicy == TransferFailurePolicy.STOP) {
-            "Perkėlimas klaidos atveju turi sustoti, kad šaltinis nebūtų pašalintas dalinai"
+            "A move must stop on error so the source is not removed partially"
         }
 
         val destination = File(destinationDirectoryPath).canonicalFile
-        require(destination.isDirectory) { "Paskirties aplankas nepasiekiamas" }
+        require(destination.isDirectory) { "The destination folder is unavailable" }
         val sources = sourcePaths.map { path ->
             val requested = File(path)
-            require(!Files.isSymbolicLink(requested.toPath())) { "Simbolinės nuorodos nekopijuojamos" }
+            require(!Files.isSymbolicLink(requested.toPath())) { "Symbolic links are not copied" }
             requested.canonicalFile
         }.distinct()
         sources.forEach { source ->
-            require(source.exists()) { "Failas nebeegzistuoja: ${source.name}" }
-            require(!Files.isSymbolicLink(source.toPath())) { "Simbolinės nuorodos nepalaikomos: ${source.name}" }
-            require(source != destination) { "Negalima kopijuoti aplanko į save" }
+            require(source.exists()) { "The file no longer exists: ${source.name}" }
+            require(!Files.isSymbolicLink(source.toPath())) { "Symbolic links are not supported: ${source.name}" }
+            require(source != destination) { "A folder cannot be copied onto itself" }
             require(!source.isDirectory || !FileSystemRules.isContained(source, destination)) {
-                "Negalima kopijuoti aplanko į jo paties poaplankį"
+                "A folder cannot be copied into its own subfolder"
             }
         }
 
@@ -117,19 +117,19 @@ class DurableTransferPlanner {
             pending.add(Pending(rootIndex, source, File(destination, source.name), 0))
             while (pending.isNotEmpty()) {
                 val node = pending.removeLast()
-                require(node.depth <= MAX_TREE_DEPTH) { "Aplankų gylis viršija $MAX_TREE_DEPTH ribą" }
-                require(!Files.isSymbolicLink(node.requestedTarget.toPath())) { "Simbolinės nuorodos negali būti perrašomos" }
+                require(node.depth <= MAX_TREE_DEPTH) { "Folder depth exceeds the limit of $MAX_TREE_DEPTH" }
+                require(!Files.isSymbolicLink(node.requestedTarget.toPath())) { "Symbolic links cannot be overwritten" }
                 val resolved = resolveTarget(node.source, node.requestedTarget, conflictPolicy, reservedTargets) ?: continue
                 val (target, replaceExisting) = resolved
                 val targetKey = target.canonicalPath
-                require(FileSystemRules.isContained(destination, target)) { "Tikslas išeina už paskirties katalogo" }
-                require(node.source.canonicalPath != targetKey) { "Šaltinis ir paskirtis yra tas pats failas" }
+                require(FileSystemRules.isContained(destination, target)) { "The target escapes the destination folder" }
+                require(node.source.canonicalPath != targetKey) { "Source and destination are the same file" }
                 require(reservedTargets.add(targetKey)) {
-                    "Keli šaltiniai planuoja tą patį tikslą: ${target.name}; pasirinkite „Palikti abu“"
+                    "Several sources target the same destination: ${target.name}; choose \"Keep both\""
                 }
 
                 val index = items.size
-                require(index < MAX_PLAN_ITEMS) { "Operacija viršija $MAX_PLAN_ITEMS elementų ribą" }
+                require(index < MAX_PLAN_ITEMS) { "The operation exceeds the limit of $MAX_PLAN_ITEMS items" }
                 val size = if (node.source.isFile) node.source.length().coerceAtLeast(0) else 0L
                 totalBytes = Math.addExact(totalBytes, size)
                 items += PlannedTransferItem(
@@ -145,15 +145,15 @@ class DurableTransferPlanner {
 
                 if (node.source.isDirectory) {
                     val children = node.source.listFiles()?.sortedBy(File::getName)
-                        ?: throw SecurityException("Nepavyko perskaityti ${node.source.name}")
+                        ?: throw SecurityException("Could not read ${node.source.name}")
                     children.asReversed().forEach { child ->
-                        require(!Files.isSymbolicLink(child.toPath())) { "Simbolinės nuorodos nepalaikomos: ${child.name}" }
+                        require(!Files.isSymbolicLink(child.toPath())) { "Symbolic links are not supported: ${child.name}" }
                         pending.add(Pending(node.sourceRootIndex, child, File(target, child.name), node.depth + 1))
                     }
                 }
             }
         }
-        require(items.isNotEmpty()) { "Pagal pasirinktą konfliktų politiką neliko kopijuojamų elementų" }
+        require(items.isNotEmpty()) { "No items remain to copy under the selected conflict policy" }
 
         return DurableTransferPlan(
             id = id,
@@ -183,10 +183,10 @@ class DurableTransferPlanner {
             ConflictPolicy.KEEP_BOTH -> keepBothTarget(canonical, reserved) to false
             ConflictPolicy.REPLACE -> canonical to canonical.exists()
             ConflictPolicy.MERGE -> {
-                require(source.isDirectory && canonical.isDirectory) { "Sujungti galima tik aplankus: ${canonical.name}" }
+                require(source.isDirectory && canonical.isDirectory) { "Only folders can be merged: ${canonical.name}" }
                 canonical to false
             }
-            ConflictPolicy.ASK -> error("Konfliktų sprendimas nepasirinktas")
+            ConflictPolicy.ASK -> error("Conflict handling was not selected")
         }
     }
 
@@ -198,7 +198,7 @@ class DurableTransferPlanner {
             val candidate = File(requested.parentFile, name).canonicalFile
             if (!candidate.exists() && candidate.canonicalPath !in reserved) return candidate
         }
-        throw IllegalStateException("Nepavyko parinkti unikalaus vardo: ${requested.name}")
+        throw IllegalStateException("Could not pick a unique name: ${requested.name}")
     }
 }
 
@@ -230,7 +230,7 @@ class DurableTransferEngine {
         context.setTotals(totalItems, totalBytes)
         if (retryItems.isEmpty() && state.nextItemIndex > 0) {
             val completed = plan.items.take(state.nextItemIndex)
-            context.progress(completed.size, completed.sumOf(PlannedTransferItem::sizeBytes), "Atkuriama")
+            context.progress(completed.size, completed.sumOf(PlannedTransferItem::sizeBytes), "Restoring")
         }
 
         if (state.phase == TransferPhase.COPY) {
@@ -253,7 +253,7 @@ class DurableTransferEngine {
             phase = TransferPhase.COMPLETE,
             retryItemIndices = emptyList(),
             retryPosition = 0,
-            lastMessage = if (state.failedItemIndices.isEmpty()) null else "Nepavyko ${state.failedItemIndices.size} elementų",
+            lastMessage = if (state.failedItemIndices.isEmpty()) null else "${state.failedItemIndices.size} items failed",
             updatedAtMillis = System.currentTimeMillis(),
         )
         stateWriter.saveState(state)
@@ -271,7 +271,7 @@ class DurableTransferEngine {
             DurableTransferStatus.CANCELLED,
             DurableTransferStatus.INTERRUPTED,
             DurableTransferStatus.COMPLETED_WITH_ERRORS,
-        )) { "Operacijos kartoti negalima" }
+        )) { "The operation cannot be retried" }
         return if (state.status == DurableTransferStatus.COMPLETED_WITH_ERRORS && state.failedItemIndices.isNotEmpty()) {
             state.copy(
                 status = DurableTransferStatus.QUEUED,
@@ -308,7 +308,7 @@ class DurableTransferEngine {
             status = DurableTransferStatus.CANCELLED,
             nextItemIndex = if (state.phase == TransferPhase.COPY) 0 else state.nextItemIndex,
             retryPosition = if (state.phase == TransferPhase.COPY) 0 else state.retryPosition,
-            lastMessage = "Atšaukta naudotojo; užbaigtos kopijos gali likti paskirties vietoje",
+            lastMessage = "Canceled by the user; completed copies may remain at the destination",
             updatedAtMillis = System.currentTimeMillis(),
         )
         writer.saveState(cancelled)
@@ -359,7 +359,7 @@ class DurableTransferEngine {
                         state.copy(retryPosition = state.retryPosition + 1, failedItemIndices = failures, lastMessage = message)
                     }
                     context.logWarn(message)
-                    context.note("Praleista: ${File(item.sourcePath).name}")
+                    context.note("Skipped: ${File(item.sourcePath).name}")
                 } else {
                     state = state.copy(
                         status = DurableTransferStatus.FAILED,
@@ -395,7 +395,7 @@ class DurableTransferEngine {
         context: OperationContext,
     ): DurableTransferState {
         var state = initial
-        require(state.failedItemIndices.isEmpty()) { "Šaltiniai nešalinami, kol plane yra klaidų" }
+        require(state.failedItemIndices.isEmpty()) { "Sources are not removed while the plan contains errors" }
         // A skipped root has no planned items. Never recursively sweep a root:
         // it can also contain files added after the user confirmed this plan.
         val itemsByRoot = plan.items.groupBy(PlannedTransferItem::sourceRootIndex)
@@ -406,16 +406,16 @@ class DurableTransferEngine {
                 context.checkpoint()
                 validateItemPaths(plan, item)
                 val source = File(item.sourcePath)
-                require(!Files.isSymbolicLink(source.toPath())) { "Simbolinės nuorodos nešalinamos perkeliant" }
+                require(!Files.isSymbolicLink(source.toPath())) { "Symbolic links are not removed during a move" }
                 if (!source.exists()) return@forEach // A preceding attempt already removed this item.
                 verifySource(item, source)
                 val target = File(item.targetPath)
                 require(if (item.directory) target.isDirectory else filesEquivalent(source, target, plan.verification)) {
-                    "Tikslas pasikeitė prieš šaltinio pašalinimą: ${target.name}"
+                    "The destination changed before the source was removed: ${target.name}"
                 }
                 // File.delete only removes an empty directory. Unplanned children
                 // remain at the source and cause an explicit, retryable failure.
-                require(source.delete() || !source.exists()) { "Nepavyko pašalinti ${source.name}" }
+                require(source.delete() || !source.exists()) { "Could not remove ${source.name}" }
                 context.progress(itemDelta = 1, currentName = source.name)
             }
             state = state.copy(nextDeleteRootIndex = rootIndex + 1, updatedAtMillis = System.currentTimeMillis())
@@ -468,8 +468,8 @@ class DurableTransferEngine {
         }
         prepareTargetForReplacement(plan, item, target)
         val partial = partialFile(plan, item)
-        if (partial.exists() && !partial.delete()) throw IllegalStateException("Nepavyko pašalinti nutrūkusios dalinės kopijos")
-        partial.parentFile?.let { parent -> require(parent.isDirectory || parent.mkdirs()) { "Paskirties aplankas nepasiekiamas" } }
+        if (partial.exists() && !partial.delete()) throw IllegalStateException("Could not remove the interrupted partial copy")
+        partial.parentFile?.let { parent -> require(parent.isDirectory || parent.mkdirs()) { "The destination folder is unavailable" } }
 
         val sourceDigest = if (plan.verification == TransferVerification.SHA256) MessageDigest.getInstance("SHA-256") else null
         try {
@@ -489,19 +489,19 @@ class DurableTransferEngine {
                 }
             }
             verifySource(item, source)
-            require(partial.length() == item.sizeBytes) { "Kopijos dydis nesutampa" }
+            require(partial.length() == item.sizeBytes) { "The copy size does not match" }
             if (sourceDigest != null) {
-                require(MessageDigest.isEqual(sourceDigest.digest(), sha256(partial))) { "SHA-256 patikra nepavyko" }
+                require(MessageDigest.isEqual(sourceDigest.digest(), sha256(partial))) { "SHA-256 verification failed" }
             }
             validateItemPaths(plan, item)
             // The existing target was already put aside, if replacement was
             // authorized. A target appearing during the copy belongs to someone
             // else. Do not use REPLACE_EXISTING or ATOMIC_MOVE here (the latter
             // may replace an existing target even without REPLACE_EXISTING).
-            require(!target.exists()) { "Tikslas pasikeitė po plano patvirtinimo: ${target.name}" }
+            require(!target.exists()) { "The destination changed after the plan was confirmed: ${target.name}" }
             Files.move(partial.toPath(), target.toPath())
             target.setLastModified(item.modifiedAtMillis)
-            require(filesEquivalent(source, target, plan.verification)) { "Galutinė kopijos patikra nepavyko" }
+            require(filesEquivalent(source, target, plan.verification)) { "Final copy verification failed" }
             context.progress(itemDelta = 1, currentName = source.name)
         } finally {
             if (partial.exists()) partial.delete()
@@ -509,12 +509,12 @@ class DurableTransferEngine {
     }
 
     private fun verifySource(item: PlannedTransferItem, source: File) {
-        require(source.exists()) { "Šaltinis nebeegzistuoja" }
-        require(source.isDirectory == item.directory) { "Šaltinio tipas pasikeitė" }
-        require(!Files.isSymbolicLink(source.toPath())) { "Simbolinė nuoroda nepalaikoma" }
+        require(source.exists()) { "The source no longer exists" }
+        require(source.isDirectory == item.directory) { "The source type changed" }
+        require(!Files.isSymbolicLink(source.toPath())) { "Symbolic links are not supported" }
         if (!item.directory) {
             require(source.length() == item.sizeBytes && source.lastModified() == item.modifiedAtMillis) {
-                "Šaltinis pasikeitė po plano patvirtinimo"
+                "The source changed after the plan was confirmed"
             }
         }
     }
@@ -522,40 +522,40 @@ class DurableTransferEngine {
     private fun validateItemPaths(plan: DurableTransferPlan, item: PlannedTransferItem) {
         val source = File(item.sourcePath)
         val target = File(item.targetPath)
-        require(source.canonicalPath == item.sourcePath) { "Šaltinis pasikeitė po plano patvirtinimo" }
+        require(source.canonicalPath == item.sourcePath) { "The source changed after the plan was confirmed" }
         require(target.canonicalPath == item.targetPath &&
             File(plan.destinationPath).canonicalPath == plan.destinationPath &&
-            FileSystemRules.isContained(File(plan.destinationPath), target)) { "Tikslas išeina už paskirties katalogo" }
-        require(source.canonicalPath != target.canonicalPath) { "Šaltinis ir paskirtis yra tas pats failas" }
+            FileSystemRules.isContained(File(plan.destinationPath), target)) { "The target escapes the destination folder" }
+        require(source.canonicalPath != target.canonicalPath) { "Source and destination are the same file" }
     }
 
     private fun ensureDirectory(plan: DurableTransferPlan, item: PlannedTransferItem, target: File) {
         if (target.isDirectory) return
         if (target.exists()) prepareTargetForReplacement(plan, item, target)
-        require(!target.exists() && (target.mkdir() || target.isDirectory)) { "Nepavyko sukurti ${target.name}" }
+        require(!target.exists() && (target.mkdir() || target.isDirectory)) { "Could not create ${target.name}" }
     }
 
     private fun prepareTargetForReplacement(plan: DurableTransferPlan, item: PlannedTransferItem, target: File) {
         if (!target.exists()) return
-        require(item.replaceExisting) { "Tikslas pasikeitė po plano patvirtinimo: ${target.name}" }
+        require(item.replaceExisting) { "The destination changed after the plan was confirmed: ${target.name}" }
         val backup = backupFile(plan, item)
-        require(!backup.exists() && !Files.isSymbolicLink(backup.toPath())) { "Nepavyko saugiai atidėti keičiamo failo" }
+        require(!backup.exists() && !Files.isSymbolicLink(backup.toPath())) { "Could not safely move the existing file aside" }
         Files.move(target.toPath(), backup.toPath())
     }
 
     private suspend fun restoreBackup(plan: DurableTransferPlan, item: PlannedTransferItem) {
         validateItemPaths(plan, item)
         val backup = backupFile(plan, item)
-        require(!Files.isSymbolicLink(backup.toPath())) { "Simbolinės nuorodos negali būti perrašomos" }
+        require(!Files.isSymbolicLink(backup.toPath())) { "Symbolic links cannot be overwritten" }
         if (!backup.exists()) return
         val target = File(item.targetPath)
         if (target.exists()) {
             // Never erase unrelated files or children created after this copy.
             require(if (item.directory) target.isDirectory else
                 filesEquivalent(File(item.sourcePath), target, TransferVerification.SHA256)) {
-                "Tikslas pasikeitė po plano patvirtinimo: ${target.name}"
+                "The destination changed after the plan was confirmed: ${target.name}"
             }
-            require(target.delete()) { "Nepavyko grąžinti ankstesnio tikslo" }
+            require(target.delete()) { "Could not restore the previous destination" }
         }
         Files.move(backup.toPath(), target.toPath())
     }
@@ -588,22 +588,22 @@ class DurableTransferEngine {
 
     private fun deleteTree(file: File) {
         if (Files.isSymbolicLink(file.toPath())) {
-            require(file.delete()) { "Nepavyko pašalinti ${file.name}" }
+            require(file.delete()) { "Could not remove ${file.name}" }
             return
         }
         if (!file.exists()) return
         if (file.isDirectory) file.listFiles()?.forEach(::deleteTree)
-        require(file.delete() || !file.exists()) { "Nepavyko pašalinti ${file.name}" }
+        require(file.delete() || !file.exists()) { "Could not remove ${file.name}" }
     }
 
     private fun validatePlanState(plan: DurableTransferPlan, state: DurableTransferState) {
-        require(plan.schemaVersion == 1 && state.schemaVersion == 1) { "Nepalaikoma operacijos versija" }
-        require(plan.id == state.planId) { "Plano ir būsenos tapatybės nesutampa" }
-        require(plan.items.size <= DurableTransferPlanner.MAX_PLAN_ITEMS) { "Plano elementų riba viršyta" }
-        require(state.nextItemIndex in 0..plan.items.size) { "Netinkamas operacijos kontrolinis taškas" }
-        require(state.failedItemIndices.size <= MAX_RECORDED_FAILURES) { "Klaidų sąrašo riba viršyta" }
-        require(state.retryItemIndices.size <= MAX_RECORDED_FAILURES) { "Kartojimo sąrašo riba viršyta" }
-        require(state.failedItemIndices.all { it in plan.items.indices }) { "Netinkamas klaidos elemento indeksas" }
-        require(state.retryItemIndices.all { it in plan.items.indices }) { "Netinkamas kartojimo elemento indeksas" }
+        require(plan.schemaVersion == 1 && state.schemaVersion == 1) { "Unsupported operation version" }
+        require(plan.id == state.planId) { "The plan and state identities do not match" }
+        require(plan.items.size <= DurableTransferPlanner.MAX_PLAN_ITEMS) { "The plan item limit was exceeded" }
+        require(state.nextItemIndex in 0..plan.items.size) { "Invalid operation checkpoint" }
+        require(state.failedItemIndices.size <= MAX_RECORDED_FAILURES) { "The error-list limit was exceeded" }
+        require(state.retryItemIndices.size <= MAX_RECORDED_FAILURES) { "The retry-list limit was exceeded" }
+        require(state.failedItemIndices.all { it in plan.items.indices }) { "Invalid failed-item index" }
+        require(state.retryItemIndices.all { it in plan.items.indices }) { "Invalid retry-item index" }
     }
 }

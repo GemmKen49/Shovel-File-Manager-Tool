@@ -36,10 +36,10 @@ internal fun DeleteConfirmationDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     loadSummary: (suspend () -> Result<FileSelectionSummary>)? = null,
-    title: String = if (permanent) "Ištrinti visam laikui?" else "Perkelti į šiukšlinę?",
-    confirmLabel: String = if (permanent) "Ištrinti visam laikui" else "Perkelti",
-    explanation: String = if (permanent) "Šio veiksmo nebus galima atšaukti." else
-        "Elementus bus galima atkurti iš Shovel šiukšlinės.",
+    title: String = if (permanent) "Delete permanently?" else "Move to trash?",
+    confirmLabel: String = if (permanent) "Delete permanently" else "Move",
+    explanation: String = if (permanent) "This action cannot be undone." else
+        "Items can be restored from Shovel Trash.",
     fallbackFiles: Int = 0,
     fallbackFolders: Int = 0,
     fallbackBytes: Long = 0,
@@ -53,7 +53,7 @@ internal fun DeleteConfirmationDialog(
     LaunchedEffect(stableNames, loadSummary) {
         if (loadSummary == null) return@LaunchedEffect
         loading = true
-        loadSummary().fold(onSuccess = { summary = it }, onFailure = { summaryError = it.message ?: "Informacijos apskaičiuoti nepavyko" })
+        loadSummary().fold(onSuccess = { summary = it }, onFailure = { summaryError = it.message ?: "Could not calculate file information" })
         loading = false
     }
     ShovelModalDialog(
@@ -62,7 +62,7 @@ internal fun DeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("delete_confirmation_dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             Button(
                 onClick = onConfirm,
                 enabled = !loading,
@@ -73,13 +73,13 @@ internal fun DeleteConfirmationDialog(
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             when {
                 stableNames.size == 1 -> {
-                    LText("Pavadinimas", style = MaterialTheme.typography.labelMedium,
+                    LText("Name", style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(stableNames.single(), maxLines = 3, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.testTag("delete_name"))
                 }
                 stableNames.isNotEmpty() -> {
-                    LText("Pasirinkta: ${stableNames.size}", style = MaterialTheme.typography.titleSmall)
+                    LText("Selected: ${stableNames.size}", style = MaterialTheme.typography.titleSmall)
                     Text(stableNames.take(3).joinToString("\n"), maxLines = 4, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -89,7 +89,7 @@ internal fun DeleteConfirmationDialog(
                 }
                 summary != null -> summary?.let { value ->
                     DeleteSummaryRows(value.fileCount, value.folderCount, value.totalBytes)
-                    if (!value.complete) LText("Dalis turinio neįskaičiuota, nes pasiekta saugi skenavimo riba.",
+                    if (!value.complete) LText("Some content was not counted because the safe scan limit was reached.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
                 else -> {
@@ -107,7 +107,7 @@ internal fun DeleteConfirmationDialog(
 
 @Composable
 private fun DeleteSummaryRows(files: Int, folders: Int, bytes: Long) {
-    LText("Failai: $files", modifier = Modifier.testTag("delete_file_count"))
-    LText("Aplankai: $folders", modifier = Modifier.testTag("delete_folder_count"))
-    LText("Dydis: ${FileSystemRules.humanBytes(bytes.coerceAtLeast(0))}", modifier = Modifier.testTag("delete_size"))
+    LText("Files: $files", modifier = Modifier.testTag("delete_file_count"))
+    LText("Folders: $folders", modifier = Modifier.testTag("delete_folder_count"))
+    LText("Size: ${FileSystemRules.humanBytes(bytes.coerceAtLeast(0))}", modifier = Modifier.testTag("delete_size"))
 }

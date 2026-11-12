@@ -40,9 +40,9 @@ class SplitApkInstallActivity : ComponentActivity() {
             val appearance by (application as com.shovel.filemanager.ShovelApplication).graph.appearance.settings.collectAsStateWithLifecycle()
             ShovelTheme(settings = appearance) { com.shovel.filemanager.ui.theme.AppearancePage(Modifier.fillMaxSize()) {
             Column(Modifier.padding(24.dp)) {
-                LText("APK rinkinys")
+                LText("APK bundle")
                 message.value?.let { LText(it) } ?: CircularProgressIndicator()
-                TextButton(onClick = { cancelAndFinish() }) { LText("Uždaryti") }
+                TextButton(onClick = { cancelAndFinish() }) { LText("Close") }
             }
         } } }
         if (intent.action == RESULT) handleResult(intent)
@@ -51,17 +51,17 @@ class SplitApkInstallActivity : ComponentActivity() {
             // from the original archive; Android remains responsible for committed sessions.
             val session = packageManager.packageInstaller.getSessionInfo(sessionId)
             if (session != null && !session.isSealed) runCatching { packageManager.packageInstaller.abandonSession(sessionId) }
-            message.value = "Diegti nepavyko"
+            message.value = "Installation failed"
         } else stagingJob = lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    check(stagingLock.tryLock()) { "Diegti nepavyko" }
+                    check(stagingLock.tryLock()) { "Installation failed" }
                     try {
                     val archive = File(requireNotNull(intent.getStringExtra("archive")))
                     val plan = SplitApkArchive.plan(archive)
                     val selected = intent.getStringArrayListExtra("parts").orEmpty().toSet()
                     val parts = plan.parts.filter { it.name in selected }
-                    require(plan.base in parts && parts.size == selected.size) { "Netinkamas APK rinkinys" }
+                    require(plan.base in parts && parts.size == selected.size) { "Invalid APK bundle" }
                     val installer = packageManager.packageInstaller
                     val parameters = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
                         setSize(parts.sumOf { it.bytes })
@@ -106,7 +106,7 @@ class SplitApkInstallActivity : ComponentActivity() {
             } catch (error: Exception) {
                 if (sessionId >= 0) runCatching { packageManager.packageInstaller.abandonSession(sessionId) }
                 if (error is kotlinx.coroutines.CancellationException) throw error
-                message.value = error.message ?: "Diegti nepavyko"
+                message.value = error.message ?: "Installation failed"
             }
         }
     }
@@ -118,11 +118,11 @@ class SplitApkInstallActivity : ComponentActivity() {
         when (result.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION") val confirmation = result.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-                if (confirmation != null) runCatching { startActivity(confirmation) }.onFailure { message.value = "Diegti nepavyko" }
-                else message.value = "Diegti nepavyko"
+                if (confirmation != null) runCatching { startActivity(confirmation) }.onFailure { message.value = "Installation failed" }
+                else message.value = "Installation failed"
             }
             PackageInstaller.STATUS_SUCCESS -> finish()
-            else -> message.value = result.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)?.take(512) ?: "Diegti nepavyko"
+            else -> message.value = result.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)?.take(512) ?: "Installation failed"
         }
     }
     private fun cancelAndFinish() {

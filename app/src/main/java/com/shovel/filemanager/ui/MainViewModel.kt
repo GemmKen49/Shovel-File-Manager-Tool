@@ -276,7 +276,7 @@ internal object AnalysisSelectionRules {
 
 data class AdvancedBrowserUiState(
     val open: Boolean = false,
-    val title: String = "Apsaugoti Android failai",
+    val title: String = "Protected Android files",
     val path: String = "",
     val entries: List<FileEntry> = emptyList(),
     val selectedPaths: Set<String> = emptySet(),
@@ -474,7 +474,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // One small synchronous commit keeps rapid toggles ordered and never reports an unsaved choice.
         runCatching { graph.uiPreferences.saveFeatureVisibility(value) }
             .onSuccess { _featureVisibility.value = value }
-            .onFailure { message("Nustatymų įrašyti nepavyko") }
+            .onFailure { message("Could not save the settings") }
     }
 
     private val _analysisState = MutableStateFlow(AnalysisUiState())
@@ -587,13 +587,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         graph.applicationScope.launch {
             for (session in workspaceSaveRequests) {
                 runCatching { graph.workspaceSession.save(session) }
-                    .onFailure { message(it.message ?: "Darbo sesijos išsaugoti nepavyko", true) }
+                    .onFailure { message(it.message ?: "Could not save the workspace session", true) }
             }
         }
         graph.applicationScope.launch {
             for (settings in searchDraftSaveRequests) {
                 runCatching { graph.uiPreferences.saveSearchDraft(settings) }
-                    .onFailure { message(it.message ?: "Nustatymų įrašyti nepavyko", true) }
+                    .onFailure { message(it.message ?: "Could not save the settings", true) }
             }
         }
         refreshPermissionDependentState()
@@ -678,7 +678,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             AdvancedAccessBackend.ROOT,
             AdvancedAccessBackend.SHIZUKU_ROOT,
         )
-        val title = if (preferredPath == "/" || (preferredPath == null && rootBackend)) "Root" else "Apsaugoti Android failai"
+        val title = if (preferredPath == "/" || (preferredPath == null && rootBackend)) "Root" else "Protected Android files"
         _advancedBrowser.value = AdvancedBrowserUiState(
             open = true,
             title = title,
@@ -690,16 +690,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 if (!rootBackend) {
                     val accessible = graph.privilegedFiles.probeAndroidData().getOrThrow()
-                    require(accessible) { "Android/data šiuo privilegijuotu režimu nepasiekiamas" }
+                    require(accessible) { "Android/data is not accessible with this privileged mode" }
                 }
                 val roots = graph.privilegedFiles.availableRoots().getOrThrow()
                 val target = preferredPath ?: roots.firstOrNull()?.path
-                    ?: throw IllegalStateException("Privilegijuoti aplankai nepasiekiami")
+                    ?: throw IllegalStateException("Privileged folders are unavailable")
                 loadAdvancedDirectory(target, pushHistory = false, resetScroll = true)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
-                _advancedBrowser.update { it.copy(loading = false, error = error.message ?: "Privilegijuotos vietos atidaryti nepavyko") }
+                _advancedBrowser.update { it.copy(loading = false, error = error.message ?: "Could not open the privileged location") }
             } finally {
                 advancedBrowserJob = null
             }
@@ -720,7 +720,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
-                _advancedBrowser.update { it.copy(loading = false, error = error.message ?: "Aplanko atidaryti nepavyko") }
+                _advancedBrowser.update { it.copy(loading = false, error = error.message ?: "Could not open the folder") }
             } finally {
                 advancedBrowserJob = null
             }
@@ -750,7 +750,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
             runCatching { loadAdvancedDirectory(target, pushHistory = false, resetScroll = false) }
-                .onFailure { error -> _advancedBrowser.update { it.copy(loading = false, error = error.message ?: "Aplanko atidaryti nepavyko") } }
+                .onFailure { error -> _advancedBrowser.update { it.copy(loading = false, error = error.message ?: "Could not open the folder") } }
             advancedBrowserJob = null
         }
         return true
@@ -776,7 +776,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _advancedBrowser.update { it.copy(loading = true, error = null) }
             graph.privilegedFiles.list(state.path, state.includeHidden, state.sortMode, state.sortDirection).fold(
                 onSuccess = { entries -> _advancedBrowser.update { it.copy(entries = entries, selectedPaths = it.selectedPaths.intersect(entries.map(FileEntry::absolutePath).toSet()), loading = false) } },
-                onFailure = { error -> _advancedBrowser.update { it.copy(loading = false, error = error.message ?: "Aplanko atnaujinti nepavyko") } },
+                onFailure = { error -> _advancedBrowser.update { it.copy(loading = false, error = error.message ?: "Could not refresh the folder") } },
             )
             advancedBrowserJob = null
         }
@@ -833,7 +833,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
             }
-            .onFailure { message(it.message ?: "Rodinio nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save display settings", true) }
     }
 
     fun setAdvancedSort(mode: SortMode, direction: SortDirection) {
@@ -869,7 +869,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val existing = if (append) {
             val current = _clipboard.value
             if (current == null || current.source != ClipboardSource.PRIVILEGED || current.mode != ClipboardMode.COPY) {
-                message("Nėra privilegijuoto kopijavimo rinkinio, kurį būtų galima papildyti", true)
+                message("There is no privileged copy set to add to", true)
                 return
             }
             current.paths
@@ -888,9 +888,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _shovelClipboard.value = null
         clearAdvancedSelection()
         message(
-            if (append) "Į privilegijuotą iškarpinę įtraukta: ${merged.addedCount} · iš viso: ${merged.items.size}"
-            else if (move) "Paruošta perkelti: ${merged.items.size}"
-            else "Nukopijuota į iškarpinę: ${merged.items.size}",
+            if (append) "Added to the privileged clipboard: ${merged.addedCount} · total: ${merged.items.size}"
+            else if (move) "Ready to move: ${merged.items.size}"
+            else "Copied to the clipboard: ${merged.items.size}",
         )
     }
 
@@ -899,18 +899,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val destination = _advancedBrowser.value.path
         if (destination.isBlank()) return
         val moving = clipboard.mode == ClipboardMode.MOVE
-        graph.operationManager.submit("Kopijuojama į apsaugotą Android vietą") {
+        graph.operationManager.submit("Copying to a protected Android location") {
             val result = when (clipboard.source) {
                 ClipboardSource.LOCAL -> graph.privilegedFiles.copyFromLocal(clipboard.paths, destination, moving, conflictPolicy, this)
                 ClipboardSource.PRIVILEGED -> graph.privilegedFiles.copyWithin(clipboard.paths, destination, moving, conflictPolicy, this)
             }
-            note("Nukopijuota: ${result.copiedRoots} · praleista: ${result.skippedRoots}")
+            note("Copied: ${result.copiedRoots} · skipped: ${result.skippedRoots}")
             if (moving && result.skippedRoots == 0) _clipboard.value = null
             refreshAdvancedBrowser()
             if (clipboard.source == ClipboardSource.LOCAL && moving) {
                 refreshPanel()
             }
-        }.onFailure { message(it.message ?: "Įklijavimo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start pasting", true) }
     }
 
     fun createAdvancedDirectory(name: String) {
@@ -918,7 +918,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             graph.privilegedFiles.createDirectory(path, name).fold(
                 onSuccess = { refreshAdvancedBrowser() },
-                onFailure = { message(it.message ?: "Aplanko sukurti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not create the folder", true) },
             )
         }
     }
@@ -928,7 +928,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             graph.privilegedFiles.createFile(path, name).fold(
                 onSuccess = { refreshAdvancedBrowser() },
-                onFailure = { message(it.message ?: "Failo sukurti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not create the file", true) },
             )
         }
     }
@@ -937,7 +937,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             graph.privilegedFiles.rename(path, name).fold(
                 onSuccess = { clearAdvancedSelection(); refreshAdvancedBrowser() },
-                onFailure = { message(it.message ?: "Pervadinti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not rename", true) },
             )
         }
     }
@@ -945,11 +945,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteAdvancedSelectionPermanently() {
         val selected = _advancedBrowser.value.selectedPaths.toList()
         if (selected.isEmpty()) return
-        graph.operationManager.submit("Šalinami pasirinkti apsaugoti failai") {
+        graph.operationManager.submit("Removing selected protected files") {
             graph.privilegedFiles.deletePermanently(selected, this)
             clearAdvancedSelection()
             refreshAdvancedBrowser()
-        }.onFailure { message(it.message ?: "Trynimo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start deletion", true) }
     }
 
     fun openAdvancedEntry(entry: FileEntry) {
@@ -976,13 +976,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             }.isSuccess
                             _preview.value = PreviewTarget.PrivilegedFile(entry, cached, localOrigin = !privilegedOrigin)
                         },
-                        onFailure = { message(it.message ?: "Failo atidaryti nepavyko", true) },
+                        onFailure = { message(it.message ?: "Could not open the file", true) },
                     )
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                message(error.message ?: "Failo atidaryti nepavyko", true)
+                message(error.message ?: "Could not open the file", true)
             } finally {
                 if (advancedFileOpenRequestId == requestId) advancedFileOpenJob = null
             }
@@ -1017,22 +1017,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setThemeMode(mode: AppThemeMode) {
         runCatching { graph.appearance.setThemeMode(mode) }
-            .onFailure { message(it.message ?: "Išvaizdos nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save appearance settings", true) }
     }
 
     fun setColorPalette(palette: AppColorPalette) {
         runCatching { graph.appearance.setColorPalette(palette) }
-            .onFailure { message(it.message ?: "Išvaizdos nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save appearance settings", true) }
     }
 
     fun setAmoledBlack(enabled: Boolean) {
         runCatching { graph.appearance.setAmoledBlack(enabled) }
-            .onFailure { message(it.message ?: "Išvaizdos nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save appearance settings", true) }
     }
 
     fun setInterfaceScalePercent(percent: Int) {
         runCatching { graph.appearance.setInterfaceScalePercent(percent) }
-            .onFailure { message(it.message ?: "Išvaizdos nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save appearance settings", true) }
     }
 
 
@@ -1049,7 +1049,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
-                    _recentFiles.value = RecentFilesUiState(error = error.message ?: "Naujausių failų įkelti nepavyko")
+                    _recentFiles.value = RecentFilesUiState(error = error.message ?: "Could not load recent files")
                 }
         }
     }
@@ -1109,7 +1109,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val homeSettings = normalizeHomeDisplaySettings(area, settings)
         runCatching { graph.navigation.setDirectoryDisplaySettings(homeDisplayIdentity(area), homeSettings) }
             .onSuccess { homeDisplayFlow(area).value = homeSettings }
-            .onFailure { message(it.message ?: "Pradžios rodinio nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save home display settings", true) }
     }
 
     fun applyDirectoryDisplaySettingsToAll(
@@ -1162,9 +1162,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (_advancedBrowser.value.open) refreshAdvancedBrowser()
             if (_trashBrowser.value.open) refreshTrashBrowser()
             if (_safBrowser.value.location != null) refreshSafBrowser()
-            message("Rodinio nustatymai pritaikyti visiems aplankams")
+            message("Display settings applied to all folders")
         }.onFailure { error ->
-            message(error.message ?: "Bendrų rodinio nustatymų išsaugoti nepavyko", true)
+            message(error.message ?: "Could not save the global display settings", true)
         }
     }
 
@@ -1207,7 +1207,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setCustomColors(colors: com.shovel.filemanager.ui.theme.CustomThemeColors): Boolean =
         runCatching { graph.appearance.setCustomColors(colors) }
-            .onFailure { message(it.message ?: "Išvaizdos nustatymo išsaugoti nepavyko", true) }.isSuccess
+            .onFailure { message(it.message ?: "Could not save appearance settings", true) }.isSuccess
 
     fun moveHomeStorage(id: String, offset: Int) {
         val available = _roots.value.map(StorageRoot::id) + HomeCustomizationRules.ROOT_STORAGE_ID
@@ -1225,7 +1225,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun addHomeShortcut(title: String, path: String, section: HomeSection = HomeSection.QUICK_LOCATIONS): Boolean {
         return runCatching {
             val file = File(path.trim()).canonicalFile
-            require(file.exists()) { "Tokia failo ar aplanko vieta neegzistuoja" }
+            require(file.exists()) { "This file or folder location does not exist" }
             val shortcutTitle = title.trim().ifEmpty { file.name.ifEmpty { file.absolutePath } }
             val shortcut = HomeShortcut(
                 id = "custom.${UUID.randomUUID()}",
@@ -1238,7 +1238,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.fold(
             onSuccess = { true },
             onFailure = {
-                message(it.message ?: "Greitos vietos pridėti nepavyko", true)
+                message(it.message ?: "Could not add the quick location", true)
                 false
             },
         )
@@ -1248,7 +1248,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         runCatching {
             graph.navigation.setHomeCustomization(transform(_homeCustomization.value), homeBuiltInShortcuts)
         }.onSuccess { _homeCustomization.value = it }
-            .onFailure { message(it.message ?: "Pradžios ekrano nustatymų išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save the home screen settings", true) }
     }
 
     fun refreshPermissionDependentState() {
@@ -1292,7 +1292,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun navigate(path: String, rememberHistory: Boolean = true) {
         val target = runCatching { File(path).canonicalPath }.getOrElse {
-            message(it.message ?: "Kelias nepasiekiamas", true)
+            message(it.message ?: "Path unavailable", true)
             return
         }
         _filesHomeVisible.value = false
@@ -1476,7 +1476,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 if (_panel.value.path == snapshot.path) syncActiveTab()
             }
-            .onFailure { message(it.message ?: "Katalogo vaizdo nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save folder display settings", true) }
     }
 
     fun setSort(mode: SortMode) {
@@ -1495,7 +1495,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         runCatching { graph.navigation.setDirectorySortSettings(snapshot.path, next) }
             .onFailure {
-                message(it.message ?: "Katalogo rūšiavimo nustatymo išsaugoti nepavyko", true)
+                message(it.message ?: "Could not save the folder sort setting", true)
                 return
             }
         _panel.update {
@@ -1511,7 +1511,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         runCatching {
             graph.navigation.setDirectorySortSettings(snapshot.path, DirectorySortSettings(mode, direction))
         }.onFailure {
-            message(it.message ?: "Katalogo rūšiavimo nustatymo išsaugoti nepavyko", true)
+            message(it.message ?: "Could not save the folder sort setting", true)
             return
         }
         _panel.update { it.copy(sortMode = mode, sortDirection = direction) }
@@ -1524,7 +1524,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val tabsFlow = _tabs
         val current = tabsFlow.value
         if (current.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_PANEL) {
-            message("Viename skydelyje galima turėti iki ${WorkspaceSessionRepository.MAX_TABS_PER_PANEL} kortelių", true)
+            message("You can have up to ${WorkspaceSessionRepository.MAX_TABS_PER_PANEL} tabs", true)
             return
         }
         val tab = graph.workspaceSession.newTab(_panel.value.path)
@@ -1539,7 +1539,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val tabsFlow = _tabs
         val current = tabsFlow.value
         if (current.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_PANEL) {
-            message("Kortelių riba pasiekta", true)
+            message("Tab limit reached", true)
             return
         }
         val source = current.activeTab
@@ -1577,11 +1577,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val workspace = flow.value
         val closing = workspace.activeTab
         if (closing.locked) {
-            message("Kortelė užrakinta; pirmiausia ją atrakinkite", true)
+            message("The tab is locked; unlock it first", true)
             return
         }
         if (workspace.tabs.size == 1) {
-            message("Paskutinės skydelio kortelės uždaryti negalima", true)
+            message("The pane's last tab cannot be closed", true)
             return
         }
         val closingIndex = workspace.tabs.indexOfFirst { it.id == closing.id }
@@ -1602,11 +1602,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         syncActiveTab(persist = false)
         val workspace = flow.value
         val restored = workspace.closedTabs.firstOrNull() ?: run {
-            message("Atkuriamų uždarytų kortelių nėra")
+            message("There are no closed tabs to restore")
             return
         }
         if (workspace.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_PANEL) {
-            message("Kortelių riba pasiekta", true)
+            message("Tab limit reached", true)
             return
         }
         flow.value = workspace.copy(
@@ -1693,11 +1693,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val existing = if (append) {
             val current = _shovelClipboard.value
             if (current == null) {
-                message("Nėra kopijavimo rinkinio, kurį būtų galima papildyti", true)
+                message("There is no copy set to extend", true)
                 return false
             }
             if (current.moveAfterVerifiedCopies) {
-                message("Iškirptų elementų negalima maišyti su „Kopijuoti daugiau“. Pradėkite naują rinkinį.", true)
+                message("Cut items cannot be mixed with Copy more. Start a new copy set.", true)
                 return false
             }
             current.sources
@@ -1720,16 +1720,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (append) {
             message(
                 if (merged.addedCount == 0) {
-                    "Visi pasirinkti elementai jau yra kopijavimo rinkinyje (iš viso ${merged.items.size})"
+                    "All selected items are already in the copy set (total ${merged.items.size})"
                 } else {
-                    "Pridėta ${merged.addedCount} · iš viso ${merged.items.size}"
+                    "Added ${merged.addedCount} · total ${merged.items.size}"
                 },
             )
         } else {
-            message(if (move) "Paruošta perkelti: ${merged.items.size}" else "Nukopijuota į rinkinį: ${merged.items.size}")
+            message(if (move) "Ready to move: ${merged.items.size}" else "Copied to the set: ${merged.items.size}")
         }
         if (merged.limitReached) {
-            message("Pasiekta kopijavimo rinkinio riba: ${ShovelWorkflowLimits.MAX_SOURCE_ROOTS} elementų", true)
+            message("Copy set limit reached: ${ShovelWorkflowLimits.MAX_SOURCE_ROOTS} items", true)
         }
         return true
     }
@@ -1739,7 +1739,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         fileCategoryJob?.cancel()
         val display = savedDirectoryDisplaySettings(fileCategoryIdentity(category))
         val sort = runCatching { graph.navigation.directorySortSettings(fileCategoryIdentity(category)) }
-            .onFailure { message(it.message ?: "Kategorijos rūšiavimo nustatymo perskaityti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not read category sort settings", true) }
             .getOrDefault(DirectorySortSettings())
         _fileCategory.value = FileCategoryUiState(
             open = true,
@@ -1845,7 +1845,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         loading = false,
                         loadingMore = false,
-                        error = error.message ?: "Failų kategorijos atidaryti nepavyko",
+                        error = error.message ?: "Could not open the file category",
                     )
                 }
             }
@@ -1885,11 +1885,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         runCatching {
             val packageName = entry.packageName
                 ?: application.packageManager.getPackageArchiveInfo(entry.absolutePath, 0)?.packageName
-                ?: error("Programos paketo nustatyti nepavyko")
+                ?: error("Could not identify the app package")
             val intent = application.packageManager.getLaunchIntentForPackage(packageName)
                 ?: Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
             application.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        }.onFailure { message(it.message ?: "Programos atidaryti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not open the app", true) }
     }
 
     fun toggleFileCategoryLayout() {
@@ -1914,7 +1914,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (current.category == category) current.withFileCategoryDisplaySettings(settings) else current
                 }
             }
-            .onFailure { message(it.message ?: "Kategorijos rodinio nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save category display settings", true) }
     }
 
     fun setFileCategorySort(mode: SortMode, direction: SortDirection) {
@@ -1926,7 +1926,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 DirectorySortSettings(mode, direction),
             )
         }.onFailure {
-            message(it.message ?: "Kategorijos rūšiavimo nustatymo išsaugoti nepavyko", true)
+            message(it.message ?: "Could not save category sort settings", true)
             return
         }
         _fileCategory.update {
@@ -1959,7 +1959,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun openInstalledAppFolders() {
         // App data must use the real privileged browser, never an APK inventory disguised as folders.
         if (!graph.advancedAccess.state.value.connected) {
-            message("Android/data prieigai reikia aktyvaus root arba Shizuku")
+            message("Android/data requires an active root or Shizuku connection")
             _section.value = AppSection.TOOLS
             return
         }
@@ -2046,7 +2046,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 },
                 onFailure = { error ->
                     if (error is CancellationException) throw error
-                    _deviceCleanup.update { it.copy(loading = false, error = error.message ?: "Programų nuskaityti nepavyko") }
+                    _deviceCleanup.update { it.copy(loading = false, error = error.message ?: "Could not scan apps") }
                 },
             )
         }
@@ -2059,13 +2059,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             runCatching { graph.privilegedApps.forceStop(packageName) }.fold(
                 onSuccess = {
                     _deviceCleanup.update { it.copy(loading = false) }
-                    message("Programa sustabdyta")
+                    message("App stopped")
                     refreshDeviceCleanup()
                 },
                 onFailure = { error ->
                     if (error is CancellationException) throw error
                     _deviceCleanup.update {
-                        it.copy(loading = false, error = error.message ?: "Programos sustabdyti nepavyko")
+                        it.copy(loading = false, error = error.message ?: "Could not stop the app")
                     }
                 },
             )
@@ -2096,7 +2096,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 runningAppsTruncated = privileged?.getOrNull()?.truncated == true,
             ),
             standardScanError = standard.exceptionOrNull()?.message?.takeIf(String::isNotBlank)
-                ?: standard.exceptionOrNull()?.let { "Programų nuskaityti nepavyko" },
+                ?: standard.exceptionOrNull()?.let { "Could not scan apps" },
         )
     }
 
@@ -2105,7 +2105,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             getApplication<Application>().startActivity(
                 Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
-        }.onFailure { message(it.message ?: "Naudojimo prieigos nustatymų atidaryti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not open usage access settings", true) }
     }
 
     fun openApplicationSettings(packageName: String) {
@@ -2113,7 +2113,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             getApplication<Application>().startActivity(
                 com.shovel.filemanager.cleanup.ApplicationActions.settingsIntent(packageName),
             )
-        }.onFailure { applicationActionError("Programos nustatymų atidaryti nepavyko") }
+        }.onFailure { applicationActionError("Could not open app settings") }
     }
 
     fun requestApplicationUninstall(packageName: String) {
@@ -2121,7 +2121,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             getApplication<Application>().startActivity(
                 com.shovel.filemanager.cleanup.ApplicationActions.uninstallIntent(packageName),
             )
-        }.onFailure { applicationActionError("Programos šalinimo lango atidaryti nepavyko") }
+        }.onFailure { applicationActionError("Could not open the app uninstall screen") }
     }
 
     private fun applicationActionError(text: String) {
@@ -2159,11 +2159,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (state.category == null || state.category == FileCategory.INSTALLED_APPS) return
         val paths = state.selectedPaths.toList()
         if (paths.isEmpty()) return
-        graph.operationManager.submit("Keliama į šiukšlinę") {
+        graph.operationManager.submit("Moving to trash") {
             graph.trash.moveToTrash(paths, this)
             clearFileCategorySelection()
             refreshFileCategory()
-        }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start the operation", true) }
     }
 
     fun uninstallSelectedInstalledApp() {
@@ -2171,12 +2171,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (state.category != FileCategory.INSTALLED_APPS) return
         val selected = state.entries.filter { it.absolutePath in state.selectedPaths }
         if (selected.size != 1) {
-            message("Pasirinkite vieną programą, kurią norite pašalinti", true)
+            message("Select one app to uninstall", true)
             return
         }
         val packageName = selected.single().packageName
         if (packageName.isNullOrBlank()) {
-            message("Programos paketo nustatyti nepavyko", true)
+            message("Could not identify the app package", true)
             return
         }
         runCatching {
@@ -2185,7 +2185,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         }.onSuccess {
             clearFileCategorySelection()
-        }.onFailure { message(it.message ?: "Programos šalinimo lango atidaryti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not open the app uninstall screen", true) }
     }
 
     fun exportSelectedInstalledApps(destinationUri: Uri) {
@@ -2199,10 +2199,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
         }
-        graph.operationManager.submit("Išsaugomos įdiegtos programos") {
+        graph.operationManager.submit("Saving installed apps") {
             graph.fileCategories.exportInstalledApps(selected, destinationUri.toString(), graph.safFiles, this)
             clearFileCategorySelection()
-        }.onFailure { message(it.message ?: "Programų išsaugojimo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start saving apps", true) }
     }
 
     fun paste(
@@ -2214,7 +2214,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val destination = _panel.value.path
         val moving = clipboard.mode == ClipboardMode.MOVE
         if (clipboard.source == ClipboardSource.PRIVILEGED) {
-            graph.operationManager.submit("Kopijuojama iš apsaugotos Android vietos") {
+            graph.operationManager.submit("Copying from a protected Android location") {
                 val result = graph.privilegedFiles.copyToLocal(
                     sourcePaths = clipboard.paths,
                     destinationDirectory = File(destination),
@@ -2222,7 +2222,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     conflictPolicy = conflictPolicy,
                     operation = this,
                 )
-                note("Nukopijuota: ${result.copiedRoots} · praleista: ${result.skippedRoots}")
+                note("Copied: ${result.copiedRoots} · skipped: ${result.skippedRoots}")
                 if (moving && result.skippedRoots == 0) {
                     _clipboard.value = null
                     _shovelClipboard.value = null
@@ -2230,7 +2230,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 refreshPanel()
                 refreshRecentFiles()
                 if (_advancedBrowser.value.open) refreshAdvancedBrowser()
-            }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
+            }.onFailure { message(it.message ?: "Could not start the operation", true) }
             return
         }
         viewModelScope.launch {
@@ -2246,8 +2246,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _clipboard.value = null
                     _shovelClipboard.value = null
                 }
-                message("Patvarus planas išsaugotas ir įtrauktas į operacijų eilę")
-            }.onFailure { message(it.message ?: "Operacijos plano sukurti nepavyko", true) }
+                message("The durable plan was saved and added to the operation queue")
+            }.onFailure { message(it.message ?: "Could not create the operation plan", true) }
         }
     }
 
@@ -2255,12 +2255,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val requestedState = _panel.value
         val selected = requestedState.selectedPaths.toList()
         if (selected.isEmpty()) return
-        graph.operationManager.submit("Keliama į šiukšlinę") {
+        graph.operationManager.submit("Moving to trash") {
             graph.trash.moveToTrash(selected, this)
             clearSelection()
             if (_panel.value.path == requestedState.path) refreshPanel()
             refreshTrash()
-        }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start the operation", true) }
     }
 
     fun moveLocalPathsToTrash(paths: Collection<String>) {
@@ -2269,26 +2269,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.distinct().take(10_001).toList()
         if (selected.isEmpty()) return
         if (selected.size > 10_000) {
-            message("Vienu metu galima tvarkyti iki 10 000 elementų", true)
+            message("You can handle up to 10,000 items at a time", true)
             return
         }
-        graph.operationManager.submit("Keliama į šiukšlinę") {
+        graph.operationManager.submit("Moving to trash") {
             graph.trash.moveToTrash(selected, this)
             refreshRecentFiles()
             refreshTrash()
             refreshPanel()
-        }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start the operation", true) }
     }
 
     fun deleteSelectionPermanently() {
         val requestedState = _panel.value
         val selected = requestedState.selectedPaths.toList()
         if (selected.isEmpty()) return
-        graph.operationManager.submit("Trinama visam laikui") {
+        graph.operationManager.submit("Deleting permanently") {
             graph.localFileOperator.deletePermanently(selected, this)
             clearSelection()
             if (_panel.value.path == requestedState.path) refreshPanel()
-        }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start the operation", true) }
     }
 
     fun createDirectory(name: String) {
@@ -2296,11 +2296,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             graph.localFiles.createDirectory(_panel.value.path, name).fold(
                 onSuccess = { created ->
                     runCatching { graph.recentFiles.recordAdded(created.absolutePath) }
-                        .onFailure { message(it.message ?: "Naujausių failų įrašo išsaugoti nepavyko", true) }
+                        .onFailure { message(it.message ?: "Could not save the recent-file entry", true) }
                     refreshPanel()
                     refreshRecentFiles()
                 },
-                onFailure = { message(it.message ?: "Aplanko sukurti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not create the folder", true) },
             )
         }
     }
@@ -2310,11 +2310,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             graph.localFiles.createEmptyFile(_panel.value.path, name).fold(
                 onSuccess = { created ->
                     runCatching { graph.recentFiles.recordAdded(created.absolutePath) }
-                        .onFailure { message(it.message ?: "Naujausių failų įrašo išsaugoti nepavyko", true) }
+                        .onFailure { message(it.message ?: "Could not save the recent-file entry", true) }
                     refreshPanel()
                     refreshRecentFiles()
                 },
-                onFailure = { message(it.message ?: "Failo sukurti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not create the file", true) },
             )
         }
     }
@@ -2328,7 +2328,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     refreshPanel()
                     refreshRecentFiles()
                 },
-                onFailure = { message(it.message ?: "Pervadinti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not rename", true) },
             )
         }
     }
@@ -2337,7 +2337,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val sources = paths.distinct()
         if (sources.isEmpty()) return
         if (sources.size > com.shovel.filemanager.operations.BatchRenameEngine.MAX_RENAME_ITEMS) {
-            message("Vienu metu galima pervadinti iki ${com.shovel.filemanager.operations.BatchRenameEngine.MAX_RENAME_ITEMS} elementų", true)
+            message("You can rename up to ${com.shovel.filemanager.operations.BatchRenameEngine.MAX_RENAME_ITEMS} items at a time", true)
             return
         }
         _batchRename.value = BatchRenameUiState(open = true, sourcePaths = sources, running = true)
@@ -2357,7 +2357,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun executeBatchRename() {
         val preview = _batchRename.value.preview ?: return
         if (!preview.canExecute) return
-        graph.operationManager.submit("Masinis pervadinimas") {
+        graph.operationManager.submit("Batch rename") {
             val undo = graph.batchRename.execute(preview, this)
             _renameUndo.value = undo
             _panel.update { it.copy(selectedPaths = emptySet()) }
@@ -2368,17 +2368,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         }.onSuccess {
             closeBatchRename()
-        }.onFailure { message(it.message ?: "Pervadinimo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start renaming", true) }
     }
 
     fun undoBatchRename() {
         val undo = _renameUndo.value ?: return
-        graph.operationManager.submit("Atšaukiamas masinis pervadinimas") {
+        graph.operationManager.submit("Undoing batch rename") {
             graph.batchRename.undo(undo, this)
             _renameUndo.value = null
             rerunSearchIfVisible()
-            message("Pervadinimas atšauktas")
-        }.onFailure { message(it.message ?: "Atšaukimo pradėti nepavyko", true) }
+            message("Rename undone")
+        }.onFailure { message(it.message ?: "Could not start undo", true) }
     }
 
     fun open(entry: FileEntry) {
@@ -2388,24 +2388,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return
             }
             if (!entry.isReadable) {
-                message("Įjunkite Root arba Shizuku root prieigą skiltyje Daugiau", true)
+                message("Enable Root or Shizuku root access in More", true)
                 return
             }
             viewModelScope.launch {
                 runCatching { graph.recentFiles.record(entry.absolutePath) }
                     .onSuccess { refreshRecentFiles() }
-                    .onFailure { message(it.message ?: "Naujausių failų įrašo išsaugoti nepavyko", true) }
+                    .onFailure { message(it.message ?: "Could not save the recent-file entry", true) }
             }
             _section.value = AppSection.FILES
             navigate(entry.absolutePath)
             return
         }
         runCatching { _recents.value = graph.navigation.recordRecent(entry.absolutePath) }
-            .onFailure { message(it.message ?: "Istorijos įrašyti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not record history", true) }
         viewModelScope.launch {
             runCatching { graph.recentFiles.record(entry.absolutePath) }
                 .onSuccess { refreshRecentFiles() }
-                .onFailure { message(it.message ?: "Naujausių failų įrašo išsaugoti nepavyko", true) }
+                .onFailure { message(it.message ?: "Could not save the recent-file entry", true) }
         }
         viewModelScope.launch {
             when (entry.kind) {
@@ -2415,7 +2415,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         if (error is com.shovel.filemanager.archive.ArchivePasswordRequiredException) {
                             _archivePasswordRequest.value = entry
                         } else {
-                            message(error.message ?: "Archyvo perskaityti nepavyko", true)
+                            message(error.message ?: "Could not read the archive", true)
                         }
                     }
                 else -> {
@@ -2423,7 +2423,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (directlyExposed) _preview.value = PreviewTarget.LocalFile(entry)
                     else graph.privilegedFiles.stageForPreview(entry).fold(
                         onSuccess = { cached -> _preview.value = PreviewTarget.PrivilegedFile(entry, cached, localOrigin = true) },
-                        onFailure = { message(it.message ?: "Failo atidaryti nepavyko", true) },
+                        onFailure = { message(it.message ?: "Could not open the file", true) },
                     )
                 }
             }
@@ -2452,7 +2452,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun navigatePreviewMedia(delta: Int) {
         if (delta == 0) return
         if (_fileEditState.value.hasUnsavedChanges || _fileEditState.value.saving || _fileEditState.value.modifyingPdf) {
-            message("Pirmiausia išsaugokite arba atmeskite redagavimo pakeitimus", true)
+            message("Save or discard the editing changes first", true)
             return
         }
         when (val target = _preview.value) {
@@ -2516,7 +2516,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     } else EditOrigin.Privileged(target.entry.absolutePath, target.entry.isWritable)
                     is PreviewTarget.ArchiveEntry,
                     is PreviewTarget.Archive,
-                    -> error("Šio peržiūros tipo tiesiogiai redaguoti negalima")
+                    -> error("This preview type cannot be edited directly")
                 }
                 prepared = withContext(Dispatchers.IO) {
                     when (source) {
@@ -2558,11 +2558,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     stagedEncoding = document?.encoding,
                     lineEnding = document?.lineEnding,
                     stagedLineEnding = document?.lineEnding,
-                    status = if (internalTextEditor) "Paruošta redaguoti" else "Redaguojama kopija paruošta",
+                    status = if (internalTextEditor) "Ready to edit" else "The editable copy is ready",
                 )
                 if (source is PreviewSource.Privileged) {
                     val removed = withContext(Dispatchers.IO) { graph.privilegedFiles.discardPreview(source.cachedFile) }
-                    if (!removed) message("Laikinos pradinio failo kopijos pašalinti nepavyko", true)
+                    if (!removed) message("The temporary source copy could not be removed", true)
                 }
             } catch (cancelled: CancellationException) {
                 withContext(NonCancellable + Dispatchers.IO) { graph.editSessions.discard(prepared) }
@@ -2572,7 +2572,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _fileEditState.value = FileEditUiState(
                     sourceKey = source.key,
                     temporaryDownload = temporaryDownload,
-                    error = error.message ?: "Nepavyko paruošti redaguojamos kopijos",
+                    error = error.message ?: "Could not prepare an editable copy",
                 )
             } finally {
                 if (fileEditRequestId == requestId) fileEditJob = null
@@ -2669,7 +2669,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val saved = withContext(Dispatchers.IO) {
                             graph.editSessions.markOriginSaved(session, result.revision)
                         }
-                        val completionStatus = result.warning ?: "Išsaugota pradinėje vietoje"
+                        val completionStatus = result.warning ?: "Saved to the original location"
                         var shouldClose = false
                         _fileEditState.update { current ->
                             if (current.session?.id == session.id) {
@@ -2709,7 +2709,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 throw cancelled
             } catch (error: Throwable) {
                 _fileEditState.update {
-                    it.copy(saving = false, closeAfterSave = false, error = error.message ?: "Failo išsaugoti nepavyko")
+                    it.copy(saving = false, closeAfterSave = false, error = error.message ?: "Could not save the file")
                 }
             } finally {
                 if (fileEditRequestId == requestId) fileEditJob = null
@@ -2737,7 +2737,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     session = withContext(Dispatchers.IO) { graph.editSessions.refreshWorking(session) }
                 }
                 val verified = withContext(Dispatchers.IO) { writeContentDestination(session, destination) }
-                require(session.workingRevision.hasSameContent(verified)) { "Išsaugotos kopijos patikra nepavyko" }
+                require(session.workingRevision.hasSameContent(verified)) { "Saved-copy verification failed" }
                 val saved = withContext(Dispatchers.IO) {
                     graph.editSessions.rebaseOrigin(
                         session = session,
@@ -2748,7 +2748,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         savedRevision = verified,
                     )
                 }
-                val completionStatus = "Išsaugota pasirinktoje vietoje"
+                val completionStatus = "Saved to the selected location"
                 var shouldClose = false
                 _fileEditState.update { current ->
                     if (current.session?.id == session.id) {
@@ -2766,7 +2766,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             conflict = null,
                             saveAsConflict = null,
                             closeAfterSave = false,
-                            status = "Išsaugota pasirinktoje vietoje; tai dabar aktyvus failas",
+                            status = "Saved to the selected location; this is now the active file",
                             error = null,
                         )
                     } else current
@@ -2780,7 +2780,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 throw cancelled
             } catch (error: Throwable) {
                 _fileEditState.update {
-                    it.copy(saving = false, closeAfterSave = false, error = error.message ?: "Kopijos išsaugoti nepavyko")
+                    it.copy(saving = false, closeAfterSave = false, error = error.message ?: "Could not save the copy")
                 }
             } finally {
                 if (fileEditRequestId == requestId) fileEditJob = null
@@ -2797,7 +2797,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val name = EditDestinationRules.validateFileName(requestedName)
             EditDestination.Local(File(File(directoryPath).canonicalFile, name).absolutePath)
         }.getOrElse { error ->
-            _fileEditState.update { it.copy(error = error.message ?: "Netinkamas failo vardas") }
+            _fileEditState.update { it.copy(error = error.message ?: "Invalid file name") }
             return
         }
         saveFileEditAsDestination(destination, policy)
@@ -2873,7 +2873,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val saved = withContext(Dispatchers.IO) {
                             graph.editSessions.rebaseOrigin(session, result.destination, result.revision)
                         }
-                        val completionStatus = result.warning ?: "Išsaugota kaip ${result.destination.label}"
+                        val completionStatus = result.warning ?: "Saved as ${result.destination.label}"
                         var shouldClose = false
                         _fileEditState.update { current ->
                             if (current.session?.id == session.id) {
@@ -2891,7 +2891,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                     conflict = null,
                                     saveAsConflict = null,
                                     closeAfterSave = false,
-                                    status = result.warning ?: "Išsaugota kaip ${result.destination.label}; tai dabar aktyvus failas",
+                                    status = result.warning ?: "Saved as ${result.destination.label}; it is now the active file",
                                     error = null,
                                 )
                             } else current
@@ -2913,7 +2913,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 throw cancelled
             } catch (error: Throwable) {
                 _fileEditState.update {
-                    it.copy(saving = false, closeAfterSave = false, error = error.message ?: "Failo išsaugoti nepavyko")
+                    it.copy(saving = false, closeAfterSave = false, error = error.message ?: "Could not save the file")
                 }
             } finally {
                 if (fileEditRequestId == requestId) fileEditJob = null
@@ -2922,19 +2922,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshSignatureLibrary() {
-        runSignatureLibraryOperation("Išsaugotų parašų įkelti nepavyko") {
+        runSignatureLibraryOperation("Could not load saved signatures") {
             graph.signatureLibrary.load()
         }
     }
 
     fun saveSignature(name: String, drawing: SignatureDrawing) {
-        runSignatureLibraryOperation("Parašo išsaugoti nepavyko") {
+        runSignatureLibraryOperation("Could not save the signature") {
             graph.signatureLibrary.save(name, drawing)
         }
     }
 
     fun deleteSavedSignature(id: String) {
-        runSignatureLibraryOperation("Parašo pašalinti nepavyko") {
+        runSignatureLibraryOperation("Could not remove the signature") {
             graph.signatureLibrary.delete(id)
         }
     }
@@ -2967,7 +2967,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val session = snapshot.session ?: return
         if (snapshot.saving || snapshot.preparing || snapshot.modifyingPdf) return
         if (!session.displayName.endsWith(".pdf", ignoreCase = true) && session.mimeType != "application/pdf") {
-            _fileEditState.update { it.copy(error = "Pasirašyti galima tik PDF failą") }
+            _fileEditState.update { it.copy(error = "Only PDF files can be signed") }
             return
         }
         val requestId = ++fileEditRequestId
@@ -2975,7 +2975,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _fileEditState.update {
             it.copy(
                 modifyingPdf = true,
-                status = "Parašas įrašomas į privačią darbinę kopiją…",
+                status = "The signature is being added to the private working copy…",
                 error = null,
                 conflict = null,
                 saveAsConflict = null,
@@ -2993,7 +2993,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         current.copy(
                             session = refreshed,
                             modifyingPdf = false,
-                            status = "Matomas parašas pridėtas. Pasirinkite Išsaugoti arba Išsaugoti kaip.",
+                            status = "The visible signature was added. Choose Save or Save as.",
                             error = null,
                         )
                     } else current
@@ -3006,7 +3006,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         current.copy(
                             modifyingPdf = false,
                             status = null,
-                            error = error.message ?: "Parašo pridėti nepavyko",
+                            error = error.message ?: "Could not add the signature",
                         )
                     } else current
                 }
@@ -3043,9 +3043,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             textChanged = false,
                             preparing = false,
                             status = if (refreshed.workingRevision.hasSameContent(session.workingRevision)) {
-                                "Išorinis redaktorius uždarytas nepakeitus turinio"
+                                "The external editor closed without content changes"
                             } else {
-                                "Išorinio redaktoriaus pakeitimus galima išsaugoti"
+                                "External editor changes are ready to save"
                             },
                             error = null,
                         )
@@ -3055,7 +3055,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 throw cancelled
             } catch (error: Throwable) {
                 _fileEditState.update {
-                    it.copy(preparing = false, error = error.message ?: "Redaguotos kopijos perskaityti nepavyko")
+                    it.copy(preparing = false, error = error.message ?: "Could not read the edited copy")
                 }
             } finally {
                 if (fileEditRequestId == requestId) fileEditJob = null
@@ -3082,7 +3082,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun copyArchiveEntryToSet(entryPath: String) {
         val target = _preview.value as? PreviewTarget.Archive ?: run {
-            message("Į Shovel planą galima pridėti tik vietinio archyvo įrašą", true)
+            message("Only a local archive entry can be added to an Shovel Plan", true)
             return
         }
         val source = runCatching {
@@ -3095,12 +3095,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 archiveEntryPath = entryPath,
             ).normalized()
         }.getOrElse { error ->
-            message(error.message ?: "Archyvo įrašo pridėti nepavyko", true)
+            message(error.message ?: "Could not add the archive entry", true)
             return
         }
         val existing = _shovelClipboard.value
         if (existing?.moveAfterVerifiedCopies == true) {
-            message("Archyvo įrašų negalima pridėti prie iškirpimo rinkinio", true)
+            message("Archive entries cannot be added to a cut set", true)
             return
         }
         val merged = ClipboardMergeRules.merge(
@@ -3111,7 +3111,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
         _shovelClipboard.value = ShovelClipboardState(merged.items)
         _clipboard.value = null
-        message(if (merged.addedCount > 0) "Archyvo įrašas pridėtas prie kopijavimo rinkinio" else "Archyvo įrašas jau yra kopijavimo rinkinyje")
+        message(if (merged.addedCount > 0) "Archive entry added to the copy set" else "Archive entry is already in the copy set")
     }
 
     fun closePreview() {
@@ -3139,23 +3139,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             "file" -> {
                 val path = uri.path
                 if (path.isNullOrBlank()) {
-                    message("Failo kelias nepateiktas", true)
+                    message("No file path was provided", true)
                     return
                 }
                 runCatching { File(path).canonicalFile }
                     .onSuccess { file ->
                         if (file.isFile && file.canRead()) open(graph.localFiles.toEntry(file))
-                        else message("Failas nepasiekiamas", true)
+                        else message("File unavailable", true)
                     }
-                    .onFailure { message(it.message ?: "Failas nepasiekiamas", true) }
+                    .onFailure { message(it.message ?: "File unavailable", true) }
             }
             "content" -> viewModelScope.launch {
                 graph.contentFiles.describe(uri, mimeType).fold(
                     onSuccess = { _preview.value = PreviewTarget.ContentFile(it) },
-                    onFailure = { message(it.message ?: "Failo atidaryti nepavyko", true) },
+                    onFailure = { message(it.message ?: "Could not open the file", true) },
                 )
             }
-            else -> message("Šio tipo nuoroda nepalaikoma", true)
+            else -> message("This link type is unsupported", true)
         }
     }
 
@@ -3163,19 +3163,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val fallbackName = getApplication<Application>().appString(R.string.generated_extracted_name)
         val destinationRoot = runCatching { File(destinationDirectory).canonicalFile }.getOrElse {
             password?.fill('\u0000')
-            message(it.message ?: "Paskirties katalogas nepasiekiamas", true)
+            message(it.message ?: "The destination folder is unavailable", true)
             return
         }
         if (!destinationRoot.isDirectory || !destinationRoot.canWrite()) {
             password?.fill('\u0000')
-            message("Paskirties katalogas neleidžia rašyti", true)
+            message("The destination folder is not writable", true)
             return
         }
         val destination = FileSystemRules.keepBothTarget(
             File(destinationRoot, ArchiveMutationRules.extractionBaseName(file.name, fallbackName)),
         )
         val staging = File(destinationRoot, ".shovel-extract-${UUID.randomUUID()}")
-        graph.operationManager.submit("Išpakuojamas ${file.name}") {
+        graph.operationManager.submit("Extracting ${file.name}") {
             try {
                 graph.archives.extract(
                     archiveFile = file.file,
@@ -3184,8 +3184,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     operation = this,
                     fallbackExtractedName = fallbackName,
                 )
-                require(!destination.exists() && staging.renameTo(destination)) { "Išpakavimo užbaigti nepavyko" }
-                message("Archyvas išpakuotas į ${destination.absolutePath}")
+                require(!destination.exists() && staging.renameTo(destination)) { "Could not finish extraction" }
+                message("Archive extracted to ${destination.absolutePath}")
                 closePreview()
                 refreshPanel()
             } finally {
@@ -3194,7 +3194,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }.onFailure {
             password?.fill('\u0000')
-            message(it.message ?: "Išpakavimo pradėti nepavyko", true)
+            message(it.message ?: "Could not start extraction", true)
         }
     }
 
@@ -3212,24 +3212,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val requestedPaths = (sourcePaths ?: state.selectedPaths).distinct()
         if (requestedPaths.isEmpty() && !createEmpty) {
             password?.fill('\u0000')
-            message("Nepasirinkta failų", true)
+            message("No files selected", true)
             return
         }
         if (createEmpty && password != null) {
             password.fill('\u0000')
-            message("Tuščias archyvas negali būti užšifruotas", true)
+            message("An empty archive cannot be encrypted", true)
             return
         }
         val availableByPath = state.entries.associateBy(FileEntry::absolutePath)
         val selectedEntries = requestedPaths.mapNotNull(availableByPath::get)
         if (selectedEntries.size != requestedPaths.size || selectedEntries.any { !it.isReadable || !it.file.exists() }) {
             password?.fill('\u0000')
-            message("Kai kurie pasirinkti failai nebepasiekiami", true)
+            message("Some selected files are no longer available", true)
             return
         }
         val validatedName = FileSystemRules.validateFileName(name).getOrElse { error ->
             password?.fill('\u0000')
-            message(error.message ?: "Netinkamas archyvo pavadinimas", true)
+            message(error.message ?: "Invalid archive name", true)
             return
         }
         val suffix = when (format) {
@@ -3242,29 +3242,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val fileName = if (validatedName.lowercase().endsWith(suffix)) validatedName else validatedName + suffix
         FileSystemRules.validateFileName(fileName).getOrElse { error ->
             password?.fill('\u0000')
-            message(error.message ?: "Netinkamas archyvo pavadinimas", true)
+            message(error.message ?: "Invalid archive name", true)
             return
         }
         val directory = runCatching { File(state.path).canonicalFile }.getOrElse { error ->
             password?.fill('\u0000')
-            message(error.message ?: "Aplankas nepasiekiamas", true)
+            message(error.message ?: "Folder unavailable", true)
             return
         }
         val requestedOutput = runCatching { File(directory, fileName).canonicalFile }.getOrElse { error ->
             password?.fill('\u0000')
-            message(error.message ?: "Netinkamas archyvo pavadinimas", true)
+            message(error.message ?: "Invalid archive name", true)
             return
         }
         if (requestedOutput.parentFile != directory || !FileSystemRules.isContained(directory, requestedOutput)) {
             password?.fill('\u0000')
-            message("Netinkamas archyvo pavadinimas", true)
+            message("Invalid archive name", true)
             return
         }
         val output = FileSystemRules.keepBothTarget(requestedOutput)
         val sources = selectedEntries.map(FileEntry::file)
         val validatedCompressionLevel = runCatching { ArchiveCompressionRules.validated(compressionLevel) }.getOrElse { error ->
             password?.fill('\u0000')
-            message(error.message ?: "Netinkamas suspaudimo lygis", true)
+            message(error.message ?: "Invalid compression level", true)
             return
         }
         graph.operationManager.submit("Kuriamas ${output.name}") {
@@ -3281,7 +3281,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.onSuccess { clearSelection() }
             .onFailure {
                 password?.fill('\u0000')
-                message(it.message ?: "Archyvo kūrimo pradėti nepavyko", true)
+                message(it.message ?: "Could not start archive creation", true)
             }
     }
 
@@ -3350,25 +3350,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun trashSearchSelection() {
         val selected = orderedSearchSelection()
         if (selected.isEmpty()) return
-        graph.operationManager.submit("Keliama į šiukšlinę") {
+        graph.operationManager.submit("Moving to trash") {
             graph.trash.moveToTrash(selected, this)
             clearSearchSelection()
             rerunSearchIfVisible()
-        }.onFailure { message(it.message ?: "Operacijos pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start the operation", true) }
     }
 
     fun trashDuplicateCopies(paths: List<String>) {
         val selected = paths.distinct()
         if (selected.isEmpty()) return
         if (selected.size > 10_000) {
-            message("Vienu metu galima tvarkyti iki 10 000 dublikatų", true)
+            message("You can handle up to 10,000 duplicates at a time", true)
             return
         }
         val analysisSnapshot = _analysisState.value
-        graph.operationManager.submit("Dublikatų kopijos keliamos į šiukšlinę") {
+        graph.operationManager.submit("Moving duplicate copies to trash") {
             graph.trash.moveToTrash(selected, this)
             viewModelScope.launch { reanalyze(analysisSnapshot) }
-        }.onFailure { message(it.message ?: "Dublikatų tvarkymo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start duplicate cleanup", true) }
     }
 
     fun batchRenameSearchSelection() {
@@ -3405,11 +3405,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         if (compact.isEmpty()) {
-            message("Nepasirinkta paieškos vieta", true)
+            message("No search location selected", true)
             return
         }
         if (compact.size > limit) {
-            message("Vienu metu galima analizuoti iki $limit vietų", true)
+            message("You can analyze up to $limit locations at a time", true)
         }
         _cleanupRequested.value = false
         _section.value = AppSection.ANALYZE
@@ -3419,7 +3419,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun analyzeAllStorage() {
         val paths = _roots.value.map(StorageRoot::path)
         if (paths.isEmpty()) {
-            message("Nepasirinkta paieškos vieta", true)
+            message("No search location selected", true)
             return
         }
         startAnalysis(paths, allStorage = true)
@@ -3432,7 +3432,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .take(com.shovel.filemanager.search.FileSearchEngine.MAX_ANALYSIS_ROOTS)
             .toList()
         if (normalizedPaths.isEmpty()) {
-            message("Analizės vieta nebepasiekiama", true)
+            message("The analyzed location is no longer accessible", true)
             return
         }
         val requestId = ++analysisRequestId
@@ -3506,16 +3506,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val target = _preview.value ?: return
         if (!canDeletePreview(target)) return
         if (_fileEditState.value.hasUnsavedChanges || _fileEditState.value.saving || _fileEditState.value.modifyingPdf) {
-            message("Pirmiausia išsaugokite arba atmeskite redagavimo pakeitimus", true)
+            message("Save or discard the editing changes first", true)
             return
         }
 
         val title = when (target) {
-            is PreviewTarget.LocalFile -> "Keliama į šiukšlinę"
-            is PreviewTarget.Archive -> "Keliama į šiukšlinę"
-            is PreviewTarget.TrashFile -> "Šalinama iš šiukšliadėžės"
-            is PreviewTarget.ContentFile -> "Šalinamas Android dokumentas"
-            is PreviewTarget.PrivilegedFile -> if (target.localOrigin) "Keliama į šiukšlinę" else "Šalinamas apsaugotas failas"
+            is PreviewTarget.LocalFile -> "Moving to trash"
+            is PreviewTarget.Archive -> "Moving to trash"
+            is PreviewTarget.TrashFile -> "Deleting from Trash"
+            is PreviewTarget.ContentFile -> "Deleting Android document"
+            is PreviewTarget.PrivilegedFile -> if (target.localOrigin) "Moving to trash" else "Deleting protected file"
             is PreviewTarget.ArchiveEntry -> return
         }
         graph.operationManager.submit(title) {
@@ -3549,7 +3549,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     refreshTrash()
                 }
             }
-        }.onFailure { message(it.message ?: "Trynimo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start deletion", true) }
     }
 
     fun cancelAnalysis() {
@@ -3570,7 +3570,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun loadCleanupFolder(path: String): Result<DirectoryContentsUsage> {
         val state = _analysisState.value
         val rootPaths = state.rootPaths.ifEmpty { listOfNotNull(state.rootPath) }
-        if (rootPaths.isEmpty()) return Result.failure(IllegalStateException("Analizės vieta nebepasiekiama"))
+        if (rootPaths.isEmpty()) return Result.failure(IllegalStateException("The analyzed location is no longer accessible"))
         return try {
             Result.success(graph.search.directoryContentsWithUsage(rootPaths, path))
         } catch (cancelled: CancellationException) {
@@ -3605,7 +3605,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         similarImagesRunning = false,
                         similarImagesAnalyzed = true,
-                        similarImagesError = error.message ?: "Panašių nuotraukų analizė nepavyko",
+                        similarImagesError = error.message ?: "Similar-photo analysis failed",
                     )
                 }
             }
@@ -3616,20 +3616,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val state = _analysisState.value
         val rootPaths = state.rootPaths.ifEmpty { listOfNotNull(state.rootPath) }
         val roots = runCatching { rootPaths.map { File(it).canonicalFile }.distinctBy(File::getAbsolutePath) }.getOrElse {
-            message("Analizės vieta nebepasiekiama", true)
+            message("The analyzed location is no longer accessible", true)
             return
         }
         if (roots.isEmpty()) return
         val selected = runCatching {
             val requested = paths.distinct()
-            require(requested.size <= 10_000) { "Vienu metu galima tvarkyti iki 10 000 elementų" }
+            require(requested.size <= 10_000) { "You can handle up to 10,000 items at a time" }
             requested.asSequence()
                 .map(::File)
                 .map { it.canonicalFile }
                 .filter(File::exists)
                 .onEach { candidate ->
                     require(AnalysisSelectionRules.canModify(roots, candidate)) {
-                        "Pasirinktas failas yra už analizuojamo aplanko ribų"
+                        "A selected file is outside the analyzed folder"
                     }
                 }
                 .sortedBy { it.absolutePath.length }
@@ -3639,7 +3639,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 .toList()
         }.getOrElse {
-            message(it.message ?: "Valymo pasirinkimas netinkamas", true)
+            message(it.message ?: "The cleanup selection is invalid", true)
             return
         }
         if (selected.isEmpty()) return
@@ -3649,13 +3649,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val retainedRoots = protected.retained
         val movable = protected.movable
         if (movable.isEmpty()) {
-            message("Iš kiekvienos vienodų ar panašių failų grupės palikite bent vieną failą", true)
+            message("Keep at least one file from every identical or similar group", true)
             return
         }
-        graph.operationManager.submit("Pasirinkti failai keliami į šiukšlinę") {
-            if (retainedRoots.isNotEmpty()) note("Iš kiekvienos vienodų ar panašių failų grupės palikite bent vieną failą")
+        graph.operationManager.submit("Moving selected files to trash") {
+            if (retainedRoots.isNotEmpty()) note("Keep at least one file from every identical or similar group")
             graph.trash.moveToTrash(movable.map(File::getAbsolutePath), this)
-            if (retainedRoots.isNotEmpty()) message("Iš kiekvienos vienodų ar panašių failų grupės palikite bent vieną failą")
+            if (retainedRoots.isNotEmpty()) message("Keep at least one file from every identical or similar group")
             val removedPaths = movable.asSequence()
                 .filterNot(File::exists)
                 .map(File::getAbsolutePath)
@@ -3663,7 +3663,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (removedPaths.isNotEmpty()) {
                 _analysisState.update { current -> AnalysisResultPruner.prune(current, removedPaths) }
             }
-        }.onFailure { message(it.message ?: "Valymo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start cleanup", true) }
     }
 
     fun refreshTrash() {
@@ -3805,7 +3805,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     } else current
                 }
             }
-            .onFailure { message(it.message ?: "Šiukšliadėžės vaizdo nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save the Trash folder view setting", true) }
     }
 
     fun setTrashSort(mode: SortMode, direction: SortDirection) {
@@ -3814,13 +3814,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val identity = trashDirectoryIdentity(snapshot.itemId, snapshot.relativePath)
         runCatching { graph.navigation.setDirectorySortSettings(identity, DirectorySortSettings(mode, direction)) }
             .onSuccess { _trashBrowser.update { it.copy(sortMode = mode, sortDirection = direction) } }
-            .onFailure { message(it.message ?: "Šiukšliadėžės rūšiavimo nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save the Trash folder sort setting", true) }
     }
 
     fun emptyTrash() {
         if (_trashBrowser.value.emptying) return
         _trashBrowser.update { it.copy(emptying = true, error = null) }
-        graph.operationManager.submit("Išvaloma šiukšliadėžė") {
+        graph.operationManager.submit("Emptying Trash") {
             try {
                 val result = graph.trash.emptyAll(this)
                 _trashBrowser.update {
@@ -3835,12 +3835,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 when {
                     result.failedItems > 0 -> {
-                        val summary = "Ištrinta: ${result.deletedItems}, nepavyko ištrinti: ${result.failedItems}"
+                        val summary = "Deleted: ${result.deletedItems}, failed to delete: ${result.failedItems}"
                         completeWithErrors(result.failedItems, summary)
                         message(summary, true)
                     }
-                    result.deletedItems > 0 -> message("Šiukšliadėžė išvalyta: ${result.deletedItems}")
-                    else -> message("Šiukšliadėžė jau tuščia")
+                    result.deletedItems > 0 -> message("Trash emptied: ${result.deletedItems}")
+                    else -> message("Trash is already empty")
                 }
             } finally {
                 _trashBrowser.update { current -> current.copy(emptying = false) }
@@ -3848,7 +3848,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }.onFailure {
             _trashBrowser.update { current -> current.copy(emptying = false) }
-            message(it.message ?: "Trynimo pradėti nepavyko", true)
+            message(it.message ?: "Could not start deletion", true)
         }
     }
 
@@ -3857,7 +3857,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _recents.value = graph.navigation.recents()
             _savedSearches.value = graph.navigation.savedSearches()
             _homeCustomization.value = graph.navigation.homeCustomization(homeBuiltInShortcuts)
-        }.onFailure { message(it.message ?: "Naršymo nustatymų perskaityti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not read navigation settings", true) }
     }
 
     fun setTrashRetentionPeriod(period: TrashRetentionPeriod) {
@@ -3865,24 +3865,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             graph.trashRetentionSettings.save(period)
             graph.trashRetentionScheduler.synchronize(period)
         }.onFailure {
-            message(it.message ?: "Šiukšliadėžės saugojimo laikotarpio išsaugoti nepavyko", true)
+            message(it.message ?: "Could not save the Trash retention period", true)
             return
         }
         _trashBrowser.update { it.copy(retentionPeriod = period) }
         if (period == TrashRetentionPeriod.NEVER) return
-        graph.operationManager.submit("Valomi pasenę šiukšliadėžės elementai") {
+        graph.operationManager.submit("Removing expired Trash items") {
             val result = graph.trash.deleteExpired(period)
             if (result.failedItems > 0) {
-                if (result.deletedItems == 0) error("Pasenusių elementų ištrinti nepavyko")
-                completeWithErrors(result.failedItems, "Kai kurių pasenusių elementų ištrinti nepavyko")
+                if (result.deletedItems == 0) error("Could not delete expired items")
+                completeWithErrors(result.failedItems, "Could not delete some expired items")
             }
             refreshTrash()
-        }.onFailure { message(it.message ?: "Automatinio šiukšliadėžės valymo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start automatic Trash cleanup", true) }
     }
 
     fun copyArchiveEntriesToSet(entryPaths: Set<String>) {
         val target = _preview.value as? PreviewTarget.Archive ?: run {
-            message("Į kopijavimo rinkinį galima pridėti tik vietinio archyvo įrašus", true)
+            message("Only entries from a local archive can be added to the copy set", true)
             return
         }
         val sources = runCatching {
@@ -3895,12 +3895,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ).normalized()
             }
         }.getOrElse { error ->
-            message(error.message ?: "Archyvo įrašų pridėti nepavyko", true)
+            message(error.message ?: "Could not add the archive entries", true)
             return
         }
         val existing = _shovelClipboard.value
         if (existing?.moveAfterVerifiedCopies == true) {
-            message("Archyvo įrašų negalima pridėti prie iškirpimo rinkinio", true)
+            message("Archive entries cannot be added to a cut set", true)
             return
         }
         val merged = ClipboardMergeRules.merge(
@@ -3911,7 +3911,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
         _shovelClipboard.value = ShovelClipboardState(merged.items)
         _clipboard.value = null
-        message(if (merged.addedCount > 0) "Archyvo įrašai pridėti prie kopijavimo rinkinio: ${merged.addedCount}" else "Pasirinkti archyvo įrašai jau yra kopijavimo rinkinyje")
+        message(if (merged.addedCount > 0) "Archive entries added to the copy set: ${merged.addedCount}" else "The selected archive entries are already in the copy set")
     }
 
     private val _archivePasswordRequest = MutableStateFlow<FileEntry?>(null)
@@ -3946,7 +3946,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 .onFailure { error ->
                     password.fill('\u0000')
-                    message(error.message ?: "Archyvo perskaityti nepavyko", true)
+                    message(error.message ?: "Could not read the archive", true)
                 }
         }
     }
@@ -3961,7 +3961,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { graph.archives.list(archiveFile, archivePasswordFor(archiveFile)) }
                 .onSuccess { entries -> updateArchivePreviewEntries(target, entries) }
-                .onFailure { message(it.message ?: "Archyvo perskaityti nepavyko", true) }
+                .onFailure { message(it.message ?: "Could not read the archive", true) }
         }
     }
 
@@ -3980,7 +3980,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         graph.localFiles.toEntry(file).copy(name = entryPath.replace('\\', '/').substringAfterLast('/')),
                     )
                 },
-                onFailure = { message(it.message ?: "Archyvo įrašo atidaryti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not open the archive entry", true) },
             )
         }
     }
@@ -3993,10 +3993,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             runCatching {
                 graph.archives.extractEntries(archive, entryPaths, stage, null, archivePasswordFor(archive))
                 val files = stage.walkTopDown().filter(File::isFile).take(MAX_ARCHIVE_SHARE_FILES + 1).toList()
-                require(files.isNotEmpty()) { "Pasirinktuose archyvo įrašuose nėra failų" }
-                require(files.size <= MAX_ARCHIVE_SHARE_FILES) { "Pasirinkta per daug archyvo failų bendrinimui" }
+                require(files.isNotEmpty()) { "The selected archive entries contain no files" }
+                require(files.size <= MAX_ARCHIVE_SHARE_FILES) { "Too many archive files selected for sharing" }
                 graph.localShare.sharePrepared(files).getOrThrow()
-            }.onFailure { message(it.message ?: "Archyvo įrašų bendrinti nepavyko", true) }
+            }.onFailure { message(it.message ?: "Could not share the archive entries", true) }
             stage.deleteRecursively()
         }
     }
@@ -4006,22 +4006,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val archive = target.archiveFile() ?: return
         val destinationParent = runCatching { File(destinationDirectory).canonicalFile }.getOrElse {
             password?.fill('\u0000')
-            message(it.message ?: "Paskirties katalogas nepasiekiamas", true)
+            message(it.message ?: "The destination folder is unavailable", true)
             return
         }
         if (!destinationParent.isDirectory || !destinationParent.canWrite()) {
             password?.fill('\u0000')
-            message("Paskirties katalogas neleidžia rašyti", true)
+            message("The destination folder is not writable", true)
             return
         }
         val archiveBaseName = ArchiveMutationRules.extractionBaseName(archive.name, "extracted")
         val destination = FileSystemRules.keepBothTarget(File(destinationParent, archiveBaseName))
         val staging = File(destinationParent, ".shovel-extract-${UUID.randomUUID()}")
-        graph.operationManager.submit("Išpakuojami pasirinkti archyvo įrašai") {
+        graph.operationManager.submit("Extracting the selected archive entries") {
             try {
                 graph.archives.extractEntries(archive, entryPaths, staging, this, password ?: archivePasswordFor(archive))
-                require(!destination.exists() && staging.renameTo(destination)) { "Išpakavimo užbaigti nepavyko" }
-                message("Pasirinkti archyvo įrašai išpakuoti į ${destination.absolutePath}")
+                require(!destination.exists() && staging.renameTo(destination)) { "Could not finish extraction" }
+                message("Selected archive entries extracted to ${destination.absolutePath}")
                 refreshPanel()
             } finally {
                 password?.fill('\u0000')
@@ -4029,48 +4029,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }.onFailure {
             password?.fill('\u0000')
-            message(it.message ?: "Išpakavimo pradėti nepavyko", true)
+            message(it.message ?: "Could not start extraction", true)
         }
     }
 
     fun renameArchiveEntry(entryPath: String, newName: String) {
         val target = _preview.value as? PreviewTarget.Archive ?: run {
-            message("Nuotolinio archyvo tiesiogiai pakeisti negalima", true)
+            message("A remote archive cannot be modified directly", true)
             return
         }
-        graph.operationManager.submit("Pervadinamas archyvo įrašas") {
+        graph.operationManager.submit("Renaming the archive entry") {
             runCatching { graph.archives.renameZipEntry(target.file.file, entryPath, newName) }
                 .onSuccess { entries -> updateArchivePreviewEntries(target, entries) }
-                .onFailure { error -> message(error.message ?: "Archyvo įrašo pervadinti nepavyko", true); throw error }
-        }.onFailure { message(it.message ?: "Pervadinimo pradėti nepavyko", true) }
+                .onFailure { error -> message(error.message ?: "Could not rename the archive entry", true); throw error }
+        }.onFailure { message(it.message ?: "Could not start renaming", true) }
     }
 
     fun deleteArchiveEntries(entryPaths: Set<String>) {
         val target = _preview.value as? PreviewTarget.Archive ?: run {
-            message("Nuotolinio archyvo tiesiogiai pakeisti negalima", true)
+            message("A remote archive cannot be modified directly", true)
             return
         }
-        graph.operationManager.submit("Šalinami archyvo įrašai") {
+        graph.operationManager.submit("Removing archive entries") {
             runCatching { graph.archives.deleteZipEntries(target.file.file, entryPaths) }
                 .onSuccess { entries -> updateArchivePreviewEntries(target, entries) }
-                .onFailure { error -> message(error.message ?: "Archyvo įrašų pašalinti nepavyko", true); throw error }
-        }.onFailure { message(it.message ?: "Šalinimo pradėti nepavyko", true) }
+                .onFailure { error -> message(error.message ?: "Could not remove the archive entries", true); throw error }
+        }.onFailure { message(it.message ?: "Could not start removal", true) }
     }
 
     fun moveArchiveEntriesOut(entryPaths: Set<String>) {
         val target = _preview.value as? PreviewTarget.Archive ?: run {
-            message("Nuotolinio archyvo tiesiogiai pakeisti negalima", true)
+            message("A remote archive cannot be modified directly", true)
             return
         }
         val archive = target.file.file
         val destination = FileSystemRules.keepBothTarget(File(archive.parentFile, "${archive.name.substringBeforeLast('.')} - moved"))
-        graph.operationManager.submit("Perkeliami archyvo įrašai") {
+        graph.operationManager.submit("Moving archive entries") {
             graph.archives.extractEntries(archive, entryPaths, destination, this)
             val entries = graph.archives.deleteZipEntries(archive, entryPaths)
             updateArchivePreviewEntries(target, entries)
             refreshPanel()
-            message("Archyvo įrašai perkelti į ${destination.name}")
-        }.onFailure { message(it.message ?: "Perkėlimo pradėti nepavyko", true) }
+            message("Archive entries moved to ${destination.name}")
+        }.onFailure { message(it.message ?: "Could not start moving", true) }
     }
 
     fun shareFileCategorySelection() {
@@ -4081,10 +4081,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val result = if (state.category == FileCategory.INSTALLED_APPS) {
                 val temporaryRoot = File(getApplication<Application>().cacheDir, "installed-share-${UUID.randomUUID()}")
                 runCatching {
-                    require(temporaryRoot.mkdirs()) { "Laikinos APK vietos sukurti nepavyko" }
+                    require(temporaryRoot.mkdirs()) { "Could not create the temporary APK location" }
                     val staged = selected.mapIndexed { index, entry ->
                         val appDirectory = File(temporaryRoot, index.toString()).apply {
-                            require(mkdirs()) { "Laikinos APK vietos sukurti nepavyko" }
+                            require(mkdirs()) { "Could not create the temporary APK location" }
                         }
                         graph.fileCategories.stageInstalledApp(entry, appDirectory)
                     }
@@ -4096,15 +4096,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             result.fold(
                 onSuccess = {
                     clearFileCategorySelection()
-                    message("Atidarytas bendrinimo pasirinkimas")
+                    message("Share chooser opened")
                 },
-                onFailure = { message(it.message ?: "Bendrinimo atidaryti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not open sharing", true) },
             )
         }
     }
 
     fun installedAppExportCancelled() {
-        message("APK išsaugojimas atšauktas")
+        message("APK export was cancelled")
     }
 
     fun shareSelection() {
@@ -4114,9 +4114,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             graph.localShare.share(paths).fold(
                 onSuccess = { count ->
                     clearSelection()
-                    message(if (count == 1) "Atidarytas bendrinimo pasirinkimas" else "Bendrinimui paruošta: $count")
+                    message(if (count == 1) "Share chooser opened" else "Ready to share: $count")
                 },
-                onFailure = { message(it.message ?: "Bendrinimo atidaryti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not open sharing", true) },
             )
         }
     }
@@ -4124,7 +4124,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun shareEntry(path: String) {
         viewModelScope.launch {
             graph.localShare.share(listOf(path)).onFailure {
-                message(it.message ?: "Bendrinimo atidaryti nepavyko", true)
+                message(it.message ?: "Could not open sharing", true)
             }
         }
     }
@@ -4133,12 +4133,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val selected = paths.distinct().take(1_001)
         if (selected.isEmpty()) return
         if (selected.size > 1_000) {
-            message("Vienu metu galima bendrinti iki 1 000 elementų", true)
+            message("You can share up to 1,000 items at a time", true)
             return
         }
         viewModelScope.launch {
             graph.localShare.share(selected).onFailure {
-                message(it.message ?: "Bendrinimo atidaryti nepavyko", true)
+                message(it.message ?: "Could not open sharing", true)
             }
         }
     }
@@ -4164,7 +4164,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 val candidates = normalized.map(::File).filter(File::exists)
                     .filterNot { it.absolutePath in shortcutsByPath }
-                require(candidates.isNotEmpty()) { "Pasirinktos vietos jau pažymėtos" }
+                require(candidates.isNotEmpty()) { "The selected locations are already bookmarked" }
                 val updated = candidates.fold(current) { value, file ->
                     HomeCustomizationRules.addShortcut(
                         value,
@@ -4179,15 +4179,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }.onSuccess { (updated, added) ->
             _homeCustomization.value = updated
-            message(if (added) "Pridėta prie žymelių" else "Pašalinta iš žymelių")
-        }.onFailure { message(it.message ?: "Žymelės pridėti nepavyko", true) }
+            message(if (added) "Added to bookmarks" else "Removed from bookmarks")
+        }.onFailure { message(it.message ?: "Could not add the bookmark", true) }
     }
 
     fun openQuickPath(path: String) {
         val file = File(path)
         if (file.isDirectory) navigate(path)
         else if (file.isFile) open(graph.localFiles.toEntry(file))
-        else message("Vieta nebeegzistuoja", true)
+        else message("The location no longer exists", true)
     }
 
     fun openQuickPathFromHome(path: String) {
@@ -4197,7 +4197,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             file.isFile -> {
                 open(graph.localFiles.toEntry(file))
             }
-            else -> message("Vieta nebeegzistuoja", true)
+            else -> message("The location no longer exists", true)
         }
     }
 
@@ -4207,14 +4207,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openStorageRoot(root: StorageRoot) {
         val target = runCatching { File(root.path).canonicalPath }.getOrElse {
-            message(it.message ?: "Saugykla nepasiekiama", true)
+            message(it.message ?: "Storage is unavailable", true)
             return
         }
         val knownRoot = _roots.value.firstOrNull { candidate ->
             runCatching { File(candidate.path).canonicalPath == target }.getOrDefault(false)
         }
         if (knownRoot == null || !File(target).isDirectory) {
-            message("Saugykla nebeprijungta", true)
+            message("Storage is no longer connected", true)
             return
         }
 
@@ -4223,11 +4223,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun openLocalDirectoryFromHome(targetPath: String) {
         val target = runCatching { File(targetPath).canonicalPath }.getOrElse {
-            message(it.message ?: "Kelias nepasiekiamas", true)
+            message(it.message ?: "Path unavailable", true)
             return
         }
         if (!File(target).isDirectory) {
-            message("Vieta nebeegzistuoja", true)
+            message("The location no longer exists", true)
             return
         }
 
@@ -4258,12 +4258,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearRecents() {
         runCatching { graph.navigation.clearRecents(); _recents.value = emptyList() }
-            .onFailure { message(it.message ?: "Istorijos išvalyti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not clear history", true) }
     }
 
     fun saveSearch(name: String, roots: List<String>, filters: SearchFilters) {
         runCatching { _savedSearches.value = graph.navigation.saveSearch(name, roots, filters) }
-            .onFailure { message(it.message ?: "Paieškos išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save the search", true) }
     }
 
     fun runSavedSearch(search: SavedSearch) {
@@ -4273,31 +4273,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun removeSavedSearch(id: String) {
         runCatching { _savedSearches.value = graph.navigation.removeSearch(id) }
-            .onFailure { message(it.message ?: "Paieškos pašalinti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not remove the search", true) }
     }
 
     fun setAppLockEnabled(enabled: Boolean) {
         runCatching { graph.appLock.setEnabled(enabled) }
-            .onSuccess { message(if (enabled) "Programos užraktas įjungtas" else "Programos užraktas išjungtas") }
-            .onFailure { message(it.message ?: "Užrakto nustatymo pakeisti nepavyko", true) }
+            .onSuccess { message(if (enabled) "App lock enabled" else "App lock disabled") }
+            .onFailure { message(it.message ?: "Could not change the lock setting", true) }
     }
 
     fun restoreTrash(id: String) {
         viewModelScope.launch {
             graph.trash.restore(id).fold(
                 onSuccess = { refreshTrash(); refreshPanel() },
-                onFailure = { message(it.message ?: "Atkurti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not restore", true) },
             )
         }
     }
 
     fun deleteTrashForever(id: String) {
-        graph.operationManager.submit("Šalinama iš šiukšliadėžės") {
+        graph.operationManager.submit("Deleting from Trash") {
             graph.trash.deleteForever(id, this).fold(
                 onSuccess = { refreshTrash() },
-                onFailure = { message(it.message ?: "Ištrinti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not delete", true) },
             )
-        }.onFailure { message(it.message ?: "Trynimo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start deletion", true) }
     }
 
     private fun openClonedAppStorage() {
@@ -4316,13 +4316,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         if (graph.advancedAccess.state.value.activeBackend == AdvancedAccessBackend.SHIZUKU_SHELL) {
             message(
-                "Sistemos šaknis / atveriama tik su Root arba Shizuku root prieiga. Tai nėra įprastas Android leidimas ir Shovel jo neapeina.",
+                "The system root / can be opened only with Root or Shizuku root access. This is not a standard Android permission, and Shovel does not bypass it.",
                 true,
             )
             return
         }
         message(
-            "Klonuotų programų saugykla priklauso kitam Android profiliui. Jai reikia Root arba Shizuku su root teisėmis.",
+            "Cloned app storage belongs to another Android profile. Root or Shizuku with root privileges is required.",
             true,
         )
     }
@@ -4335,7 +4335,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             graph.safFiles.addLocation(uri, title).fold(
                 onSuccess = { refreshSafLocations() },
-                onFailure = { message(it.message ?: "Vietos pridėti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not add the location", true) },
             )
         }
     }
@@ -4347,18 +4347,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (_safBrowser.value.location?.uri == uri) closeSafBrowser()
                     refreshSafLocations()
                 },
-                onFailure = { message(it.message ?: "Vietos pašalinti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not remove the location", true) },
             )
         }
     }
 
     fun revealLocalEntry(path: String) {
         val file = runCatching { File(path).canonicalFile }.getOrElse {
-            message("Vieta nebeegzistuoja", true)
+            message("The location no longer exists", true)
             return
         }
         val parent = file.parentFile?.takeIf(File::isDirectory) ?: run {
-            message("Vieta nebeegzistuoja", true)
+            message("The location no longer exists", true)
             return
         }
         openLocalDirectoryFromHome(parent.absolutePath)
@@ -4376,7 +4376,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             graph.safFiles.renameLocation(uri, title).fold(
                 onSuccess = { refreshSafLocations() },
-                onFailure = { message(it.message ?: "Pervadinti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not rename", true) },
             )
         }
     }
@@ -4384,7 +4384,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun openSafLocation(location: SafLocation) {
         val display = savedDirectoryDisplaySettings(safDirectoryIdentity(location.uri))
         val sort = runCatching { graph.navigation.directorySortSettings(safDirectoryIdentity(location.uri)) }
-            .onFailure { message(it.message ?: "Dokumentų vietos rūšiavimo nustatymo perskaityti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not read document-location sort settings", true) }
             .getOrDefault(DirectorySortSettings())
         _safBrowser.value = SafBrowserUiState(
             location = location,
@@ -4426,7 +4426,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
             }
-                .onFailure { message(it.message ?: "Failo atidaryti nepavyko", true) }
+                .onFailure { message(it.message ?: "Could not open the file", true) }
         }
     }
 
@@ -4498,7 +4498,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (current.currentUri == uri) current.withSafDisplaySettings(settings) else current
                 }
             }
-            .onFailure { message(it.message ?: "Dokumentų vietos rodinio nustatymo išsaugoti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not save document-location display settings", true) }
     }
 
     fun setSafSort(mode: SortMode, direction: SortDirection) {
@@ -4509,7 +4509,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _safBrowser.update { current ->
                 if (current.currentUri == uri) current.copy(sortMode = mode, sortDirection = direction) else current
             }
-        }.onFailure { message(it.message ?: "Dokumentų vietos rūšiavimo nustatymo išsaugoti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not save document-location sort settings", true) }
     }
 
     fun createSafDirectory(name: String) = mutateSaf { uri -> graph.safFiles.createDirectory(uri, name).map { Unit } }
@@ -4520,19 +4520,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             graph.safFiles.rename(entry.uri, name).fold(
                 onSuccess = { refreshSafBrowser() },
-                onFailure = { message(it.message ?: "Pervadinti nepavyko", true) },
+                onFailure = { message(it.message ?: "Could not rename", true) },
             )
         }
     }
 
     fun deleteSafEntry(entry: SafEntry) {
-        graph.operationManager.submit("Šalinamas ${entry.name}") {
+        graph.operationManager.submit("Removing ${entry.name}") {
             setTotals(1, entry.sizeBytes.takeIf { !entry.directory })
             checkpoint()
             graph.safFiles.delete(entry.uri).getOrThrow()
             progress(itemDelta = 1, byteDelta = entry.sizeBytes.takeIf { !entry.directory } ?: 0L, currentName = entry.name)
             refreshSafBrowser()
-        }.onFailure { message(it.message ?: "Trynimo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start deletion", true) }
     }
 
     suspend fun loadSafSelectionInfo(uris: Collection<String>): Result<FileSelectionSummary> =
@@ -4541,16 +4541,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun copyLocalToSaf(localPath: String) {
         val destinationUri = _safBrowser.value.currentUri ?: return
         val source = File(localPath)
-        graph.operationManager.submit("Kopijuojama į Android vietą") {
+        graph.operationManager.submit("Copying to an Android location") {
             graph.safFiles.copyFromLocal(source, destinationUri, this).getOrThrow()
-        }.onFailure { message(it.message ?: "Kopijavimo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start copying", true) }
     }
 
     fun copySafToLocal(entry: SafEntry) {
         val destination = File(_panel.value.path)
-        graph.operationManager.submit("Kopijuojama iš Android vietos") {
+        graph.operationManager.submit("Copying from an Android location") {
             graph.safFiles.copyToLocal(entry.uri, destination, this).getOrThrow()
-        }.onFailure { message(it.message ?: "Kopijavimo pradėti nepavyko", true) }
+        }.onFailure { message(it.message ?: "Could not start copying", true) }
     }
 
     fun closeSafBrowser() {
@@ -4571,7 +4571,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun resumeOperation(id: String) = graph.operationManager.resume(id)
     fun retryOperation(id: String) {
         graph.durableTransfers.retry(id).onFailure { error ->
-            message(error.message ?: "Operacijos pakartoti nepavyko", true)
+            message(error.message ?: "Could not retry the operation", true)
         }
     }
     fun dismissFinishedOperations() = graph.operationManager.dismissFinished()
@@ -4603,7 +4603,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun savedThumbnailMode(directoryIdentity: String): Boolean = runCatching {
         graph.navigation.thumbnailsEnabled(directoryIdentity)
     }.onFailure {
-        message(it.message ?: "Katalogo vaizdo nustatymo perskaityti nepavyko", true)
+        message(it.message ?: "Could not read folder display settings", true)
     }.getOrDefault(false)
 
     private fun savedDirectoryDisplaySettings(
@@ -4611,7 +4611,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         fallbackGrid: Boolean = false,
     ): DirectoryDisplaySettings {
         val saved = runCatching { graph.navigation.directoryDisplaySettings(directoryIdentity) }
-            .onFailure { message(it.message ?: "Katalogo vaizdo nustatymo perskaityti nepavyko", true) }
+            .onFailure { message(it.message ?: "Could not read folder display settings", true) }
             .getOrNull()
         return saved ?: DirectoryDisplaySettings(
             layoutMode = if (fallbackGrid) DirectoryLayoutMode.GRID else DirectoryLayoutMode.LIST,
@@ -4622,7 +4622,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun savedDirectorySortSettings(directoryIdentity: String): DirectorySortSettings = runCatching {
         graph.navigation.directorySortSettings(directoryIdentity)
     }.onFailure {
-        message(it.message ?: "Katalogo rūšiavimo nustatymo perskaityti nepavyko", true)
+        message(it.message ?: "Could not read the folder sort setting", true)
     }.getOrDefault(DirectorySortSettings())
 
     private fun fileCategoryIdentity(category: FileCategory): String =
@@ -4780,7 +4780,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun persistWorkspace() {
         if (workspaceSaveRequests.trySend(currentWorkspace()).isFailure) {
-            message("Darbo sesijos išsaugojimo eilė nepasiekiama", true)
+            message("The workspace save queue is unavailable", true)
         }
     }
 
@@ -4833,7 +4833,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             operation(uri).fold(
                 onSuccess = { refreshSafBrowser() },
-                onFailure = { message(it.message ?: "Veiksmas nepavyko", true) },
+                onFailure = { message(it.message ?: "Action failed", true) },
             )
         }
     }
@@ -4863,7 +4863,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val privilegedPreviewRemoved = graph.privilegedFiles.discardPreview(target.privilegedCachedFile())
             val archivePreviewRemoved = discardArchiveMaterializations()
             if (!editRemoved || !privilegedPreviewRemoved || !archivePreviewRemoved) {
-                message("Laikinos redagavimo kopijos pašalinti nepavyko", true)
+                message("The temporary editing copy could not be removed", true)
             }
         }
     }
@@ -4897,15 +4897,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         runCatching {
             archiveMaterializationMutex.withLock {
                 val target = _preview.value
-                val archive = target.archiveFile() ?: throw IllegalStateException("Archyvas nebeatidarytas")
+                val archive = target.archiveFile() ?: throw IllegalStateException("The archive is no longer open")
                 val normalizedPath = ArchiveMutationRules.normalizePath(entryPath)
                 val info = target.archiveEntries().firstOrNull {
                     !it.directory && runCatching { ArchiveMutationRules.normalizePath(it.name) }.getOrNull() == normalizedPath
-                } ?: throw IllegalArgumentException("Archyvo įrašas neberastas")
-                require(info.sizeBytes in 0..maximumBytes) { "Archyvo įrašas per didelis greitajai peržiūrai" }
+                } ?: throw IllegalArgumentException("The archive entry no longer exists")
+                require(info.sizeBytes in 0..maximumBytes) { "The archive entry is too large for quick preview" }
                 prepareArchiveMaterializationCache(archive)
                 archiveMaterializedFiles[normalizedPath]?.takeIf(File::isFile)?.let { return@withLock it }
-                require(archiveMaterializedFiles.size < MAX_ARCHIVE_MATERIALIZED_ITEMS) { "Archyvo peržiūrų riba pasiekta" }
+                require(archiveMaterializedFiles.size < MAX_ARCHIVE_MATERIALIZED_ITEMS) { "The archive preview limit was reached" }
                 val extension = info.name.substringAfterLast('.', "").take(10).filter(Char::isLetterOrDigit)
                 val destination = File(
                     requireNotNull(archiveMaterializationRoot),
@@ -4924,7 +4924,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         archiveMaterializationRoot?.deleteRecursively()
         archiveMaterializedFiles.clear()
         val root = File(getApplication<Application>().cacheDir, "archive-previews/${UUID.randomUUID()}")
-        require(root.mkdirs()) { "Archyvo peržiūros talpyklos sukurti nepavyko" }
+        require(root.mkdirs()) { "Could not create the archive preview cache" }
         archiveMaterializationKey = key
         archiveMaterializationRoot = root
     }
@@ -4944,9 +4944,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (!forceOverwrite && !session.originRevision.hasSameContent(current)) {
             return EditSaveResult.Conflict(EditConflict(origin.label, session.originRevision, current))
         }
-        require(origin.canWrite) { "Originalas skirtas tik skaityti; naudokite „Išsaugoti kaip“" }
+        require(origin.canWrite) { "The original is read-only; use Save as" }
         val verified = writeContentDestination(session, uri)
-        require(session.workingRevision.hasSameContent(verified)) { "Išsaugoto failo patikra nepavyko" }
+        require(session.workingRevision.hasSameContent(verified)) { "Saved-file verification failed" }
         return EditSaveResult.Saved(verified)
     }
 
@@ -4972,13 +4972,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun writeContentDestination(session: EditSession, destination: Uri): FileRevision {
-        require(destination.scheme == "content") { "Pasirinkta vieta neįrašoma per Android dokumentų sistemą" }
+        require(destination.scheme == "content") { "The selected destination is not writable through Android Documents" }
         val resolver = getApplication<Application>().contentResolver
         graph.editSessions.writeWorkingCopy(session) {
             openContentOutput(resolver, destination)
         }
         return graph.editSessions.revisionFromStream(modifiedAtMillis = null) {
-            resolver.openInputStream(destination) ?: throw FileNotFoundException("Išsaugoto failo patikrinti nepavyko")
+            resolver.openInputStream(destination) ?: throw FileNotFoundException("The saved file could not be verified")
         }
     }
 
@@ -4986,7 +4986,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val readWriteTruncateOutput = runCatching { resolver.openOutputStream(uri, "rwt") }.getOrNull()
         return readWriteTruncateOutput
             ?: runCatching { resolver.openOutputStream(uri, "wt") }.getOrNull()
-            ?: throw FileNotFoundException("Pasirinkta vieta nesuteikė įrašomo srauto")
+            ?: throw FileNotFoundException("The selected location did not provide a writable stream")
     }
 
 }

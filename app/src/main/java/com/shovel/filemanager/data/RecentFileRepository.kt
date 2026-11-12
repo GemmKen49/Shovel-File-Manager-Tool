@@ -59,7 +59,7 @@ class RecentFileRepository(
     private fun record(key: String, path: String, recordedAtMillis: Long) {
         val file = File(path).canonicalFile
         if (!file.exists() || !file.canRead()) return
-        require(file.absolutePath.length <= MAX_PATH_LENGTH) { "Failo kelias per ilgas" }
+        require(file.absolutePath.length <= MAX_PATH_LENGTH) { "The file path is too long" }
         val current = readTracked(key).filterNot { it.first == file.absolutePath }.toMutableList()
         current.add(0, file.absolutePath to recordedAtMillis.coerceAtLeast(0))
         while (current.size > MAX_TRACKED_ITEMS) current.removeAt(current.lastIndex)
@@ -69,14 +69,14 @@ class RecentFileRepository(
             }
         }
         check(preferences.edit().putString(key, array.toString()).commit()) {
-            "Naujausių failų įrašo išsaugoti nepavyko"
+            "Could not save the recent-file entry"
         }
     }
 
     suspend fun latest(limit: Int = MAX_VISIBLE_ITEMS): List<RecentFileItem> = snapshot(limit).combined.take(limit)
 
     suspend fun snapshot(limit: Int = MAX_VISIBLE_ITEMS): RecentFilesSnapshot = withContext(Dispatchers.IO) {
-        require(limit in 1..MAX_VISIBLE_ITEMS) { "Naujausių failų riba netinkama" }
+        require(limit in 1..MAX_VISIBLE_ITEMS) { "The recent-files limit is invalid" }
         val opened = candidatesFromPreferences(KEY_TRACKED)
         val added = LinkedHashMap<String, Candidate>()
         candidatesFromPreferences(KEY_ADDED).forEach { candidate -> added[candidate.file.absolutePath] = candidate }
@@ -137,9 +137,9 @@ class RecentFileRepository(
 
     private fun readTracked(key: String): List<Pair<String, Long>> {
         val raw = preferences.getString(key, "[]") ?: "[]"
-        require(raw.length <= MAX_PREFERENCES_BYTES) { "Naujausių failų įrašas per didelis" }
+        require(raw.length <= MAX_PREFERENCES_BYTES) { "The recent-file record is too large" }
         val array = JSONArray(raw)
-        require(array.length() <= MAX_TRACKED_ITEMS) { "Naujausių failų riba viršyta" }
+        require(array.length() <= MAX_TRACKED_ITEMS) { "The recent-files limit was exceeded" }
         return (0 until array.length()).mapNotNull { index ->
             runCatching {
                 val item = array.getJSONObject(index)

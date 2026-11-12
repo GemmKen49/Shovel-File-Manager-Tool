@@ -86,8 +86,8 @@ internal fun DeviceCleanupDialog(
         DeviceCleanupPage.RUNNING_APPS -> snapshot?.runningApps.orEmpty()
     }
     ShovelModalDialog(
-        title = "Įrenginio valymas",
-        subtitle = "Tik peržiūra — Shovel nieko nešalina be jūsų patvirtinimo",
+        title = "Device cleanup",
+        subtitle = "Review only — Shovel removes nothing without your confirmation",
         icon = Icons.Rounded.CleaningServices,
         onDismissRequest = onDismiss,
         expandedContent = true,
@@ -96,8 +96,8 @@ internal fun DeviceCleanupDialog(
             TextButton(
                 onClick = onRefresh,
                 enabled = !state.loading,
-            ) { LText("Atnaujinti") }
-            TextButton(onClick = onDismiss) { LText("Uždaryti") }
+            ) { LText("Refresh") }
+            TextButton(onClick = onDismiss) { LText("Close") }
         },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -109,51 +109,51 @@ internal fun DeviceCleanupDialog(
                 FilterChip(
                     selected = page == DeviceCleanupPage.UNUSED_APPS,
                     onClick = { page = DeviceCleanupPage.UNUSED_APPS },
-                    label = { LText("Nenaudojamos programos") },
+                    label = { LText("Unused apps") },
                     modifier = Modifier.testTag("cleanup_unused_tab"),
                 )
                 FilterChip(
                     selected = page == DeviceCleanupPage.APP_CACHE,
                     onClick = { page = DeviceCleanupPage.APP_CACHE },
-                    label = { LText("Programų talpykla") },
+                    label = { LText("App cache") },
                     modifier = Modifier.testTag("cleanup_cache_tab"),
                 )
                 FilterChip(
                     selected = page == DeviceCleanupPage.RUNNING_APPS,
                     onClick = { page = DeviceCleanupPage.RUNNING_APPS },
-                    label = { LText("Veikiančios programos") },
+                    label = { LText("Running apps") },
                     modifier = Modifier.testTag("cleanup_running_tab"),
                 )
             }
             if (state.loading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             if (state.loading && snapshot == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    LText("Nuskaitomos programos…")
+                    LText("Scanning apps…")
                 }
             } else if (state.error != null && snapshot == null) {
                 Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         LText(state.error, color = MaterialTheme.colorScheme.error)
-                        OutlinedButton(onClick = onRefresh) { LText("Bandyti dar kartą") }
+                        OutlinedButton(onClick = onRefresh) { LText("Try again") }
                     }
                 }
             } else if (snapshot == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    OutlinedButton(onClick = onRefresh) { LText("Bandyti dar kartą") }
+                    OutlinedButton(onClick = onRefresh) { LText("Try again") }
                 }
             } else if (page != DeviceCleanupPage.RUNNING_APPS && !snapshot.usageAccessGranted) {
                 Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        LText("Norint apskaičiuoti nenaudojamas programas ir teikėjo nurodytus talpyklos dydžius, reikia Android naudojimo prieigos.")
-                        Button(onClick = onGrantUsageAccess) { LText("Atidaryti naudojimo prieigos nustatymus") }
-                        LText("Shovel nevalo kitų programų talpyklos ir nešalina programų be Android patvirtinimo.", style = MaterialTheme.typography.bodySmall)
+                        LText("Android usage access is required to calculate unused apps and provider-reported cache sizes.")
+                        Button(onClick = onGrantUsageAccess) { LText("Open usage access settings") }
+                        LText("Shovel does not clear another app’s cache and does not uninstall anything without Android confirmation.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             } else if (page == DeviceCleanupPage.RUNNING_APPS && !snapshot.privilegedAppAccessAvailable) {
                 Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        LText("Veikiančių programų atmintį ir jų stabdymą Android leidžia tik per aktyvią Root arba Shizuku prieigą.")
-                        LText("Įjunkite Root arba Shizuku skiltyje „Daugiau“, tada atnaujinkite šį sąrašą.", style = MaterialTheme.typography.bodySmall)
+                        LText("Android allows app memory inspection and force stopping only through active Root or Shizuku access.")
+                        LText("Enable Root or Shizuku under More, then refresh this list.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             } else {
@@ -163,17 +163,17 @@ internal fun DeviceCleanupDialog(
                         LText(it, modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error)
                     }
                     if (snapshot.runningAppsTruncated) {
-                        LText("Rodomos pirmos 500 veikiančių programų", modifier = Modifier.padding(horizontal = 16.dp))
+                        LText("Showing the first 500 running apps", modifier = Modifier.padding(horizontal = 16.dp))
                     }
                 } else if (snapshot.appsTruncated) {
-                    LText("Rodomi pirmi 500 programų įrašų", modifier = Modifier.padding(horizontal = 16.dp))
+                    LText("Showing the first 500 apps", modifier = Modifier.padding(horizontal = 16.dp))
                 }
                 if (page == DeviceCleanupPage.UNUSED_APPS && !snapshot.usageHistoryAvailable) {
-                    LText("Naudojimo statistika nepasiekiama", modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error)
+                    LText("Usage statistics are unavailable", modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error)
                 }
                 if (page == DeviceCleanupPage.APP_CACHE && snapshot.cacheSizesAvailable.not()) {
                     LText(
-                        "Ši Android versija neatskleidžia kitų programų talpyklos dydžių. Peržiūrėkite juos programos sistemos nustatymuose.",
+                        "This Android build does not expose other apps’ cache sizes. Open an app’s system settings to review it.",
                         modifier = Modifier.padding(horizontal = 16.dp),
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -187,13 +187,13 @@ internal fun DeviceCleanupDialog(
                     if (apps.isEmpty() && !state.loading) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             LText(if (page == DeviceCleanupPage.UNUSED_APPS) {
-                                if (snapshot.usageHistoryAvailable) "Nė viena programa neatitinka 90 dienų taisyklės" else "Naudojimo statistika nepasiekiama"
+                                if (snapshot.usageHistoryAvailable) "No apps meet the 90-day rule" else "Usage statistics are unavailable"
                             } else if (page == DeviceCleanupPage.APP_CACHE) {
-                                "Nėra pasiekiamų talpyklos dydžių"
+                                "No cache sizes are available"
                             } else if (snapshot.privilegedAppAccessError != null) {
-                                "Veikiančių programų nuskaityti nepavyko"
+                                "Could not scan running apps"
                             } else {
-                                "Nėra veikiančių naudotojo programų"
+                                "There are no running user apps"
                             })
                         }
                     } else {
@@ -217,33 +217,33 @@ internal fun DeviceCleanupDialog(
     }
     clearCacheApp?.let { app ->
         ShovelModalDialog(
-            title = "Išvalyti talpyklą",
+            title = "Clear cache",
             subtitle = app.label,
             icon = Icons.Rounded.CleaningServices,
             onDismissRequest = { clearCacheApp = null },
             modifier = Modifier.testTag("cleanup_cache_instructions"),
             actions = {
-                TextButton(onClick = { clearCacheApp = null }) { LText("Atšaukti") }
+                TextButton(onClick = { clearCacheApp = null }) { LText("Cancel") }
                 TextButton(onClick = { clearCacheApp = null; onOpenAppSettings(app.packageName) }, modifier = Modifier.testTag("cleanup_cache_settings")) {
-                    LText("Atidaryti nustatymus")
+                    LText("Open settings")
                 }
             },
         ) {
             LText(
-                "Android nustatymuose atverkite „Saugykla ir talpykla“, tada „Išvalyti talpyklą“. Nesirinkite duomenų išvalymo. Shovel kitų programų talpyklos tiesiogiai nevalo.",
+                "In Android settings, open Storage and cache, then Clear cache. Do not choose Clear data. Shovel cannot clear other apps' caches directly.",
                 modifier = Modifier.padding(20.dp),
             )
         }
     }
     forceStopApp?.let { app ->
         ShovelModalDialog(
-            title = "Sustabdyti programą?",
+            title = "Force stop app?",
             subtitle = app.label,
             icon = Icons.Rounded.Stop,
             onDismissRequest = { forceStopApp = null },
             modifier = Modifier.testTag("cleanup_force_stop_confirmation"),
             actions = {
-                TextButton(onClick = { forceStopApp = null }) { LText("Atšaukti") }
+                TextButton(onClick = { forceStopApp = null }) { LText("Cancel") }
                 TextButton(
                     onClick = {
                         forceStopApp = null
@@ -251,11 +251,11 @@ internal fun DeviceCleanupDialog(
                     },
                     enabled = !state.loading,
                     modifier = Modifier.testTag("cleanup_force_stop_confirm"),
-                ) { LText("Sustabdyti", color = MaterialTheme.colorScheme.error) }
+                ) { LText("Stop", color = MaterialTheme.colorScheme.error) }
             },
         ) {
             LText(
-                "Programa bus priverstinai sustabdyta. Neišsaugotas jos darbas gali būti prarastas.",
+                "The app will be force stopped. Its unsaved work may be lost.",
                 modifier = Modifier.padding(20.dp),
             )
         }
@@ -286,30 +286,30 @@ private fun DeviceCleanupAppRow(
                 Text(app.packageName, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 LText(
                     if (showRam) {
-                        app.ramBytes?.let(FileSystemRules::humanBytes) ?: "RAM dydis nepasiekiamas"
+                        app.ramBytes?.let(FileSystemRules::humanBytes) ?: "RAM usage is unavailable"
                     } else if (showCache) {
-                        app.cacheBytes?.let(FileSystemRules::humanBytes) ?: "Talpyklos dydis nepasiekiamas"
+                        app.cacheBytes?.let(FileSystemRules::humanBytes) ?: "Cache size unavailable"
                     } else {
                         app.lastUsedMillis?.let { dateFormat.format(Date(it)) }
-                            ?: "Nėra užregistruoto naudojimo per pasiekiamą laikotarpį"
+                            ?: "No recorded use in the available history"
                     },
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             IconButton(onClick = onOpenSettings, modifier = Modifier.testTag("cleanup_settings_${app.packageName}")) {
-                Icon(Icons.Rounded.Settings, contentDescription = uiText("Atidaryti nustatymus"))
+                Icon(Icons.Rounded.Settings, contentDescription = uiText("Open settings"))
             }
             if (showRam) {
                 IconButton(onClick = onForceStop, modifier = Modifier.testTag("cleanup_force_stop_${app.packageName}")) {
-                    Icon(Icons.Rounded.Stop, contentDescription = uiText("Sustabdyti programą"), tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Rounded.Stop, contentDescription = uiText("Force stop app"), tint = MaterialTheme.colorScheme.error)
                 }
             } else if (!showCache) {
                 IconButton(onClick = onUninstall, modifier = Modifier.testTag("cleanup_uninstall_${app.packageName}")) {
-                    Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Pašalinti programą"))
+                    Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Uninstall app"))
                 }
             } else {
                 IconButton(onClick = onClearCache, modifier = Modifier.testTag("cleanup_cache_${app.packageName}")) {
-                    Icon(Icons.Rounded.CleaningServices, contentDescription = uiText("Išvalyti talpyklą"))
+                    Icon(Icons.Rounded.CleaningServices, contentDescription = uiText("Clear cache"))
                 }
             }
         }

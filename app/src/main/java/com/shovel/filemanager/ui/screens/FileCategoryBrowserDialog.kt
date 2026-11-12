@@ -218,53 +218,53 @@ private fun FileCategoryBrowserContent(state: FileCategoryUiState, viewModel: Ma
                                 onClick = viewModel::shareFileCategorySelection,
                                 modifier = Modifier.testTag("category_share"),
                             ) {
-                                Icon(Icons.Rounded.Share, contentDescription = uiText("Bendrinti"))
+                                Icon(Icons.Rounded.Share, contentDescription = uiText("Share"))
                             }
                             IconButton(
                                 enabled = state.selectedPaths.size == 1,
                                 onClick = { infoTarget = state.entries.firstOrNull { it.absolutePath in state.selectedPaths } },
                                 modifier = Modifier.testTag("category_info"),
                             ) {
-                                Icon(Icons.Rounded.Info, contentDescription = uiText("Informacija"))
+                                Icon(Icons.Rounded.Info, contentDescription = uiText("Info"))
                             }
                             IconButton(
                                 onClick = { exportAppsLauncher.launch(null) },
                                 modifier = Modifier.testTag("installed_apps_export"),
                             ) {
-                                Icon(Icons.Rounded.SaveAlt, contentDescription = uiText("Išsaugoti APK"))
+                                Icon(Icons.Rounded.SaveAlt, contentDescription = uiText("Save APK"))
                             }
                             IconButton(
                                 enabled = state.selectedPaths.size == 1,
                                 onClick = viewModel::uninstallSelectedInstalledApp,
                                 modifier = Modifier.testTag("installed_apps_uninstall"),
                             ) {
-                                Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Pašalinti programą"), tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Uninstall app"), tint = MaterialTheme.colorScheme.error)
                             }
                         } else {
                             IconButton(
                                 onClick = viewModel::shareFileCategorySelection,
                                 modifier = Modifier.testTag("category_share"),
                             ) {
-                                Icon(Icons.Rounded.Share, contentDescription = uiText("Bendrinti"))
+                                Icon(Icons.Rounded.Share, contentDescription = uiText("Share"))
                             }
                             IconButton(onClick = { viewModel.copyFileCategorySelection(move = false) }) {
-                                Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
+                                Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Copy"))
                             }
                             IconButton(
                                 enabled = state.selectedPaths.size == 1,
                                 onClick = { infoTarget = state.entries.firstOrNull { it.absolutePath in state.selectedPaths } },
                                 modifier = Modifier.testTag("category_info"),
                             ) {
-                                Icon(Icons.Rounded.Info, contentDescription = uiText("Informacija"))
+                                Icon(Icons.Rounded.Info, contentDescription = uiText("Info"))
                             }
                             IconButton(onClick = { viewModel.copyFileCategorySelection(move = true) }) {
-                                Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti"))
+                                Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Move"))
                             }
                             IconButton(
                                 onClick = { confirmTrash = true },
                                 modifier = Modifier.testTag("category_delete"),
                             ) {
-                                Icon(Icons.Rounded.Delete, contentDescription = uiText("Į šiukšlinę"), tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Rounded.Delete, contentDescription = uiText("Move to trash"), tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -273,10 +273,10 @@ private fun FileCategoryBrowserContent(state: FileCategoryUiState, viewModel: Ma
                         title = state.parentFolderPath?.let { File(it).name } ?: uiText(categoryTitle(state.category)),
                         path = uiText(
                             when {
-                                state.loadingMore -> "Rodoma ${state.entries.size} elementų · kraunama daugiau"
-                                state.nextOffset != null -> "Rodoma ${state.entries.size} elementų · daugiau slenkant žemyn"
-                                state.truncated -> "Rodomi pirmi ${state.entries.size} elementai pagal pasirinktą tvarką"
-                                else -> "${state.entries.size} elementų"
+                                state.loadingMore -> "Showing ${state.entries.size} items · loading more"
+                                state.nextOffset != null -> "Showing ${state.entries.size} items · more as you scroll down"
+                                state.truncated -> "Showing the first ${state.entries.size} items in the chosen order"
+                                else -> "${state.entries.size} items"
                             },
                         ),
                         backEnabled = true,
@@ -297,16 +297,16 @@ private fun FileCategoryBrowserContent(state: FileCategoryUiState, viewModel: Ma
                     ) {
                         Box {
                             IconButton(onClick = { menu = true }, modifier = Modifier.testTag("category_more")) {
-                                Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Aplanko veiksmai"))
+                                Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Folder actions"))
                             }
                             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                 if (state.category == FileCategory.INSTALLED_APPS) {
                                     com.shovel.filemanager.data.InstalledAppScope.entries.forEach { scope ->
                                         DropdownMenuItem(
                                             text = { LText(when (scope) {
-                                                com.shovel.filemanager.data.InstalledAppScope.USER -> "Naudotojo programos"
-                                                com.shovel.filemanager.data.InstalledAppScope.ALL -> "Visos programos"
-                                                com.shovel.filemanager.data.InstalledAppScope.SYSTEM -> "Sisteminės programos"
+                                                com.shovel.filemanager.data.InstalledAppScope.USER -> "User apps"
+                                                com.shovel.filemanager.data.InstalledAppScope.ALL -> "All apps"
+                                                com.shovel.filemanager.data.InstalledAppScope.SYSTEM -> "System apps"
                                             }) },
                                             leadingIcon = { Checkbox(checked = state.appScope == scope, onCheckedChange = null) },
                                             onClick = { menu = false; viewModel.setInstalledAppScope(scope) },
@@ -314,7 +314,7 @@ private fun FileCategoryBrowserContent(state: FileCategoryUiState, viewModel: Ma
                                         )
                                     }
                                     DropdownMenuItem(
-                                        text = { LText("Programų duomenų aplankai") },
+                                        text = { LText("App data folders") },
                                         leadingIcon = { Icon(Icons.Rounded.Folder, contentDescription = null) },
                                         modifier = Modifier.testTag("installed_apps_data_folders"),
                                         onClick = { menu = false; viewModel.openInstalledAppFolders() },
@@ -350,7 +350,7 @@ private fun FileCategoryBrowserContent(state: FileCategoryUiState, viewModel: Ma
                                 )
                                 HorizontalDivider()
                                 DropdownMenuItem(
-                                    text = { LText("Atnaujinti") },
+                                    text = { LText("Refresh") },
                                     leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
                                     enabled = !state.loading,
                                     onClick = { menu = false; viewModel.refreshFileCategory() },
@@ -400,7 +400,7 @@ private fun FileCategoryBrowserContent(state: FileCategoryUiState, viewModel: Ma
                             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             item {
                                 FilterChip(selected = selectedParent == null, onClick = { selectedParent = null },
-                                    label = { LText("Visi aplankai") })
+                                    label = { LText("All folders") })
                             }
                             items(parentPaths, key = { it }) { path ->
                                 FilterChip(selected = selectedParent == path, onClick = { selectedParent = path },
@@ -435,7 +435,7 @@ private fun FileCategoryBrowserContent(state: FileCategoryUiState, viewModel: Ma
                         LText(state.error, color = MaterialTheme.colorScheme.error)
                     }
                     visible.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        LText(if (state.viewMode == CategoryViewMode.FOLDERS) "Atitinkančių aplankų nėra" else "Atitinkančių failų nėra")
+                        LText(if (state.viewMode == CategoryViewMode.FOLDERS) "No matching folders" else "No matching files")
                     }
                     state.grid -> Box {
                     LazyVerticalGrid(
@@ -630,25 +630,25 @@ private fun CategoryGridItem(
 }
 
 private fun categoryTitle(category: FileCategory): String = when (category) {
-    FileCategory.IMAGES -> "Vaizdai"
-    FileCategory.VIDEOS -> "Vaizdo įrašai"
-    FileCategory.AUDIO -> "Garso įrašai"
-    FileCategory.DOCUMENTS -> "Dokumentai"
-    FileCategory.ARCHIVES -> "Archyvai"
-    FileCategory.APPS -> "Programos"
-    FileCategory.INSTALLED_APPS -> "Įdiegtos programos"
+    FileCategory.IMAGES -> "Images"
+    FileCategory.VIDEOS -> "Videos"
+    FileCategory.AUDIO -> "Audio"
+    FileCategory.DOCUMENTS -> "Documents"
+    FileCategory.ARCHIVES -> "Archives"
+    FileCategory.APPS -> "Apps"
+    FileCategory.INSTALLED_APPS -> "Installed apps"
 }
 
 @Composable
 private fun CategoryScopeLabel(mode: CategoryViewMode, scope: CategoryStorageScope) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        LText(if (mode == CategoryViewMode.FILES) "Failai" else "Aplankai", maxLines = 1)
+        LText(if (mode == CategoryViewMode.FILES) "Files" else "Folders", maxLines = 1)
         LText(" · ")
         LText(when (scope) {
-            CategoryStorageScope.ALL -> "Visa saugykla"
-            CategoryStorageScope.INTERNAL -> "Vidinė atmintis"
-            CategoryStorageScope.USB -> "USB saugykla"
-            CategoryStorageScope.SD_CARD -> "SD kortelė"
+            CategoryStorageScope.ALL -> "All storage"
+            CategoryStorageScope.INTERNAL -> "Internal storage"
+            CategoryStorageScope.USB -> "USB storage"
+            CategoryStorageScope.SD_CARD -> "SD card"
         }, maxLines = 1)
     }
 }

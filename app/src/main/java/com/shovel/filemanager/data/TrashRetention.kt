@@ -29,7 +29,7 @@ class TrashRetentionSettings(context: Context) {
 
     fun save(period: TrashRetentionPeriod) {
         check(preferences.edit().putString(KEY_PERIOD, period.name).commit()) {
-            "Šiukšliadėžės saugojimo laikotarpio išsaugoti nepavyko"
+            "Could not save the Trash retention period"
         }
     }
 

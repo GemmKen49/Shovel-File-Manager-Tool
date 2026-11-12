@@ -11,10 +11,10 @@ object FileSystemRules {
     fun validateFileName(name: String): Result<String> {
         val candidate = name.trim()
         return when {
-            candidate.isEmpty() -> Result.failure(IllegalArgumentException("Pavadinimas negali būti tuščias"))
-            candidate == "." || candidate == ".." -> Result.failure(IllegalArgumentException("Netinkamas pavadinimas"))
-            candidate.length > MAX_FILE_NAME_LENGTH -> Result.failure(IllegalArgumentException("Failo vardas per ilgas"))
-            forbiddenCharacters.any(candidate::contains) -> Result.failure(IllegalArgumentException("Pavadinime yra neleistinų ženklų"))
+            candidate.isEmpty() -> Result.failure(IllegalArgumentException("The name cannot be empty"))
+            candidate == "." || candidate == ".." -> Result.failure(IllegalArgumentException("Invalid name"))
+            candidate.length > MAX_FILE_NAME_LENGTH -> Result.failure(IllegalArgumentException("The file name is too long"))
+            forbiddenCharacters.any(candidate::contains) -> Result.failure(IllegalArgumentException("The name contains invalid characters"))
             else -> Result.success(candidate)
         }
     }
@@ -35,7 +35,7 @@ object FileSystemRules {
             val candidate = File(parent, "$stem ($index)$extension")
             if (!candidate.exists()) return candidate
         }
-        throw IllegalStateException("Nepavyko parinkti laisvo pavadinimo")
+        throw IllegalStateException("Could not choose an available name")
     }
 
     fun detectKind(file: File): EntryKind {

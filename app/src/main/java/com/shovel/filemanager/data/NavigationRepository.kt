@@ -195,7 +195,7 @@ class NavigationRepository(context: Context) {
     }
 
     fun clearRecents() {
-        check(preferences.edit().remove(KEY_RECENTS).commit()) { "Istorijos išvalyti nepavyko" }
+        check(preferences.edit().remove(KEY_RECENTS).commit()) { "Could not clear history" }
     }
 
     fun thumbnailsEnabled(directoryIdentity: String): Boolean {
@@ -276,7 +276,7 @@ class NavigationRepository(context: Context) {
 
     fun directoryDisplayDefaults(): DirectoryDisplayDefaults? {
         val raw = preferences.getString(KEY_DIRECTORY_DISPLAY_DEFAULTS, null) ?: return null
-        require(raw.length <= MAX_DIRECTORY_DISPLAY_BYTES) { "Bendras rodinio nustatymas per didelis" }
+        require(raw.length <= MAX_DIRECTORY_DISPLAY_BYTES) { "The shared view setting is too large" }
         val item = JSONObject(raw)
         return DirectoryDisplayDefaults(
             settings = decodeDirectoryDisplaySettings(item),
@@ -301,13 +301,13 @@ class NavigationRepository(context: Context) {
             .put("sortMode", defaults.sortMode.name)
             .put("sortDirection", defaults.sortDirection.name)
             .toString()
-        require(encoded.length <= MAX_DIRECTORY_DISPLAY_BYTES) { "Bendras rodinio nustatymas per didelis" }
+        require(encoded.length <= MAX_DIRECTORY_DISPLAY_BYTES) { "The shared view setting is too large" }
         val editor = preferences.edit()
             .putString(KEY_DIRECTORY_DISPLAY_DEFAULTS, encoded)
             .putString(KEY_DIRECTORY_DISPLAY_INDEX, "[]")
             .remove(KEY_THUMBNAIL_DIRECTORIES)
         index.forEach { digest -> editor.remove("$KEY_DIRECTORY_DISPLAY_PREFIX$digest") }
-        check(editor.commit()) { "Bendro rodinio nustatymo įrašyti nepavyko" }
+        check(editor.commit()) { "Could not write the global display setting" }
     }
 
     @Synchronized
@@ -320,7 +320,7 @@ class NavigationRepository(context: Context) {
         if (updated != index) {
             editor.putString(KEY_DIRECTORY_DISPLAY_INDEX, JSONArray().apply { updated.forEach(::put) }.toString())
         }
-        check(editor.commit()) { "Katalogo rodinio nustatymo pašalinti nepavyko" }
+        check(editor.commit()) { "Could not remove the folder display setting" }
     }
 
     fun savedSearches(): List<SavedSearch> {
@@ -330,7 +330,7 @@ class NavigationRepository(context: Context) {
             val roots = item.optJSONArray("roots")?.let { rootsArray ->
                 (0 until rootsArray.length()).map(rootsArray::getString)
             }.orEmpty().ifEmpty { listOf(item.getString("root")) }
-            require(roots.size <= MAX_SEARCH_ROOTS) { "Išsaugotos paieškos vietų riba viršyta" }
+            require(roots.size <= MAX_SEARCH_ROOTS) { "The saved-search location limit was exceeded" }
             SavedSearch(
                 id = item.getString("id"),
                 name = item.getString("name"),
@@ -354,15 +354,15 @@ class NavigationRepository(context: Context) {
     }
 
     fun saveSearch(name: String, rootPaths: List<String>, filters: SearchFilters): List<SavedSearch> {
-        require(name.isNotBlank()) { "Įveskite paieškos pavadinimą" }
+        require(name.isNotBlank()) { "Enter a search name" }
         require(
             filters.query.isNotBlank() || filters.minBytes != null || filters.maxBytes != null ||
                 filters.modifiedAfter != null || filters.modifiedBefore != null || filters.kinds.isNotEmpty(),
-        ) { "Pasirinkite bent vieną paieškos sąlygą" }
-        require(rootPaths.isNotEmpty()) { "Nepasirinkta paieškos vieta" }
-        require(rootPaths.size <= MAX_SEARCH_ROOTS) { "Vienai paieškai galima išsaugoti iki $MAX_SEARCH_ROOTS vietų" }
+        ) { "Select at least one search condition" }
+        require(rootPaths.isNotEmpty()) { "No search location selected" }
+        require(rootPaths.size <= MAX_SEARCH_ROOTS) { "A search can save up to $MAX_SEARCH_ROOTS locations" }
         val updated = savedSearches().toMutableList()
-        require(updated.size < MAX_SEARCHES) { "Išsaugotų paieškų riba viršyta" }
+        require(updated.size < MAX_SEARCHES) { "The saved-search limit was exceeded" }
         updated += SavedSearch(
             id = UUID.randomUUID().toString(),
             name = name.trim().take(80),
@@ -416,8 +416,8 @@ class NavigationRepository(context: Context) {
 
     private fun validateDirectoryIdentity(value: String): String {
         val identity = value.trim()
-        require(identity.isNotEmpty()) { "Katalogo tapatybė tuščia" }
-        require(identity.length <= MAX_DIRECTORY_IDENTITY_LENGTH) { "Katalogo tapatybė per ilga" }
+        require(identity.isNotEmpty()) { "The folder identity is empty" }
+        require(identity.length <= MAX_DIRECTORY_IDENTITY_LENGTH) { "The folder identity is too long" }
         return identity
     }
 
@@ -426,15 +426,15 @@ class NavigationRepository(context: Context) {
 
     private fun readDirectorySettingsItem(identity: String): JSONObject? {
         val raw = preferences.getString(directoryDisplayStorageKey(identity), null) ?: return null
-        require(raw.length <= MAX_DIRECTORY_DISPLAY_BYTES) { "Katalogo rodinio nustatymas per didelis" }
+        require(raw.length <= MAX_DIRECTORY_DISPLAY_BYTES) { "The folder display setting is too large" }
         val item = JSONObject(raw)
-        require(item.getString("identity") == identity) { "Katalogo rodinio tapatybė nesutampa" }
+        require(item.getString("identity") == identity) { "The folder display identity does not match" }
         return item
     }
 
     private fun writeDirectorySettingsItem(identity: String, item: JSONObject) {
         val encoded = item.toString()
-        require(encoded.length <= MAX_DIRECTORY_DISPLAY_BYTES) { "Katalogo rodinio nustatymas per didelis" }
+        require(encoded.length <= MAX_DIRECTORY_DISPLAY_BYTES) { "The folder display setting is too large" }
         val digest = directoryDisplayDigest(identity)
         val index = readStringArray(KEY_DIRECTORY_DISPLAY_INDEX, MAX_DIRECTORY_DISPLAY_SETTINGS)
             .filterNot { it == digest }
@@ -446,7 +446,7 @@ class NavigationRepository(context: Context) {
             .putString("$KEY_DIRECTORY_DISPLAY_PREFIX$digest", encoded)
             .putString(KEY_DIRECTORY_DISPLAY_INDEX, JSONArray().apply { index.forEach(::put) }.toString())
         evicted.forEach { editor.remove("$KEY_DIRECTORY_DISPLAY_PREFIX$it") }
-        check(editor.commit()) { "Katalogo rodinio nustatymo įrašyti nepavyko" }
+        check(editor.commit()) { "Could not save the folder display setting" }
     }
 
     private fun directoryDisplayDigest(identity: String): String = MessageDigest.getInstance("SHA-256")
@@ -498,14 +498,14 @@ class NavigationRepository(context: Context) {
 
     private fun readArray(key: String, limit: Int): JSONArray {
         val raw = preferences.getString(key, "[]") ?: "[]"
-        require(raw.length <= 1_000_000) { "Nustatymų įrašas per didelis" }
+        require(raw.length <= 1_000_000) { "The settings record is too large" }
         val array = JSONArray(raw)
-        require(array.length() <= limit) { "Nustatymų elementų riba viršyta" }
+        require(array.length() <= limit) { "The settings item limit was exceeded" }
         return array
     }
 
     private fun commit(key: String, value: JSONArray) {
-        check(preferences.edit().putString(key, value.toString()).commit()) { "Nustatymų įrašyti nepavyko" }
+        check(preferences.edit().putString(key, value.toString()).commit()) { "Could not save the settings" }
     }
 
     private fun JSONObject.optionalLong(key: String): Long? = if (has(key) && !isNull(key)) getLong(key) else null

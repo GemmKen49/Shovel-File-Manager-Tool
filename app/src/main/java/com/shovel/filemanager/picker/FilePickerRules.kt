@@ -57,15 +57,15 @@ internal class FilePickerBoundary(roots: List<File>) {
     }
 
     fun selected(paths: List<String>, request: FilePickerRequest, mimeType: (File) -> String): List<File> {
-        require(paths.isNotEmpty() && paths.size <= request.selectionLimit) { "Failų paruošti nepavyko" }
+        require(paths.isNotEmpty() && paths.size <= request.selectionLimit) { "Could not prepare the files" }
         val files = paths.map { path ->
             val file = permitted(path)
             require(file != null && file.isFile && file.canRead() && request.accepts(mimeType(file))) {
-                "Pasirinkti failai nepasiekiami arba neatitinka prašomo tipo"
+                "Selected files are unavailable or do not match the requested type"
             }
             file
         }
-        require(files.distinct().size == files.size) { "Failų paruošti nepavyko" }
+        require(files.distinct().size == files.size) { "Could not prepare the files" }
         return files
     }
 }

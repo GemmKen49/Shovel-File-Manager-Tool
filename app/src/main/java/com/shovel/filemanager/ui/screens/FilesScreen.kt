@@ -224,14 +224,14 @@ private data class ArchiveRequest(
 }
 
 private fun defaultArchiveName(paths: List<String>): String {
-    if (paths.size != 1) return "archyvas"
-    val fileName = File(paths.single()).name.ifBlank { return "archyvas" }
+    if (paths.size != 1) return "archive"
+    val fileName = File(paths.single()).name.ifBlank { return "archive" }
     val withoutArchiveSuffix = if (fileName.endsWith(".tar.gz", ignoreCase = true)) {
         fileName.dropLast(7)
     } else {
         fileName.substringBeforeLast('.', fileName)
     }
-    return withoutArchiveSuffix.ifBlank { "archyvas" }
+    return withoutArchiveSuffix.ifBlank { "archive" }
 }
 
 @Composable
@@ -434,9 +434,9 @@ fun FilesScreen(
     }
     renameTarget?.let { entry ->
         TextInputDialog(
-            title = "Pervadinti",
+            title = "Rename",
             initial = entry.name,
-            confirmLabel = "Pervadinti",
+            confirmLabel = "Rename",
             onDismiss = { renameTarget = null },
             onConfirm = { name -> viewModel.rename(entry.absolutePath, name); renameTarget = null },
         )
@@ -575,8 +575,8 @@ fun FilesScreen(
                     ) {
                         Icon(Icons.Rounded.Edit, contentDescription = null)
                         LText(
-                            if (area == HomeDisplayArea.STORAGE) "Tvarkyti saugyklas ir pradžios ekraną"
-                            else "Tvarkyti greitas vietas",
+                            if (area == HomeDisplayArea.STORAGE) "Manage storage locations and the home screen"
+                            else "Manage quick locations",
                             modifier = Modifier.padding(start = 8.dp),
                         )
                     }
@@ -628,18 +628,18 @@ private fun PermissionBanner(onRequest: () -> Unit) {
         ) {
             Icon(Icons.Rounded.Storage, contentDescription = null)
             Column(modifier = Modifier.weight(1f)) {
-                LText("Reikia prieigos prie bendrų failų", fontWeight = FontWeight.SemiBold)
+                LText("Shared-file access is required", fontWeight = FontWeight.SemiBold)
                 LText(
-                    "Be jos programa matys tik sistemos leistas vietas. Android/data vis tiek lieka sistemos ribojamas.",
+                    "Without it, the app sees only system-approved locations. Android/data remains restricted by Android.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            Button(onClick = onRequest) { LText("Suteikti") }
+            Button(onClick = onRequest) { LText("Grant access") }
         }
     }
 }
 
-private fun itemCountLabel(count: Int): String = if (count == 1) "1 elementas" else "$count elementų"
+private fun itemCountLabel(count: Int): String = if (count == 1) "1 item" else "$count items"
 
 private fun PanelUiState.toDirectoryDisplaySettings(): DirectoryDisplaySettings = DirectoryDisplaySettings(
     layoutMode = if (grid) DirectoryLayoutMode.GRID else DirectoryLayoutMode.LIST,
@@ -757,7 +757,7 @@ private fun FilePanel(
         if (state.loading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             LText(
-                "Rasta ${state.entries.size} · metaduomenys ${state.listingMetadataEntries}/${state.entries.size}",
+                "Found ${state.entries.size} · metadata ${state.listingMetadataEntries}/${state.entries.size}",
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -766,13 +766,13 @@ private fun FilePanel(
         if (state.listingTruncated) {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
                 LText(
-                    "Rodomi pirmi ${state.entries.size} elementų. Sąrašas sutrumpintas, failai nepakeisti.",
+                    "Showing the first ${state.entries.size} items. The list is shortened, no files were changed.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                 )
                 if (state.path == "/") {
                     LText(
-                        "Įjunkite Root arba Shizuku root prieigą skiltyje Daugiau",
+                        "Enable Root or Shizuku root access in More",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -787,10 +787,10 @@ private fun FilePanel(
             testTag = "pull_to_refresh_local",
         ) {
             when {
-                state.error != null -> EmptyPanel("Aplankas nepasiekiamas", state.error)
+                state.error != null -> EmptyPanel("Folder unavailable", state.error)
                 state.loading && state.entries.isEmpty() -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                state.entries.isEmpty() -> EmptyPanel("Aplankas tuščias", "Čia dar nėra failų")
-                displayedEntries.isEmpty() -> EmptyPanel("Atitikmenų nerasta", "Pabandykite kitą pavadinimą")
+                state.entries.isEmpty() -> EmptyPanel("Folder is empty", "No files here yet")
+                displayedEntries.isEmpty() -> EmptyPanel("No matches found", "Try another name")
                 state.grid -> FileGrid(displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
                 else -> FileList(displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
             }
@@ -799,7 +799,7 @@ private fun FilePanel(
                 val selectionBookmarked = state.selectedPaths.all { it in bookmarkedPaths }
                 SelectionActionDock(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
                     IconButton(onClick = { viewModel.copySelection(move = false) }) {
-                        Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
+                        Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Copy"))
                     }
                     IconButton(
                         onClick = { viewModel.bookmarkSelection() },
@@ -807,14 +807,14 @@ private fun FilePanel(
                     ) {
                         Icon(
                             if (selectionBookmarked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkAdd,
-                            contentDescription = uiText(if (selectionBookmarked) "Pašalinti žymelę" else "Pridėti žymelę"),
+                            contentDescription = uiText(if (selectionBookmarked) "Remove bookmark" else "Add bookmark"),
                         )
                     }
                     IconButton(
                         onClick = { viewModel.shareSelection() },
                         modifier = Modifier.testTag("selection_share_local"),
                     ) {
-                        Icon(Icons.Rounded.Share, contentDescription = uiText("Bendrinti"))
+                        Icon(Icons.Rounded.Share, contentDescription = uiText("Share"))
                     }
                     IconButton(
                         onClick = {
@@ -822,10 +822,10 @@ private fun FilePanel(
                         },
                         modifier = Modifier.testTag("selection_info_local"),
                     ) {
-                        Icon(Icons.Rounded.Info, contentDescription = uiText("Informacija"))
+                        Icon(Icons.Rounded.Info, contentDescription = uiText("Info"))
                     }
                     IconButton(onClick = { viewModel.copySelection(move = true) }) {
-                        Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti"))
+                        Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Move"))
                     }
                     if (state.selectedPaths.size == 1 || featureVisible(OptionalFeature.BATCH_RENAME)) IconButton(onClick = {
                         val selectedEntries = state.entries.filter { it.absolutePath in state.selectedPaths }
@@ -834,25 +834,25 @@ private fun FilePanel(
                     }) {
                         Icon(
                             Icons.Rounded.Edit,
-                            contentDescription = uiText(if (state.selectedPaths.size == 1) "Pervadinti" else "Masinis pervadinimas"),
+                            contentDescription = uiText(if (state.selectedPaths.size == 1) "Rename" else "Batch rename"),
                         )
                     }
-                    IconButton(onClick = onArchive) { Icon(Icons.Rounded.Archive, contentDescription = uiText("Archyvuoti")) }
+                    IconButton(onClick = onArchive) { Icon(Icons.Rounded.Archive, contentDescription = uiText("Archive")) }
                     val selectedEntries = state.entries.filter { it.absolutePath in state.selectedPaths }
                     if (featureVisible(OptionalFeature.ANALYSIS)) IconButton(
                         onClick = { viewModel.analyzeEntries(selectedEntries.map(FileEntry::absolutePath)) },
                         enabled = selectedEntries.isNotEmpty(),
                         modifier = Modifier.testTag("analyze_selection_local"),
                     ) {
-                        Icon(Icons.Rounded.Analytics, contentDescription = uiText("Analizuoti pasirinktus"))
+                        Icon(Icons.Rounded.Analytics, contentDescription = uiText("Analyze selected"))
                     }
                     IconButton(onClick = onTrash) {
-                        Icon(Icons.Rounded.Delete, contentDescription = uiText("Į šiukšlinę"), tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Rounded.Delete, contentDescription = uiText("Move to trash"), tint = MaterialTheme.colorScheme.error)
                     }
                     IconButton(onClick = onPermanentDelete, modifier = Modifier.testTag("delete_permanently_local")) {
                         Icon(
                             Icons.Rounded.DeleteForever,
-                            contentDescription = uiText("Ištrinti visam laikui"),
+                            contentDescription = uiText("Delete permanently"),
                             tint = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -862,7 +862,7 @@ private fun FilePanel(
                     onClick = { onCreate() },
                     modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).testTag("create_local_item"),
                 ) {
-                    Icon(Icons.Rounded.CreateNewFolder, contentDescription = uiText("Sukurti"))
+                    Icon(Icons.Rounded.CreateNewFolder, contentDescription = uiText("Create"))
                 }
             }
         }
@@ -904,30 +904,30 @@ private fun CompactPanelActions(
 ) {
     Box {
         IconButton(onClick = { onExpandedChange(true) }) {
-            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Aplanko veiksmai"))
+            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Folder actions"))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
             if (clipboardAvailable) {
                 DropdownMenuItem(
-                    text = { LText("Įklijuoti") },
+                    text = { LText("Paste") },
                     leadingIcon = { Icon(Icons.Rounded.ContentPaste, contentDescription = null) },
                     onClick = { onExpandedChange(false); onPaste() },
                 )
             }
             if (batchRenameUndoAvailable) {
                 DropdownMenuItem(
-                    text = { LText("Atšaukti paskutinį masinį pervadinimą") },
+                    text = { LText("Undo last batch rename") },
                     leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null) },
                     onClick = { onExpandedChange(false); onUndoBatchRename() },
                 )
             }
             if (featureVisible(OptionalFeature.RECENT)) DropdownMenuItem(
-                text = { LText("Peržiūrų istorija") },
+                text = { LText("Viewing history") },
                 leadingIcon = { Icon(Icons.Rounded.History, contentDescription = null) },
                 onClick = { onExpandedChange(false); onShowViewingHistory() },
             )
             DropdownMenuItem(
-                text = { LText("Operacijų centras") },
+                text = { LText("Operations center") },
                 leadingIcon = { Icon(Icons.Rounded.SwapHoriz, contentDescription = null) },
                 modifier = Modifier.testTag("open_operations"),
                 onClick = {
@@ -955,7 +955,7 @@ private fun CompactPanelActions(
             )
             HorizontalDivider()
             DropdownMenuItem(
-                text = { LText("Atnaujinti") },
+                text = { LText("Refresh") },
                 leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
                 onClick = { viewModel.refreshPanel(scrollToTop = true); onExpandedChange(false) },
             )
@@ -972,19 +972,19 @@ private fun ViewingHistoryDialog(
 ) {
     val dateFormat = rememberLocalizedDateTimeFormat(DateFormat.SHORT, DateFormat.SHORT)
     ShovelModalDialog(
-        title = "Peržiūrų istorija",
+        title = "Viewing history",
         icon = Icons.Rounded.History,
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("viewing_history_dialog"),
         showFooter = recents.isNotEmpty(),
         expandedContent = true,
         actions = {
-            if (recents.isNotEmpty()) TextButton(onClick = onClear) { LText("Išvalyti istoriją") }
+            if (recents.isNotEmpty()) TextButton(onClick = onClear) { LText("Clear history") }
         },
     ) {
         if (recents.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                LText("Peržiūrėtų failų istorija tuščia")
+                LText("Viewing history is empty")
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) {
@@ -1032,36 +1032,36 @@ private fun PanelTabsBar(
                 onClick = { onBeforeTabAction(); viewModel.activateTab(tab.id) },
                 label = { Text(File(tab.path).name.ifBlank { tab.path }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingIcon = if (tab.locked) {
-                    { Icon(Icons.Rounded.Lock, contentDescription = uiText("Užrakinta"), modifier = Modifier.size(16.dp)) }
+                    { Icon(Icons.Rounded.Lock, contentDescription = uiText("Locked"), modifier = Modifier.size(16.dp)) }
                 } else null,
             )
         }
         IconButton(onClick = { onBeforeTabAction(); viewModel.newTab() }) {
-            Icon(Icons.Rounded.Add, contentDescription = uiText("Nauja kortelė"))
+            Icon(Icons.Rounded.Add, contentDescription = uiText("New tab"))
         }
         Box {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Kortelės veiksmai")) }
+            IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Tab actions")) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(
-                    text = { LText("Dubliuoti kortelę") },
+                    text = { LText("Duplicate tab") },
                     leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
                     onClick = { onBeforeTabAction(); viewModel.duplicateTab(); menu = false },
                 )
                 DropdownMenuItem(
-                    text = { LText(if (workspace.activeTab.locked) "Atrakinti kortelę" else "Užrakinti kortelę") },
+                    text = { LText(if (workspace.activeTab.locked) "Unlock tab" else "Lock tab") },
                     leadingIcon = {
                         Icon(if (workspace.activeTab.locked) Icons.Rounded.LockOpen else Icons.Rounded.Lock, contentDescription = null)
                     },
                     onClick = { onBeforeTabAction(); viewModel.toggleTabLock(); menu = false },
                 )
                 DropdownMenuItem(
-                    text = { LText("Uždaryti kortelę") },
+                    text = { LText("Close tab") },
                     leadingIcon = { Icon(Icons.Rounded.Close, contentDescription = null) },
                     enabled = workspace.tabs.size > 1 && !workspace.activeTab.locked,
                     onClick = { onBeforeTabAction(); viewModel.closeActiveTab(); menu = false },
                 )
                 DropdownMenuItem(
-                    text = { LText("Atkurti uždarytą kortelę") },
+                    text = { LText("Restore closed tab") },
                     leadingIcon = { Icon(Icons.Rounded.Restore, contentDescription = null) },
                     enabled = workspace.closedTabs.isNotEmpty(),
                     onClick = { onBeforeTabAction(); viewModel.restoreClosedTab(); menu = false },
@@ -1106,7 +1106,7 @@ internal fun FileList(
     val bookmarkedPaths = viewModel.homeCustomization.collectAsStateWithLifecycle().value.shortcuts.mapTo(hashSetOf()) { it.path }
     val folderDetailsEnabled by viewModel.folderDetailsEnabled.collectAsStateWithLifecycle()
     val interfaceLanguage = LocalConfiguration.current.locales[0].language
-    val chooserError = uiText("Programų pasirinkiklio atidaryti nepavyko")
+    val chooserError = uiText("Could not open the app chooser")
     val dateFormat = rememberLocalizedDateTimeFormat(DateFormat.SHORT, DateFormat.SHORT)
     val largestSizeBytes = remember(state.entries, state.sortMode) {
         state.entries.takeIf { state.sortMode == SortMode.SIZE }
@@ -1267,7 +1267,7 @@ internal fun FileGrid(
     val bookmarkedPaths = viewModel.homeCustomization.collectAsStateWithLifecycle().value.shortcuts.mapTo(hashSetOf()) { it.path }
     val folderDetailsEnabled by viewModel.folderDetailsEnabled.collectAsStateWithLifecycle()
     val interfaceLanguage = LocalConfiguration.current.locales[0].language
-    val chooserError = uiText("Programų pasirinkiklio atidaryti nepavyko")
+    val chooserError = uiText("Could not open the app chooser")
     val largestSizeBytes = remember(state.entries, state.sortMode) {
         state.entries.takeIf { state.sortMode == SortMode.SIZE }
             ?.asSequence()
@@ -1483,7 +1483,7 @@ private fun FileRow(
                 )
             }
         }
-        if (!entry.isReadable) LText("Neprieinama", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+        if (!entry.isReadable) LText("Unavailable", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
         EntryActionsButton(entry, onPreview, onOpenWith, onSelect, onRename, onInfo, onTrash, onArchive, onAnalyze, onCopy, onMove, onBookmark, onShare, bookmarked)
     }
     }
@@ -1603,16 +1603,16 @@ private fun EntryActionsButton(
     var expanded by remember(entry.absolutePath) { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Failo veiksmai: ${entry.name}"))
+            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("File actions: ${entry.name}"))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = {
                     LText(
                         when {
-                            entry.isDirectory -> "Atidaryti aplanką"
-                            entry.kind == EntryKind.ARCHIVE -> "Atidaryti archyvą"
-                            else -> "Peržiūrėti čia"
+                            entry.isDirectory -> "Open folder"
+                            entry.kind == EntryKind.ARCHIVE -> "Open archive"
+                            else -> "Preview here"
                         },
                     )
                 },
@@ -1631,33 +1631,33 @@ private fun EntryActionsButton(
             )
             if (!entry.isDirectory) {
                 DropdownMenuItem(
-                    text = { LText("Atidaryti su kita programa") },
+                    text = { LText("Open with another app") },
                     leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
                     onClick = { expanded = false; onOpenWith() },
                     enabled = entry.isReadable,
                 )
             }
             DropdownMenuItem(
-                text = { LText("Pasirinkti") },
+                text = { LText("Select") },
                 leadingIcon = { Icon(Icons.Rounded.CheckCircle, contentDescription = null) },
                 onClick = { expanded = false; onSelect() },
             )
             DropdownMenuItem(
-                text = { LText("Kopijuoti") },
+                text = { LText("Copy") },
                 leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
                 onClick = { expanded = false; onCopy() },
                 enabled = entry.isReadable,
                 modifier = Modifier.testTag("copy_entry_action"),
             )
             DropdownMenuItem(
-                text = { LText("Perkelti") },
+                text = { LText("Move") },
                 leadingIcon = { Icon(Icons.Rounded.ContentCut, contentDescription = null) },
                 onClick = { expanded = false; onMove() },
                 enabled = entry.isReadable,
                 modifier = Modifier.testTag("move_entry_action"),
             )
             DropdownMenuItem(
-                text = { LText("Archyvuoti") },
+                text = { LText("Archive") },
                 leadingIcon = { Icon(Icons.Rounded.Archive, contentDescription = null) },
                 onClick = { expanded = false; onArchive() },
                 enabled = entry.isReadable,
@@ -1665,7 +1665,7 @@ private fun EntryActionsButton(
             )
             if (entry.isDirectory && featureVisible(OptionalFeature.ANALYSIS)) {
                 DropdownMenuItem(
-                    text = { LText("Analizuoti dabartinį aplanką") },
+                    text = { LText("Analyze current folder") },
                     leadingIcon = { Icon(Icons.Rounded.Analytics, contentDescription = null) },
                     onClick = { expanded = false; onAnalyze() },
                     enabled = entry.isReadable,
@@ -1674,30 +1674,30 @@ private fun EntryActionsButton(
             }
             HorizontalDivider()
             DropdownMenuItem(
-                text = { LText("Pervadinti") },
+                text = { LText("Rename") },
                 leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                 onClick = { expanded = false; onRename() },
             )
             DropdownMenuItem(
-                text = { LText("Informacija") },
+                text = { LText("Info") },
                 leadingIcon = { Icon(Icons.Rounded.Info, contentDescription = null) },
                 onClick = { expanded = false; onInfo() },
             )
             DropdownMenuItem(
-                text = { LText(if (bookmarked) "Pašalinti žymelę" else "Pridėti žymelę") },
+                text = { LText(if (bookmarked) "Remove bookmark" else "Add bookmark") },
                 leadingIcon = { Icon(if (bookmarked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkAdd, contentDescription = null) },
                 onClick = { expanded = false; onBookmark() },
                 modifier = Modifier.testTag("bookmark_entry_action"),
             )
             DropdownMenuItem(
-                text = { LText("Bendrinti") },
+                text = { LText("Share") },
                 leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
                 onClick = { expanded = false; onShare() },
                 enabled = entry.isReadable,
                 modifier = Modifier.testTag("share_entry_action"),
             )
             DropdownMenuItem(
-                text = { LText("Į šiukšlinę") },
+                text = { LText("Move to trash") },
                 leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 onClick = { expanded = false; onTrash() },
             )
@@ -1732,9 +1732,9 @@ internal fun CreateItemDialog(
     var itemType by remember { mutableStateOf(CreateItemType.FOLDER) }
     var archiveFormat by remember { mutableStateOf(ArchiveFormat.ZIP) }
     val title = when (itemType) {
-        CreateItemType.FOLDER -> "Naujas aplankas"
-        CreateItemType.FILE -> "Naujas failas"
-        CreateItemType.ARCHIVE -> "Naujas archyvas"
+        CreateItemType.FOLDER -> "New folder"
+        CreateItemType.FILE -> "New file"
+        CreateItemType.ARCHIVE -> "New archive"
     }
     val icon = when (itemType) {
         CreateItemType.FOLDER -> Icons.Rounded.CreateNewFolder
@@ -1747,7 +1747,7 @@ internal fun CreateItemDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("create_item_dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             Button(
                 onClick = {
                     when (itemType) {
@@ -1757,7 +1757,7 @@ internal fun CreateItemDialog(
                     }
                 },
                 enabled = name.isNotBlank(),
-            ) { LText("Sukurti") }
+            ) { LText("Create") }
         },
     ) {
             Column(
@@ -1771,20 +1771,20 @@ internal fun CreateItemDialog(
                     FilterChip(
                         selected = itemType == CreateItemType.FOLDER,
                         onClick = { itemType = CreateItemType.FOLDER },
-                        label = { LText("Aplankas") },
+                        label = { LText("Folder") },
                         modifier = Modifier.testTag("create_type_folder"),
                     )
                     FilterChip(
                         selected = itemType == CreateItemType.FILE,
                         onClick = { itemType = CreateItemType.FILE },
-                        label = { LText("Failas") },
+                        label = { LText("File") },
                         modifier = Modifier.testTag("create_type_file"),
                     )
                     if (onCreateArchive != null) {
                         FilterChip(
                             selected = itemType == CreateItemType.ARCHIVE,
                             onClick = { itemType = CreateItemType.ARCHIVE },
-                            label = { LText("Archyvas") },
+                            label = { LText("Archive") },
                             modifier = Modifier.testTag("create_type_archive"),
                         )
                     }
@@ -1792,12 +1792,12 @@ internal fun CreateItemDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { LText("Pavadinimas") },
+                    label = { LText("Name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().testTag("create_item_name"),
                 )
                 if (itemType == CreateItemType.ARCHIVE) {
-                    LText("Formatas", style = MaterialTheme.typography.labelLarge)
+                    LText("Format", style = MaterialTheme.typography.labelLarge)
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1831,7 +1831,7 @@ private fun TextInputDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("text_input_dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             Button(onClick = { onConfirm(value) }, enabled = value.isNotBlank()) { LText(confirmLabel) }
         },
     ) {
@@ -1869,12 +1869,12 @@ private fun ArchiveDialog(
         value = loadSummary(sourcePaths).getOrNull()
     }
     ShovelModalDialog(
-        title = "Sukurti archyvą",
+        title = "Create archive",
         icon = Icons.Rounded.Archive,
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("archive_dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             Button(
                 onClick = {
                     onCreate(
@@ -1889,7 +1889,7 @@ private fun ArchiveDialog(
                 },
                 enabled = name.isNotBlank() && maximumSizeValid,
             ) {
-                LText("Kurti")
+                LText("Create")
             }
         },
     ) {
@@ -1900,11 +1900,11 @@ private fun ArchiveDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { LText("Pavadinimas") },
+                    label = { LText("Name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().testTag("archive_name"),
                 )
-                LText("Formatas", style = MaterialTheme.typography.labelLarge)
+                LText("Format", style = MaterialTheme.typography.labelLarge)
                 Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(ArchiveFormat.ZIP, ArchiveFormat.SEVEN_Z, ArchiveFormat.TAR, ArchiveFormat.TAR_GZ).forEach { candidate ->
                         FilterChip(
@@ -1919,7 +1919,7 @@ private fun ArchiveDialog(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { LText("Slaptažodis (nebūtinas, AES-256)") },
+                        label = { LText("Password (optional, AES-256)") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().testTag("archive_password"),
                     )
@@ -1941,9 +1941,9 @@ private fun ArchiveDialog(
                     }
                 }
                 LText(
-                    if (adjustableCompression && maximumBytes != null) "Bus naudojamas stipriausias suspaudimas"
-                    else if (adjustableCompression) "Suspaudimo lygis: $compressionLevel iš 9"
-                    else "Šiam formatui naudojamas numatytasis suspaudimas",
+                    if (adjustableCompression && maximumBytes != null) "The strongest compression will be used"
+                    else if (adjustableCompression) "Compression level: $compressionLevel of 9"
+                    else "This format uses its default compression",
                     style = MaterialTheme.typography.labelLarge,
                 )
                 Slider(
@@ -1957,11 +1957,11 @@ private fun ArchiveDialog(
                 if (adjustableCompression) {
                     OutlinedTextField(
                         value = maximumSizeMib,
-                        onValueChange = { value -> maximumSizeMib = value.filter(Char::isDigit).take(4) },
-                        label = { LText("Didžiausias archyvo dydis MiB (nebūtinas)") },
+                        onValueChange = { value -> maximumSizeMib = value.filter(Char::isDigit).take(5) },
+                        label = { LText("Maximum archive size in MiB (optional)") },
                         supportingText = {
-                            if (!maximumSizeValid) LText("Įveskite skaičių nuo 1 iki 8192")
-                            else LText("Jei ribos pasiekti nepavyks, archyvas nebus paliktas")
+                            if (!maximumSizeValid) LText("Enter a number from 1 to 65536")
+                            else LText("If the limit cannot be reached, no archive will be kept")
                         },
                         isError = !maximumSizeValid,
                         singleLine = true,
@@ -1970,18 +1970,18 @@ private fun ArchiveDialog(
                 }
                 selectionSummary?.let { summary ->
                     LText(
-                        "Šaltinio dydis: ${FileSystemRules.humanBytes(summary.totalBytes)} · failų: ${summary.fileCount}",
+                        "Source size: ${FileSystemRules.humanBytes(summary.totalBytes)} · files: ${summary.fileCount}",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     if (!summary.complete) {
-                        LText("Dydis dalinis, nes pasiekta saugaus skenavimo riba", style = MaterialTheme.typography.bodySmall)
+                        LText("The size is partial because the safe scan limit was reached", style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 LText(
-                    "Galutinis archyvo dydis priklauso nuo duomenų ir bus žinomas baigus kurti.",
+                    "The final archive size depends on the data and is known after creation finishes.",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                LText("Pasirinkta: ${format.name}", style = MaterialTheme.typography.bodySmall)
+                LText("Selected: ${format.name}", style = MaterialTheme.typography.bodySmall)
             }
     }
 }
@@ -1996,18 +1996,18 @@ private fun TransferOptionsDialog(
     var verifySha256 by remember { mutableStateOf(moving) }
     var skipErrors by remember { mutableStateOf(false) }
     val choices = listOf(
-        ConflictPolicy.KEEP_BOTH to "Palikti abu",
-        ConflictPolicy.REPLACE to "Pakeisti esamą",
-        ConflictPolicy.SKIP to "Praleisti sutampančius",
-        ConflictPolicy.MERGE to "Sujungti aplankus",
+        ConflictPolicy.KEEP_BOTH to "Keep both",
+        ConflictPolicy.REPLACE to "Replace existing",
+        ConflictPolicy.SKIP to "Skip conflicts",
+        ConflictPolicy.MERGE to "Merge folders",
     )
     ShovelModalDialog(
-        title = if (moving) "Patikimai perkelti" else "Patikimai kopijuoti",
+        title = if (moving) "Reliable move" else "Reliable copy",
         icon = if (moving) Icons.Rounded.ContentCut else Icons.Rounded.ContentCopy,
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("transfer_options_dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             Button(
                 onClick = {
                     onConfirm(
@@ -2016,14 +2016,14 @@ private fun TransferOptionsDialog(
                         if (!moving && skipErrors) TransferFailurePolicy.SKIP_AND_CONTINUE else TransferFailurePolicy.STOP,
                     )
                 },
-            ) { LText("Išsaugoti planą ir pradėti") }
+            ) { LText("Save plan and start") }
         },
     ) {
             Column(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                LText("Planas bus išsaugotas prieš vykdymą. Ši taisyklė bus taikoma visiems sutampantiems vardams.")
+                LText("The plan is saved before execution. This rule applies to all matching names.")
                 choices.forEach { (candidate, label) ->
                     Row(
                         modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { policy = candidate }, onLongClick = {}),
@@ -2036,9 +2036,9 @@ private fun TransferOptionsDialog(
                 HorizontalDivider()
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        LText("Patikrinti SHA-256", fontWeight = FontWeight.SemiBold)
+                        LText("Verify SHA-256", fontWeight = FontWeight.SemiBold)
                         LText(
-                            if (moving) "Rekomenduojama: šaltinis šalinamas tik patvirtinus kopiją" else "Lėčiau, bet patvirtina failo turinį",
+                            if (moving) "Recommended: remove the source only after verifying the copy" else "Slower, but verifies file contents",
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -2047,23 +2047,23 @@ private fun TransferOptionsDialog(
                 if (!moving) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            LText("Praleisti klaidingą failą ir tęsti", fontWeight = FontWeight.SemiBold)
-                            LText("Iki 100 klaidų bus palikta galutinėje ataskaitoje", style = MaterialTheme.typography.bodySmall)
+                            LText("Skip a failed file and continue", fontWeight = FontWeight.SemiBold)
+                            LText("Up to 100 errors remain in the final report", style = MaterialTheme.typography.bodySmall)
                         }
                         Switch(checked = skipErrors, onCheckedChange = { skipErrors = it })
                     }
                 } else {
-                    LText("Perkėlimas klaidos atveju visada sustoja; nepatikrintas šaltinis nešalinamas.", style = MaterialTheme.typography.bodySmall)
+                    LText("A move always stops on error; an unverified source is never removed.", style = MaterialTheme.typography.bodySmall)
                 }
             }
     }
 }
 
 internal fun sortLabel(mode: SortMode): String = when (mode) {
-    SortMode.NAME -> "Pagal pavadinimą"
-    SortMode.SIZE -> "Pagal dydį"
-    SortMode.MODIFIED -> "Pagal datą"
-    SortMode.TYPE -> "Pagal tipą"
+    SortMode.NAME -> "By name"
+    SortMode.SIZE -> "By size"
+    SortMode.MODIFIED -> "By date"
+    SortMode.TYPE -> "By type"
 }
 
 private fun entryMeta(
@@ -2072,13 +2072,13 @@ private fun entryMeta(
     showDirectorySize: Boolean = false,
     details: String? = null,
 ): String {
-    if (!entry.metadataComplete) return if (entry.isDirectory) "Aplankas · kraunami duomenys…" else "Kraunami duomenys…"
+    if (!entry.metadataComplete) return if (entry.isDirectory) "Folder · loading data…" else "Loading data…"
     val date = entry.modifiedAtMillis.takeIf { it > 0 }?.let { dateFormat.format(Date(it)) }
     val size = when {
         // The details line already carries the folder's size.
         entry.isDirectory && details != null -> "Folder"
-        entry.isDirectory && showDirectorySize -> "Aplankas · ${FileSystemRules.humanBytes(entry.sizeBytes)}"
-        entry.isDirectory -> "Aplankas"
+        entry.isDirectory && showDirectorySize -> "Folder · ${FileSystemRules.humanBytes(entry.sizeBytes)}"
+        entry.isDirectory -> "Folder"
         else -> FileSystemRules.humanBytes(entry.sizeBytes)
     }
     return listOfNotNull(size, details, date).joinToString(" · ")

@@ -54,7 +54,7 @@ internal sealed interface PreviewSource {
 
         override fun openFileDescriptor(context: Context): ParcelFileDescriptor = requireNotNull(
             ParcelFileDescriptor.open(entry.file, ParcelFileDescriptor.MODE_READ_ONLY),
-        ) { "Failo srautas nepasiekiamas" }
+        ) { "The file stream is unavailable" }
 
         override fun openInputStream(context: Context): InputStream = entry.file.inputStream()
     }
@@ -77,11 +77,11 @@ internal sealed interface PreviewSource {
 
         override fun openFileDescriptor(context: Context): ParcelFileDescriptor = requireNotNull(
             context.contentResolver.openFileDescriptor(parsedUri, "r"),
-        ) { "Failo srautas nepasiekiamas" }
+        ) { "The file stream is unavailable" }
 
         override fun openInputStream(context: Context): InputStream = requireNotNull(
             context.contentResolver.openInputStream(parsedUri),
-        ) { "Failo srautas nepasiekiamas" }
+        ) { "The file stream is unavailable" }
     }
 
     data class Privileged(
@@ -110,7 +110,7 @@ internal sealed interface PreviewSource {
 
         override fun openFileDescriptor(context: Context): ParcelFileDescriptor = requireNotNull(
             ParcelFileDescriptor.open(cachedFile, ParcelFileDescriptor.MODE_READ_ONLY),
-        ) { "Failo srautas nepasiekiamas" }
+        ) { "The file stream is unavailable" }
 
         override fun openInputStream(context: Context): InputStream = cachedFile.inputStream()
     }

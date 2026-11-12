@@ -141,7 +141,7 @@ class OperationContext internal constructor(
     fun logError(message: String) = logger(LogLevel.ERROR, message)
 
     fun completeWithErrors(errorCount: Int, message: String) {
-        require(errorCount > 0) { "Klaidų skaičius turi būti teigiamas" }
+        require(errorCount > 0) { "The error count must be positive" }
         flushProgress()
         completionStatus = OperationStatus.COMPLETED_WITH_ERRORS
         publish { copy(errorCount = errorCount, message = message, retryable = true) }
@@ -246,8 +246,8 @@ class FileOperationManager(
         retryable: Boolean,
         block: suspend OperationContext.() -> Unit,
     ): Result<String> {
-        require(id.isNotBlank() && id.length <= 80) { "Netinkama operacijos tapatybė" }
-        if (runningJobs.containsKey(id)) return Result.failure(IllegalStateException("Operacija jau vykdoma"))
+        require(id.isNotBlank() && id.length <= 80) { "Invalid operation identity" }
+        if (runningJobs.containsKey(id)) return Result.failure(IllegalStateException("The operation is already running"))
         val snapshot = OperationSnapshot(id = id, title = title, status = OperationStatus.QUEUED, retryable = retryable)
         _operations.update { current ->
             (listOf(snapshot) + current.filterNot { it.id == id }).take(MAX_VISIBLE_HISTORY)
@@ -256,16 +256,16 @@ class FileOperationManager(
         val result = queue.trySend(Request(id, title, block))
         if (result.isFailure) {
             logs?.record(id, LogLevel.ERROR, "The operation queue is full")
-            update(id) { copy(status = OperationStatus.FAILED, message = "Operacijų eilė pilna") }
+            update(id) { copy(status = OperationStatus.FAILED, message = "The operation queue is full") }
             finishLog(id)
-            return Result.failure(IllegalStateException("Operacijų eilė pilna"))
+            return Result.failure(IllegalStateException("The operation queue is full"))
         }
         runCatching(onOperationQueued)
         return Result.success(id)
     }
 
     fun restore(snapshots: List<OperationSnapshot>) {
-        require(snapshots.size <= MAX_VISIBLE_HISTORY) { "Operacijų istorijos riba viršyta" }
+        require(snapshots.size <= MAX_VISIBLE_HISTORY) { "The operation history limit was exceeded" }
         _operations.update { current ->
             (snapshots + current.filterNot { existing -> snapshots.any { it.id == existing.id } })
                 .distinctBy(OperationSnapshot::id)

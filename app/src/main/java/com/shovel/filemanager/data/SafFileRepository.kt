@@ -34,9 +34,9 @@ internal object SafLocationRules {
 
     fun normalizeTitle(value: String): String {
         val title = value.trim()
-        require(title.isNotEmpty()) { "Pavadinimas negali būti tuščias" }
-        require(title.length <= MAX_TITLE_LENGTH) { "Jungties pavadinimas per ilgas" }
-        require(title.none(Char::isISOControl)) { "Pavadinime yra neleistinų ženklų" }
+        require(title.isNotEmpty()) { "The name cannot be empty" }
+        require(title.length <= MAX_TITLE_LENGTH) { "The connection name is too long" }
+        require(title.none(Char::isISOControl)) { "The name contains invalid characters" }
         return title
     }
 }
@@ -68,7 +68,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
 
     suspend fun locations(): List<SafLocation> = withContext(Dispatchers.IO) {
         val array = JSONArray(preferences.getString(KEY_LOCATIONS, "[]") ?: "[]")
-        require(array.length() <= MAX_LOCATIONS) { "SAF vietų riba viršyta" }
+        require(array.length() <= MAX_LOCATIONS) { "The SAF location limit was exceeded" }
         (0 until array.length()).map { index ->
             val item = array.getJSONObject(index)
             describeLocation(
@@ -91,11 +91,11 @@ class SafFileRepository(private val context: Context, private val onMutation: su
             try {
                 persistBestAvailablePermission(uri)
                 val root = DocumentFile.fromTreeUri(context, uri)
-                    ?: throw IllegalArgumentException("Pasirinkta dokumentų vieta nepasiekiama")
-                require(root.isDirectory) { "Pasirinkta vieta nėra aplankas" }
+                    ?: throw IllegalArgumentException("The selected document location is unavailable")
+                require(root.isDirectory) { "The selected location is not a folder" }
                 val current = locations().toMutableList().apply { removeAll { it.uri == uri.toString() } }
                 current += describeLocation(uri, storedTitle = title.takeIf(String::isNotBlank))
-                require(current.size <= MAX_LOCATIONS) { "Per daug pasirinktų vietų" }
+                require(current.size <= MAX_LOCATIONS) { "Too many locations selected" }
                 writeLocations(current)
             } catch (error: Throwable) {
                 releasePermissionAddedAfter(uri, permissionBefore?.isReadPermission == true, permissionBefore?.isWritePermission == true)
@@ -125,7 +125,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
                     location
                 }
             }
-            require(found) { "Vieta nebeegzistuoja" }
+            require(found) { "The location no longer exists" }
             writeLocations(updated)
         }
     }
@@ -134,9 +134,9 @@ class SafFileRepository(private val context: Context, private val onMutation: su
         runCatching {
             val uri = Uri.parse(treeOrDirectoryUri)
             val directory = document(uri)
-            require(directory.isDirectory) { "Tai nėra aplankas" }
+            require(directory.isDirectory) { "This is not a folder" }
             val files = directory.listFiles()
-            require(files.size <= MAX_DIRECTORY_ENTRIES) { "Aplanke per daug elementų" }
+            require(files.size <= MAX_DIRECTORY_ENTRIES) { "The folder contains too many items" }
             files.map(::toEntry).sortedWith(compareByDescending<SafEntry> { it.directory }.thenBy { it.name.lowercase() })
         }
     }
@@ -144,7 +144,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
     suspend fun createDirectory(parentUri: String, name: String): Result<SafEntry> = withContext(Dispatchers.IO) {
         runCatching {
             val parent = document(parentUri)
-            val created = parent.createDirectory(name) ?: throw IllegalStateException("Aplanko sukurti nepavyko")
+            val created = parent.createDirectory(name) ?: throw IllegalStateException("Could not create the folder")
             toEntry(created)
         }
     }
@@ -152,7 +152,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
     suspend fun createFile(parentUri: String, name: String, mimeType: String = "application/octet-stream"): Result<SafEntry> = withContext(Dispatchers.IO) {
         runCatching {
             val parent = document(parentUri)
-            val created = parent.createFile(mimeType, name) ?: throw IllegalStateException("Failo sukurti nepavyko")
+            val created = parent.createFile(mimeType, name) ?: throw IllegalStateException("Could not create the file")
             toEntry(created)
         }
     }
@@ -160,19 +160,19 @@ class SafFileRepository(private val context: Context, private val onMutation: su
     suspend fun rename(uri: String, name: String): Result<SafEntry> = withContext(Dispatchers.IO) {
         runCatching {
             val file = document(uri)
-            check(file.renameTo(name)) { "Pervadinti nepavyko" }
+            check(file.renameTo(name)) { "Could not rename" }
             toEntry(file)
         }
     }
 
     suspend fun delete(uri: String): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching { check(document(uri).delete()) { "Ištrinti nepavyko" } }
+        runCatching { check(document(uri).delete()) { "Could not delete" } }
     }
 
     suspend fun selectionInfo(uris: Collection<String>): Result<FileSelectionSummary> = withContext(Dispatchers.IO) {
         runCatching {
             val roots = uris.map(String::trim).filter(String::isNotEmpty).distinct()
-            require(roots.isNotEmpty() && roots.size <= 10_000) { "Netinkamas pasirinktų elementų skaičius" }
+            require(roots.isNotEmpty() && roots.size <= 10_000) { "Invalid number of selected items" }
             data class Pending(val file: DocumentFile, val depth: Int, val selectedRoot: Boolean)
             val pending = ArrayDeque<Pending>()
             roots.asReversed().forEach { pending.add(Pending(document(it), 0, true)) }
@@ -213,7 +213,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
     suspend fun copyFromLocal(source: File, parentUri: String, operation: OperationContext? = null): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                require(source.exists()) { "Vietinis šaltinis nebeegzistuoja" }
+                require(source.exists()) { "The local source no longer exists" }
                 val counter = CopyCounter()
                 copyLocalNode(source, document(parentUri), operation, counter, 0)
             }
@@ -222,7 +222,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
     suspend fun copyToLocal(sourceUri: String, destinationDirectory: File, operation: OperationContext? = null): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                require(destinationDirectory.isDirectory) { "Vietinis paskirties aplankas nepasiekiamas" }
+                require(destinationDirectory.isDirectory) { "The local destination folder is unavailable" }
                 val counter = CopyCounter()
                 val target = copySafNode(document(sourceUri), destinationDirectory, operation, counter, 0)
                 onMutation(listOf(target))
@@ -236,7 +236,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
     } else {
         DocumentFile.fromSingleUri(context, uri)
     }
-        ?: throw IllegalArgumentException("Dokumentas nepasiekiamas")
+        ?: throw IllegalArgumentException("The document is unavailable")
 
     /**
      * Both the selected root and every child returned from it retain the original `tree` segment.
@@ -294,7 +294,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
             ?: storedFolderName
             ?: runCatching { DocumentsContract.getTreeDocumentId(uri).substringAfterLast(':') }
                 .getOrNull()?.takeIf { it.isNotBlank() && it.length <= 120 }
-        val title = storedCustomTitle ?: providerLabel ?: storedTitle ?: folderName ?: "Android dokumentai"
+        val title = storedCustomTitle ?: providerLabel ?: storedTitle ?: folderName ?: "Android documents"
         return SafLocation(
             uri = uri.toString(),
             title = title,
@@ -308,7 +308,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
 
     private fun toEntry(file: DocumentFile) = SafEntry(
         uri = file.uri.toString(),
-        name = file.name ?: "Be pavadinimo",
+        name = file.name ?: "Untitled",
         directory = file.isDirectory,
         sizeBytes = file.length().coerceAtLeast(0),
         modifiedAtMillis = file.lastModified().coerceAtLeast(0),
@@ -340,12 +340,12 @@ class SafFileRepository(private val context: Context, private val onMutation: su
         if (source.isDirectory) {
             val partialName = freeDocumentName(destinationParent, ".$targetName.shovel-partial")
             val directory = destinationParent.createDirectory(partialName)
-                ?: throw IllegalStateException("SAF aplanko sukurti nepavyko")
+                ?: throw IllegalStateException("Could not create the SAF folder")
             try {
-                val children = source.listFiles() ?: throw SecurityException("Vietinis aplankas neperskaitomas")
-                require(children.size <= MAX_DIRECTORY_ENTRIES) { "Vietiniame aplanke per daug elementų" }
+                val children = source.listFiles() ?: throw SecurityException("The local folder is not readable")
+                require(children.size <= MAX_DIRECTORY_ENTRIES) { "The local folder contains too many items" }
                 children.forEach { child -> copyLocalNode(child, directory, operation, counter, depth + 1) }
-                check(directory.renameTo(targetName)) { "SAF aplanko kopijos užbaigti nepavyko" }
+                check(directory.renameTo(targetName)) { "Could not finish the SAF folder copy" }
                 operation?.progress(itemDelta = 1, currentName = source.name)
             } catch (error: Throwable) {
                 directory.delete()
@@ -353,17 +353,17 @@ class SafFileRepository(private val context: Context, private val onMutation: su
             }
             return
         }
-        require(source.isFile) { "Nepalaikomas vietinio elemento tipas" }
+        require(source.isFile) { "Unsupported local item type" }
         val partialName = freeDocumentName(destinationParent, ".$targetName.shovel-partial")
         val mime = android.webkit.MimeTypeMap.getSingleton()
             .getMimeTypeFromExtension(source.extension.lowercase()) ?: "application/octet-stream"
         val partial = destinationParent.createFile(mime, partialName)
-            ?: throw IllegalStateException("SAF failo sukurti nepavyko")
+            ?: throw IllegalStateException("Could not create the SAF file")
         try {
             var written = 0L
             source.inputStream().buffered().use { input ->
                 val output = resolver.openOutputStream(partial.uri, "w")?.buffered()
-                    ?: throw IllegalStateException("SAF failo negalima įrašyti")
+                    ?: throw IllegalStateException("The SAF file is not writable")
                 output.use { sink ->
                     val buffer = ByteArray(BUFFER_SIZE)
                     while (true) {
@@ -376,10 +376,10 @@ class SafFileRepository(private val context: Context, private val onMutation: su
                     }
                 }
             }
-            require(written == source.length()) { "SAF kopijos dydis nesutampa" }
+            require(written == source.length()) { "The SAF copy size does not match" }
             val providerLength = partial.length()
-            if (providerLength > 0) require(providerLength == source.length()) { "SAF teikėjas grąžino kitą failo dydį" }
-            check(partial.renameTo(targetName)) { "SAF kopijos užbaigti nepavyko" }
+            if (providerLength > 0) require(providerLength == source.length()) { "The SAF provider returned a different file size" }
+            check(partial.renameTo(targetName)) { "Could not finish the SAF copy" }
             operation?.progress(itemDelta = 1, currentName = source.name)
         } catch (error: Throwable) {
             partial.delete()
@@ -395,30 +395,30 @@ class SafFileRepository(private val context: Context, private val onMutation: su
         depth: Int,
     ): File {
         countCopyNode(counter, depth)
-        val safeName = FileSystemRules.validateFileName(source.name ?: "Be pavadinimo").getOrThrow()
+        val safeName = FileSystemRules.validateFileName(source.name ?: "Untitled").getOrThrow()
         val requested = File(destinationParent, safeName)
         val target = if (requested.exists()) FileSystemRules.keepBothTarget(requested) else requested
-        require(target.canonicalFile.toPath().startsWith(destinationParent.canonicalFile.toPath())) { "SAF vardas išeina už paskirties" }
+        require(target.canonicalFile.toPath().startsWith(destinationParent.canonicalFile.toPath())) { "The SAF name escapes the destination" }
         if (source.isDirectory) {
             val partialDirectory = File(destinationParent, ".${target.name}.shovel-partial-${System.nanoTime()}")
-            require(partialDirectory.mkdir()) { "Laikino vietinio aplanko sukurti nepavyko" }
+            require(partialDirectory.mkdir()) { "Could not create the temporary local folder" }
             try {
                 val children = source.listFiles()
-                require(children.size <= MAX_DIRECTORY_ENTRIES) { "SAF aplanke per daug elementų" }
+                require(children.size <= MAX_DIRECTORY_ENTRIES) { "The SAF folder contains too many items" }
                 children.forEach { child -> copySafNode(child, partialDirectory, operation, counter, depth + 1) }
-                require(partialDirectory.renameTo(target)) { "Vietinio aplanko kopijos užbaigti nepavyko" }
+                require(partialDirectory.renameTo(target)) { "Could not finish the local folder copy" }
                 operation?.progress(itemDelta = 1, currentName = safeName)
             } finally {
                 if (partialDirectory.exists()) partialDirectory.deleteRecursively()
             }
             return target
         }
-        require(source.isFile) { "Nepalaikomas SAF elemento tipas" }
+        require(source.isFile) { "Unsupported SAF item type" }
         val partial = File(destinationParent, ".${target.name}.shovel-partial")
         try {
             var written = 0L
             val input = resolver.openInputStream(source.uri)?.buffered()
-                ?: throw IllegalStateException("SAF failo negalima perskaityti")
+                ?: throw IllegalStateException("The SAF file cannot be read")
             input.use { sourceStream ->
                 partial.outputStream().buffered().use { output ->
                     val buffer = ByteArray(BUFFER_SIZE)
@@ -433,7 +433,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
                 }
             }
             val declared = source.length()
-            if (declared > 0) require(written == declared) { "Vietinės kopijos dydis nesutampa" }
+            if (declared > 0) require(written == declared) { "The local copy size does not match" }
             runCatching {
                 Files.move(partial.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE)
             }.getOrElse {
@@ -455,13 +455,13 @@ class SafFileRepository(private val context: Context, private val onMutation: su
             val candidate = "$stem ($number)$extension"
             if (parent.findFile(candidate) == null) return candidate
         }
-        throw IllegalStateException("Nepavyko parinkti laisvo SAF vardo")
+        throw IllegalStateException("Could not choose an available SAF name")
     }
 
     private fun countCopyNode(counter: CopyCounter, depth: Int) {
-        require(depth <= MAX_DEPTH) { "Kopijuojamų aplankų gylio riba viršyta" }
+        require(depth <= MAX_DEPTH) { "The copied-folder depth limit was exceeded" }
         counter.entries += 1
-        require(counter.entries <= MAX_COPY_ENTRIES) { "Kopijuojamų elementų riba viršyta" }
+        require(counter.entries <= MAX_COPY_ENTRIES) { "The copied-item limit was exceeded" }
     }
 
     private fun writeLocations(locations: List<SafLocation>) {
@@ -477,7 +477,7 @@ class SafFileRepository(private val context: Context, private val onMutation: su
                     .put("folderName", location.folderName ?: JSONObject.NULL),
             )
         }
-        check(preferences.edit().putString(KEY_LOCATIONS, array.toString()).commit()) { "Vietos įrašyti nepavyko" }
+        check(preferences.edit().putString(KEY_LOCATIONS, array.toString()).commit()) { "Could not save the location" }
     }
 
     private class CopyCounter(var entries: Int = 0)

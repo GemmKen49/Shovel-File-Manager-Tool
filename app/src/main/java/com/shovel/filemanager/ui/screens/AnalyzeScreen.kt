@@ -247,11 +247,11 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                LText("Paieška ir vietos analizė", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                LText("Search and storage analysis", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 LText(
                     when (scope) {
-                        SearchScope.ALL_STORAGE -> "Visos Android matomos saugyklos"
-                        SearchScope.SELECTED_STORAGE -> "Pasirinkta saugyklų: ${selectedRoots.size}"
+                        SearchScope.ALL_STORAGE -> "All Android-visible storage locations"
+                        SearchScope.SELECTED_STORAGE -> "Storage locations selected: ${selectedRoots.size}"
                         SearchScope.CURRENT_FOLDER -> selectedRoots.firstOrNull().orEmpty()
                     },
                     style = MaterialTheme.typography.bodySmall,
@@ -262,7 +262,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             }
             if (renameUndo != null) {
                 IconButton(onClick = viewModel::undoBatchRename) {
-                    Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = uiText("Atšaukti paskutinį masinį pervadinimą"))
+                    Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = uiText("Undo last batch rename"))
                 }
             }
         }
@@ -284,9 +284,9 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                 ) {
                     Icon(Icons.Rounded.CleaningServices, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Column(modifier = Modifier.weight(1f)) {
-                        LText("Įrenginio valymas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        LText("Device cleanup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         LText(
-                            "Nenaudojamos programos, programų talpyklos ir seni medijos failai — viską peržiūrėkite prieš sistemos veiksmą",
+                            "Unused apps, app caches and old media — review everything before a system action",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -319,7 +319,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    LText("Kur ieškoti", style = MaterialTheme.typography.labelLarge)
+                    LText("Search scope", style = MaterialTheme.typography.labelLarge)
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -327,13 +327,13 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                         FilterChip(
                             selected = scope == SearchScope.CURRENT_FOLDER,
                             onClick = { scope = SearchScope.CURRENT_FOLDER; scopedRoots = listOf(activePath) },
-                            label = { LText("Šiame aplanke") },
+                            label = { LText("This folder") },
                         )
                         FilterChip(
                             selected = scope == SearchScope.ALL_STORAGE,
                             onClick = { scope = SearchScope.ALL_STORAGE },
                             enabled = storageRoots.isNotEmpty(),
-                            label = { LText("Visose saugyklose") },
+                            label = { LText("All storage locations") },
                             modifier = Modifier.testTag("search_scope_all"),
                         )
                         FilterChip(
@@ -344,7 +344,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                                 showStoragePicker = true
                             },
                             enabled = storageRoots.isNotEmpty(),
-                            label = { LText("Pasirinkti saugyklas") },
+                            label = { LText("Choose storage locations") },
                             modifier = Modifier.testTag("search_scope_selected"),
                         )
                     }
@@ -352,7 +352,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                         value = query,
                         onValueChange = { query = it },
                         modifier = Modifier.fillMaxWidth().testTag("search_query"),
-                        label = { LText("Failo arba aplanko pavadinimas") },
+                        label = { LText("File or folder name") },
                         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                         singleLine = true,
                     )
@@ -360,7 +360,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        FilterChip(selected = includeHidden, onClick = { includeHidden = !includeHidden }, label = { LText("Paslėpti") })
+                        FilterChip(selected = includeHidden, onClick = { includeHidden = !includeHidden }, label = { LText("Hide") })
                         FilterChip(
                             selected = regex,
                             onClick = { regex = !regex },
@@ -371,13 +371,13 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                             selected = matchExtension,
                             onClick = { matchExtension = !matchExtension },
                             enabled = query.isNotBlank(),
-                            label = { LText("Pagal plėtinį") },
+                            label = { LText("By extension") },
                         )
                         FilterChip(
                             selected = searchContents,
                             onClick = { searchContents = !searchContents },
                             enabled = query.isNotBlank(),
-                            label = { LText("Failų turinyje") },
+                            label = { LText("In file contents") },
                         )
                     }
                     FilterChip(
@@ -386,13 +386,13 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                         leadingIcon = { Icon(Icons.Rounded.Tune, contentDescription = null) },
                         label = {
                             LText(
-                                if (advancedFilterCount > 0) "Išplėstiniai filtrai · $advancedFilterCount" else "Išplėstiniai filtrai",
+                                if (advancedFilterCount > 0) "Advanced filters · $advancedFilterCount" else "Advanced filters",
                             )
                         },
                         modifier = Modifier.testTag("search_advanced_toggle"),
                     )
                     if (advancedExpanded) {
-                        LText("Failų tipai", style = MaterialTheme.typography.labelLarge)
+                        LText("File types", style = MaterialTheme.typography.labelLarge)
                         Row(
                             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -405,13 +405,13 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                                 )
                             }
                         }
-                        LText("Dydis (MiB)", style = MaterialTheme.typography.labelLarge)
+                        LText("Size (MiB)", style = MaterialTheme.typography.labelLarge)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = minimumMiB,
                                 onValueChange = { minimumMiB = decimalInput(it) },
                                 modifier = Modifier.weight(1f),
-                                label = { LText("Nuo") },
+                                label = { LText("From") },
                                 isError = !sizeInputValid,
                                 singleLine = true,
                             )
@@ -419,12 +419,12 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                                 value = maximumMiB,
                                 onValueChange = { maximumMiB = decimalInput(it) },
                                 modifier = Modifier.weight(1f),
-                                label = { LText("Iki") },
+                                label = { LText("To") },
                                 isError = !sizeInputValid,
                                 singleLine = true,
                             )
                         }
-                        LText("Ne senesni nei", style = MaterialTheme.typography.labelLarge)
+                        LText("Not older than", style = MaterialTheme.typography.labelLarge)
                         Row(
                             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -433,11 +433,11 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                                 FilterChip(
                                     selected = newerThanDays == days,
                                     onClick = { newerThanDays = days },
-                                    label = { LText(days?.let(::daysLabel) ?: "Bet kada") },
+                                    label = { LText(days?.let(::daysLabel) ?: "Any time") },
                                 )
                             }
                         }
-                        LText("Senesni nei", style = MaterialTheme.typography.labelLarge)
+                        LText("Older than", style = MaterialTheme.typography.labelLarge)
                         Row(
                             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -446,15 +446,15 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                                 FilterChip(
                                     selected = olderThanDays == days,
                                     onClick = { olderThanDays = days },
-                                    label = { LText(days?.let(::daysLabel) ?: "Neriboti") },
+                                    label = { LText(days?.let(::daysLabel) ?: "No limit") },
                                 )
                             }
                         }
                         if (!sizeInputValid) {
-                            LText("Dydžio ribos netinkamos", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            LText("Invalid size range", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         }
                         if (!dateInputValid) {
-                            LText("Datos intervalas negalimas", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            LText("Invalid date range", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     Row(
@@ -465,13 +465,13 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                             onClick = { viewModel.search(currentFilters, selectedRoots) },
                             enabled = hasCondition && sizeInputValid && dateInputValid && selectedRoots.isNotEmpty(),
                             modifier = Modifier.testTag("search_execute"),
-                        ) { LText("Ieškoti") }
+                        ) { LText("Search") }
                         OutlinedButton(
                             onClick = { showSave = true },
                             enabled = hasCondition && sizeInputValid && dateInputValid && selectedRoots.isNotEmpty(),
                         ) {
                             Icon(Icons.Rounded.BookmarkAdd, contentDescription = null)
-                            LText("Išsaugoti", modifier = Modifier.padding(start = 6.dp))
+                            LText("Save", modifier = Modifier.padding(start = 6.dp))
                         }
                         OutlinedButton(
                             onClick = {
@@ -487,14 +487,14 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                                 olderThanDays = null
                             },
                             enabled = hasCondition || includeHidden || regex,
-                        ) { LText("Išvalyti filtrus") }
+                        ) { LText("Clear filters") }
                     }
                 }
             }
         }
 
         if (savedSearches.isNotEmpty()) {
-            item { SectionTitle("Išsaugotos paieškos", savedSearches.size.toString(), Modifier.padding(horizontal = 16.dp)) }
+            item { SectionTitle("Saved searches", savedSearches.size.toString(), Modifier.padding(horizontal = 16.dp)) }
             items(savedSearches, key = { "saved:${it.id}" }) { saved ->
                 Card(onClick = { viewModel.runSavedSearch(saved) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -508,7 +508,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                             )
                         }
                         IconButton(onClick = { viewModel.removeSavedSearch(saved.id) }) {
-                            Icon(Icons.Rounded.Delete, contentDescription = uiText("Pašalinti išsaugotą paiešką"))
+                            Icon(Icons.Rounded.Delete, contentDescription = uiText("Remove saved search"))
                         }
                     }
                 }
@@ -524,7 +524,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                 ) {
                     CircularProgressIndicator()
                     OutlinedButton(onClick = viewModel::cancelSearch, modifier = Modifier.testTag("search_cancel")) {
-                        LText("Sustabdyti paiešką")
+                        LText("Stop search")
                     }
                 }
             }
@@ -538,9 +538,9 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        LText("Dublikatų paieška dalinė", fontWeight = FontWeight.SemiBold)
+                        LText("Duplicate search is partial", fontWeight = FontWeight.SemiBold)
                         LText(
-                            "Patikrinta ${analysisState.duplicateCandidatesScanned} failų. Rastos grupės rodomos, tačiau likusioje saugyklos dalyje gali būti daugiau dublikatų.",
+                            "Checked ${analysisState.duplicateCandidatesScanned} files. The groups found are shown, but the rest of the storage may contain more duplicates.",
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -551,14 +551,14 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
         if (searchState.results.isNotEmpty()) {
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SectionTitle("Paieškos virtualus aplankas", searchState.results.size.toString())
+                    SectionTitle("Search virtual folder", searchState.results.size.toString())
                     LText(
-                        "Perskaityta ${searchState.scannedEntries} elementų · ${searchState.roots.size} vieta(-os)",
+                        "Read ${searchState.scannedEntries} items · ${searchState.roots.size} location(s)",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     if (searchState.truncated) {
                         LText(
-                            "Rezultatai sutrumpinti pasiekus 5 000 rezultatų arba 200 000 skenuotų elementų ribą.",
+                            "Results were truncated at 5,000 matches or 200,000 scanned items.",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -610,9 +610,9 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column {
-                            LText("Rasta ${analysis.scannedFiles} failų", fontWeight = FontWeight.SemiBold)
-                            LText("${analysis.scannedDirectories} aplankų · ${FileSystemRules.humanBytes(analysis.totalBytes)}")
-                            if (analysis.truncated) LText("Rezultatas sutrumpintas pasiekus saugos ribą", color = MaterialTheme.colorScheme.error)
+                            LText("Found ${analysis.scannedFiles} files", fontWeight = FontWeight.SemiBold)
+                            LText("${analysis.scannedDirectories} folders · ${FileSystemRules.humanBytes(analysis.totalBytes)}")
+                            if (analysis.truncated) LText("The result was truncated at the safety limit", color = MaterialTheme.colorScheme.error)
                         }
                         Icon(Icons.Rounded.Analytics, contentDescription = null, modifier = Modifier.size(42.dp))
                     }
@@ -624,12 +624,12 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("open_cleanup_review"),
                 ) {
                     Icon(Icons.Rounded.DeleteSweep, contentDescription = null)
-                    LText("Atidaryti saugaus valymo peržiūrą", modifier = Modifier.padding(start = 7.dp))
+                    LText("Open safe cleanup review", modifier = Modifier.padding(start = 7.dp))
                 }
             }
             item {
                 AnalysisOverviewCard(
-                    title = "Failų tipų pasiskirstymas",
+                    title = "File-type distribution",
                     testTag = "analysis_overview_types",
                     count = analysis.typeUsage.size,
                     icon = Icons.Rounded.Analytics,
@@ -652,7 +652,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             }
             item {
                 AnalysisOverviewCard(
-                    title = "Didžiausi aplankai",
+                    title = "Largest folders",
                     testTag = "analysis_overview_folders",
                     count = largestFolders.size,
                     icon = Icons.Rounded.FolderOpen,
@@ -666,7 +666,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             }
             item {
                 AnalysisOverviewCard(
-                    title = "Didžiausi failai",
+                    title = "Largest files",
                     testTag = "analysis_overview_files",
                     count = analysis.largestFiles.size,
                     icon = Icons.Rounded.DeleteSweep,
@@ -679,7 +679,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             }
             item {
                 AnalysisOverviewCard(
-                    title = "Seniausiai keisti failai",
+                    title = "Oldest modified files",
                     testTag = "analysis_overview_oldest",
                     count = analysis.oldestFiles.size,
                     icon = Icons.Rounded.Analytics,
@@ -693,7 +693,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             item {
                 val oldMedia = analysis.oldMediaFiles
                 AnalysisOverviewCard(
-                    title = "Sena medija ir ekrano kopijos",
+                    title = "Old media and screenshots",
                     testTag = "analysis_overview_old_media",
                     count = oldMedia.size,
                     icon = Icons.Rounded.CleaningServices,
@@ -706,7 +706,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             }
             item {
                 AnalysisOverviewCard(
-                    title = "Tušti aplankai",
+                    title = "Empty folders",
                     testTag = "analysis_overview_empty",
                     count = analysis.emptyDirectories.size,
                     icon = Icons.Rounded.FolderOff,
@@ -720,7 +720,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
             }
             item {
                 AnalysisOverviewCard(
-                    title = "Dublikatų grupės",
+                    title = "Duplicate groups",
                     testTag = "analysis_overview_duplicates",
                     count = analysisState.duplicates.size,
                     icon = Icons.Rounded.ContentCopy,
@@ -728,9 +728,9 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                 ) {
                     analysisState.duplicates.take(2).forEach { group ->
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            LText("${group.paths.size} vienodi failai · ${FileSystemRules.humanBytes(group.sizeBytes)} kiekvienas", fontWeight = FontWeight.SemiBold)
+                            LText("${group.paths.size} identical files · ${FileSystemRules.humanBytes(group.sizeBytes)} each", fontWeight = FontWeight.SemiBold)
                             Text(group.paths.firstOrNull().orEmpty(), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            OutlinedButton(onClick = { duplicateGroup = group }) { LText("Tvarkyti kopijas") }
+                            OutlinedButton(onClick = { duplicateGroup = group }) { LText("Manage copies") }
                         }
                     }
                 }
@@ -773,12 +773,12 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
 
     if (showStoragePicker) {
         ShovelModalDialog(
-            title = "Pasirinkti saugyklas",
+            title = "Choose storage locations",
             icon = Icons.Rounded.Storage,
             onDismissRequest = { showStoragePicker = false },
             modifier = Modifier.testTag("storage_picker_dialog"),
             actions = {
-                TextButton(onClick = { showStoragePicker = false }) { LText("Atšaukti") }
+                TextButton(onClick = { showStoragePicker = false }) { LText("Cancel") }
                 Button(
                     onClick = {
                         selectedStoragePaths = storagePickerDraft
@@ -787,7 +787,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                     },
                     enabled = storagePickerDraft.isNotEmpty(),
                     modifier = Modifier.testTag("search_storage_apply"),
-                ) { LText("Taikyti") }
+                ) { LText("Apply") }
             },
         ) {
                 Column(
@@ -795,7 +795,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     LText(
-                        "Paieška bus vykdoma tik pažymėtose prijungtose saugyklose.",
+                        "Search will run only in the selected mounted storage locations.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     storageRoots.forEach { root ->
@@ -835,17 +835,17 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
     }
 
     if (showSave) {
-        val defaultSearchName = uiText("Mano paieška")
+        val defaultSearchName = uiText("My search")
         var name by remember(query, defaultSearchName) {
             mutableStateOf(query.take(40).ifBlank { defaultSearchName })
         }
         AlertDialog(
             onDismissRequest = { showSave = false },
-            title = { LText("Išsaugoti paiešką") },
+            title = { LText("Save search") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LText("Bus išsaugotos vietos ir visi dabar pasirinkti filtrai.", style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { LText("Pavadinimas") }, singleLine = true)
+                    LText("The locations and all currently selected filters will be saved.", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { LText("Name") }, singleLine = true)
                 }
             },
             confirmButton = {
@@ -855,9 +855,9 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                         showSave = false
                     },
                     enabled = name.isNotBlank(),
-                ) { LText("Išsaugoti") }
+                ) { LText("Save") }
             },
-            dismissButton = { TextButton(onClick = { showSave = false }) { LText("Atšaukti") } },
+            dismissButton = { TextButton(onClick = { showSave = false }) { LText("Cancel") } },
         )
     }
 
@@ -865,7 +865,7 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
         val selectedPaths = searchState.selectedPaths.toList()
         DeleteConfirmationDialog(
             names = selectedPaths.map { File(it).name }, permanent = false,
-            title = "Perkelti rezultatus į šiukšlinę?",
+            title = "Move results to trash?",
             onDismiss = { confirmTrash = false },
             onConfirm = { viewModel.trashSearchSelection(); confirmTrash = false },
             loadSummary = { viewModel.loadFileSelectionInfo(selectedPaths) },
@@ -876,17 +876,17 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
         var selectedPaths by remember(group.sha256) { mutableStateOf(emptySet<String>()) }
         AlertDialog(
             onDismissRequest = { duplicateGroup = null },
-            title = { LText("Pasirinkti dublikatų kopijas") },
+            title = { LText("Select duplicate copies") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     LText(
-                        "Programa nieko nepažymi automatiškai. Patikrinkite kelius; pažymėti failai bus perkelti į atkuriamą šiukšlinę.",
+                        "The app selects nothing automatically. Check the paths; selected files will move to recoverable trash.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     OutlinedButton(
                         onClick = { selectedPaths = group.paths.drop(1).toSet() },
                         enabled = group.paths.size > 1,
-                    ) { LText("Pažymėti visas, išskyrus pirmą") }
+                    ) { LText("Select all except the first") }
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp)) {
                         items(group.paths, key = { "duplicate-path:$it" }) { path ->
                             Row(
@@ -904,8 +904,8 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                             }
                         }
                     }
-                    LText("Pažymėta: ${selectedPaths.size} iš ${group.paths.size}", style = MaterialTheme.typography.labelLarge)
-                    LText("Failai: ${selectedPaths.size} · aplankai: 0 · ${uiText("Dydis: ${FileSystemRules.humanBytes(group.sizeBytes * selectedPaths.size)}")}",
+                    LText("Selected: ${selectedPaths.size} of ${group.paths.size}", style = MaterialTheme.typography.labelLarge)
+                    LText("Files: ${selectedPaths.size} · folders: 0 · ${uiText("Size: ${FileSystemRules.humanBytes(group.sizeBytes * selectedPaths.size)}")}",
                         style = MaterialTheme.typography.bodySmall)
                 }
             },
@@ -916,9 +916,9 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
                         duplicateGroup = null
                     },
                     enabled = selectedPaths.isNotEmpty() && selectedPaths.size < group.paths.size,
-                ) { LText("Perkelti į šiukšlinę") }
+                ) { LText("Move to trash") }
             },
-            dismissButton = { TextButton(onClick = { duplicateGroup = null }) { LText("Atšaukti") } },
+            dismissButton = { TextButton(onClick = { duplicateGroup = null }) { LText("Cancel") } },
         )
     }
 
@@ -986,10 +986,10 @@ private fun AnalysisOverviewCard(
                     onClick = onViewAll,
                     enabled = count > 0,
                     modifier = Modifier.testTag("${testTag}_view_all"),
-                ) { LText("Rodyti visus") }
+                ) { LText("View all") }
             }
             if (count == 0) {
-                LText("Šioje grupėje elementų nerasta", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LText("No items were found in this category", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 content()
             }
@@ -1020,7 +1020,7 @@ internal fun StorageOverviewCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            LText("Saugyklos užpildymas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            LText("Storage usage", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             mountedRoots.forEach { target ->
                 val total = target.totalBytes.coerceAtLeast(0L)
                 val used = (total - target.freeBytes.coerceAtLeast(0L)).coerceIn(0L, total)
@@ -1036,10 +1036,10 @@ internal fun StorageOverviewCard(
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         LText(storageRootLabel(target), maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
                         if (total > 0L) LText(
-                            "Naudojama ${FileSystemRules.humanBytes(used)} iš ${FileSystemRules.humanBytes(total)}",
+                            "${FileSystemRules.humanBytes(used)} used of ${FileSystemRules.humanBytes(total)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ) else LText("Nežinoma", style = MaterialTheme.typography.bodySmall)
+                        ) else LText("Unknown", style = MaterialTheme.typography.bodySmall)
                     }
                     Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxSize(), strokeWidth = 5.dp)
@@ -1048,11 +1048,11 @@ internal fun StorageOverviewCard(
                 }
             }
             if (analysis != null) LText(
-                "Nuskaityta ${analysis.scannedFiles} failų ir ${analysis.scannedDirectories} aplankų",
+                "Scanned ${analysis.scannedFiles} files and ${analysis.scannedDirectories} folders",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            LText(if (running) "Vykdoma analizė" else "Nuskaityti saugyklą", style = MaterialTheme.typography.labelLarge)
+            LText(if (running) "Analysis in progress" else "Scan storage", style = MaterialTheme.typography.labelLarge)
             val activeStorageRoot = roots.firstOrNull { target ->
                 !analysisAllStorage && analysisRootPaths.singleOrNull()?.let { sameAnalysisPath(it, target.path) } == true
             }
@@ -1065,7 +1065,7 @@ internal fun StorageOverviewCard(
                 ) {
                     Icon(storageRootIcon(target.kind), contentDescription = null)
                     LText(
-                        "Nuskaityti: ${storageRootLabel(target)}",
+                        "Scan: ${storageRootLabel(target)}",
                         modifier = Modifier.weight(1f).padding(start = 8.dp),
                     )
                     if (running && !analysisAllStorage && analysisRootPaths.singleOrNull()?.let { sameAnalysisPath(it, target.path) } == true) {
@@ -1080,7 +1080,7 @@ internal fun StorageOverviewCard(
                     modifier = Modifier.fillMaxWidth().testTag("analyze_current_folder"),
                 ) {
                     Icon(Icons.Rounded.FolderOpen, contentDescription = null)
-                    LText("Analizuoti dabartinį aplanką", modifier = Modifier.padding(start = 8.dp))
+                    LText("Analyze current folder", modifier = Modifier.padding(start = 8.dp))
                     if (running) CircularProgressIndicator(modifier = Modifier.padding(start = 8.dp).size(20.dp), strokeWidth = 2.dp)
                 }
             }
@@ -1092,8 +1092,8 @@ internal fun StorageOverviewCard(
                 ) {
                     Icon(Icons.Rounded.Storage, contentDescription = null)
                     Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                        LText("Analizuoti saugyklą")
-                        LText("Visose saugyklose", style = MaterialTheme.typography.labelSmall)
+                        LText("Analyze storage")
+                        LText("All storage locations", style = MaterialTheme.typography.labelSmall)
                     }
                     if (running && analysisAllStorage) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -1104,23 +1104,23 @@ internal fun StorageOverviewCard(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().testTag("analysis_progress"))
                 progress?.let { current ->
                     LText(
-                        if (current.phase == AnalysisScanPhase.SCANNING) "Nuskaitomi failai" else "Tikrinami galimi dublikatai",
+                        if (current.phase == AnalysisScanPhase.SCANNING) "Scanning files" else "Checking possible duplicates",
                         fontWeight = FontWeight.SemiBold,
                     )
                     if (current.phase == AnalysisScanPhase.SCANNING) {
                         LText(
-                            "Failai: ${current.scannedFiles} · aplankai: ${current.scannedDirectories} · ${FileSystemRules.humanBytes(current.scannedBytes)}",
+                            "Files: ${current.scannedFiles} · folders: ${current.scannedDirectories} · ${FileSystemRules.humanBytes(current.scannedBytes)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
                         LText(
-                            "Galimi dublikatai: ${current.scannedFiles} failų · ${FileSystemRules.humanBytes(current.scannedBytes)}",
+                            "Possible duplicates: ${current.scannedFiles} files · ${FileSystemRules.humanBytes(current.scannedBytes)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         LText(
-                            "Patikrintos kontrolinės sumos: ${current.hashedFiles}",
+                            "Checksums checked: ${current.hashedFiles}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1138,11 +1138,11 @@ internal fun StorageOverviewCard(
                 OutlinedButton(
                     onClick = onCancel,
                     modifier = Modifier.fillMaxWidth().testTag("analysis_cancel"),
-                ) { LText("Sustabdyti analizę") }
+                ) { LText("Stop analysis") }
             }
             if (analysis != null) {
                 Button(onClick = onCleanup, enabled = !running, modifier = Modifier.fillMaxWidth()) {
-                    LText("Peržiūrėti valymą")
+                    LText("Review cleanup")
                 }
             }
         }
@@ -1150,10 +1150,10 @@ internal fun StorageOverviewCard(
 }
 
 private fun storageRootLabel(root: StorageRoot): String = when (root.kind) {
-    StorageRootKind.INTERNAL -> "Vidinė atmintis"
-    StorageRootKind.SD_CARD -> root.title.ifBlank { "SD kortelė" }
-    StorageRootKind.USB_STORAGE -> root.title.ifBlank { "USB saugykla" }
-    StorageRootKind.REMOVABLE -> root.title.ifBlank { "Išimama saugykla" }
+    StorageRootKind.INTERNAL -> "Internal storage"
+    StorageRootKind.SD_CARD -> root.title.ifBlank { "SD card" }
+    StorageRootKind.USB_STORAGE -> root.title.ifBlank { "USB storage" }
+    StorageRootKind.REMOVABLE -> root.title.ifBlank { "Removable storage" }
 }
 
 private fun storageRootIcon(kind: StorageRootKind) = when (kind) {
@@ -1182,12 +1182,12 @@ private fun SearchSelectionToolbar(
         onToggleSelectAll = onSelectAll,
         modifier = modifier,
     ) {
-            IconButton(onClick = onCopy) { Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti")) }
-            IconButton(onClick = onMove) { Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Perkelti")) }
+            IconButton(onClick = onCopy) { Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Copy")) }
+            IconButton(onClick = onMove) { Icon(Icons.Rounded.ContentCut, contentDescription = uiText("Move")) }
             if (featureVisible(OptionalFeature.BATCH_RENAME)) IconButton(onClick = onBatchRename) {
-                Icon(Icons.Rounded.Edit, contentDescription = uiText("Masinis pervadinimas"))
+                Icon(Icons.Rounded.Edit, contentDescription = uiText("Batch rename"))
             }
-            IconButton(onClick = onTrash) { Icon(Icons.Rounded.Delete, contentDescription = uiText("Į šiukšlinę"), tint = MaterialTheme.colorScheme.error) }
+            IconButton(onClick = onTrash) { Icon(Icons.Rounded.Delete, contentDescription = uiText("Move to trash"), tint = MaterialTheme.colorScheme.error) }
     }
 }
 
@@ -1228,7 +1228,7 @@ private fun ResultRow(
                 Text(entry.absolutePath, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (!entry.isDirectory) Text(FileSystemRules.humanBytes(entry.sizeBytes), style = MaterialTheme.typography.labelMedium)
-            IconButton(onClick = onReveal) { Icon(Icons.Rounded.FolderOpen, contentDescription = uiText("Rodyti aplanke")) }
+            IconButton(onClick = onReveal) { Icon(Icons.Rounded.FolderOpen, contentDescription = uiText("Show in folder")) }
         }
     }
 }
@@ -1255,21 +1255,21 @@ private fun ErrorCard(error: String, modifier: Modifier = Modifier) {
 }
 
 private fun kindLabel(kind: EntryKind): String = when (kind) {
-    EntryKind.DIRECTORY -> "Aplankai"
-    EntryKind.IMAGE -> "Nuotraukos"
-    EntryKind.VIDEO -> "Vaizdo įrašai"
-    EntryKind.AUDIO -> "Garso failai"
-    EntryKind.DOCUMENT -> "Dokumentai"
-    EntryKind.ARCHIVE -> "Archyvai"
+    EntryKind.DIRECTORY -> "Folders"
+    EntryKind.IMAGE -> "Pictures"
+    EntryKind.VIDEO -> "Videos"
+    EntryKind.AUDIO -> "Audio"
+    EntryKind.DOCUMENT -> "Documents"
+    EntryKind.ARCHIVE -> "Archives"
     EntryKind.APK -> "APK"
-    EntryKind.OTHER -> "Kita"
+    EntryKind.OTHER -> "Other"
 }
 
 private fun daysLabel(days: Int): String = when (days) {
     7 -> "7 dienas"
-    30 -> "30 dienų"
+    30 -> "30 days"
     365 -> "1 metus"
-    else -> "$days dienų"
+    else -> "$days days"
 }
 
 private fun decimalInput(value: String): String {
@@ -1306,7 +1306,7 @@ private fun DirectoryUsageRow(usage: DirectoryUsage, maximumBytes: Long, onOpen:
             Text(usage.path, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(FileSystemRules.humanBytes(usage.sizeBytes), style = MaterialTheme.typography.bodySmall)
-                LText("${usage.fileCount} failų", style = MaterialTheme.typography.bodySmall)
+                LText("${usage.fileCount} files", style = MaterialTheme.typography.bodySmall)
             }
             LinearProgressIndicator(
                 progress = { usage.sizeBytes.toFloat() / maximumBytes.toFloat() },

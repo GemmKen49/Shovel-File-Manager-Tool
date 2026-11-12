@@ -47,7 +47,7 @@ import java.util.Date
 @Composable
 fun FileInfoDialog(entry: FileEntry, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val settingsError = uiText("Programos nustatymų atidaryti nepavyko")
+    val settingsError = uiText("Could not open app settings")
     val dateFormat = rememberLocalizedDateTimeFormat(DateFormat.MEDIUM, DateFormat.SHORT)
     ShovelModalDialog(
         title = entry.name,
@@ -61,7 +61,7 @@ fun FileInfoDialog(entry: FileEntry, onDismiss: () -> Unit) {
                 TextButton(onClick = {
                     runCatching { context.startActivity(ApplicationActions.settingsIntent(packageName)) }
                         .onFailure { Toast.makeText(context, settingsError, Toast.LENGTH_LONG).show() }
-                }, modifier = Modifier.testTag("open_app_settings")) { LText("Atidaryti programos nustatymus") }
+                }, modifier = Modifier.testTag("open_app_settings")) { LText("Open app settings") }
             }
         },
     ) {
@@ -69,20 +69,20 @@ fun FileInfoDialog(entry: FileEntry, onDismiss: () -> Unit) {
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            InfoLine("Tipas", if (entry.isDirectory) uiText("Aplankas") else entry.extension.uppercase().ifBlank { entry.kind.name })
-            if (!entry.isDirectory || entry.sizeBytes > 0L) InfoLine("Dydis", FileSystemRules.humanBytes(entry.sizeBytes))
-            if (entry.modifiedAtMillis > 0L) InfoLine("Pakeista", dateFormat.format(Date(entry.modifiedAtMillis)))
-            entry.packageName?.let { InfoLine("Paketas", it) }
-            entry.appVersionName?.takeIf(String::isNotBlank)?.let { InfoLine("Versija", it) }
-            if (entry.packageName != null) InfoLine("Programos tipas", uiText(if (entry.isSystemApp) "Sisteminė" else "Naudotojo"))
+            InfoLine("Type", if (entry.isDirectory) uiText("Folder") else entry.extension.uppercase().ifBlank { entry.kind.name })
+            if (!entry.isDirectory || entry.sizeBytes > 0L) InfoLine("Size", FileSystemRules.humanBytes(entry.sizeBytes))
+            if (entry.modifiedAtMillis > 0L) InfoLine("Modified", dateFormat.format(Date(entry.modifiedAtMillis)))
+            entry.packageName?.let { InfoLine("Package", it) }
+            entry.appVersionName?.takeIf(String::isNotBlank)?.let { InfoLine("Version", it) }
+            if (entry.packageName != null) InfoLine("App type", uiText(if (entry.isSystemApp) "System" else "User"))
             InfoLine(
-                "Prieiga",
+                "Access",
                 listOfNotNull(
-                    uiText("Skaitoma").takeIf { entry.isReadable },
-                    uiText("Rašoma").takeIf { entry.isWritable },
-                ).ifEmpty { listOf(uiText("Neprieinama")) }.joinToString(" · "),
+                    uiText("Readable").takeIf { entry.isReadable },
+                    uiText("Writable").takeIf { entry.isWritable },
+                ).ifEmpty { listOf(uiText("Unavailable")) }.joinToString(" · "),
             )
-            LText("Kelias", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            LText("Path", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             Text(entry.absolutePath, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -96,7 +96,7 @@ fun FileInfoDialog(
     loadFolderStats: (suspend (FileEntry) -> FolderStats?)? = null,
 ) {
     val context = LocalContext.current
-    val settingsError = uiText("Programos nustatymų atidaryti nepavyko")
+    val settingsError = uiText("Could not open app settings")
     val stableEntries = remember(entries) { entries.distinctBy(FileEntry::absolutePath) }
     val paths = remember(stableEntries) { stableEntries.map(FileEntry::absolutePath) }
     val single = stableEntries.singleOrNull()
@@ -120,13 +120,13 @@ fun FileInfoDialog(
         error = null
         loadSummary(paths).fold(
             onSuccess = { summary = it },
-            onFailure = { error = it.message ?: "Informacijos apskaičiuoti nepavyko" },
+            onFailure = { error = it.message ?: "Could not calculate file information" },
         )
         loading = false
     }
 
     ShovelModalDialog(
-        title = single?.name ?: "Informacija",
+        title = single?.name ?: "Info",
         translateTitle = single == null,
         icon = Icons.Rounded.Info,
         modifier = Modifier.testTag("file_info_dialog"),
@@ -137,7 +137,7 @@ fun FileInfoDialog(
                 TextButton(onClick = {
                     runCatching { context.startActivity(ApplicationActions.settingsIntent(packageName)) }
                         .onFailure { Toast.makeText(context, settingsError, Toast.LENGTH_LONG).show() }
-                }, modifier = Modifier.testTag("open_app_settings")) { LText("Atidaryti programos nustatymus") }
+                }, modifier = Modifier.testTag("open_app_settings")) { LText("Open app settings") }
             }
         },
     ) {
@@ -145,19 +145,19 @@ fun FileInfoDialog(
             modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-                if (single == null) InfoLine("Pasirinkta", stableEntries.size.toString())
+                if (single == null) InfoLine("Selected", stableEntries.size.toString())
                 single?.let { entry ->
-                    InfoLine("Tipas", if (entry.isDirectory) uiText("Aplankas") else entry.extension.uppercase().ifBlank { entry.kind.name })
-                    if (entry.modifiedAtMillis > 0L) InfoLine("Pakeista", dateFormat.format(Date(entry.modifiedAtMillis)))
-                    entry.packageName?.let { InfoLine("Paketas", it) }
-                    entry.appVersionName?.takeIf(String::isNotBlank)?.let { InfoLine("Versija", it) }
-                    if (entry.packageName != null) InfoLine("Programos tipas", uiText(if (entry.isSystemApp) "Sisteminė" else "Naudotojo"))
+                    InfoLine("Type", if (entry.isDirectory) uiText("Folder") else entry.extension.uppercase().ifBlank { entry.kind.name })
+                    if (entry.modifiedAtMillis > 0L) InfoLine("Modified", dateFormat.format(Date(entry.modifiedAtMillis)))
+                    entry.packageName?.let { InfoLine("Package", it) }
+                    entry.appVersionName?.takeIf(String::isNotBlank)?.let { InfoLine("Version", it) }
+                    if (entry.packageName != null) InfoLine("App type", uiText(if (entry.isSystemApp) "System" else "User"))
                     InfoLine(
-                        "Prieiga",
+                        "Access",
                         listOfNotNull(
-                            uiText("Skaitoma").takeIf { entry.isReadable },
-                            uiText("Rašoma").takeIf { entry.isWritable },
-                        ).ifEmpty { listOf(uiText("Neprieinama")) }.joinToString(" · "),
+                            uiText("Readable").takeIf { entry.isReadable },
+                            uiText("Writable").takeIf { entry.isWritable },
+                        ).ifEmpty { listOf(uiText("Unavailable")) }.joinToString(" · "),
                     )
                     folderStats?.let { stats ->
                         InfoLine("Items", stats.itemsText(), Modifier.testTag("file_info_visible_items"))
@@ -186,12 +186,12 @@ fun FileInfoDialog(
                         modifier = Modifier.testTag("file_info_error"),
                     )
                     summary != null -> summary?.let { result ->
-                        InfoLine("Failai", result.fileCount.toString(), Modifier.testTag("file_info_files"))
-                        InfoLine("Aplankai", result.folderCount.toString(), Modifier.testTag("file_info_folders"))
-                        InfoLine("Dydis", FileSystemRules.humanBytes(result.totalBytes), Modifier.testTag("file_info_size"))
+                        InfoLine("Files", result.fileCount.toString(), Modifier.testTag("file_info_files"))
+                        InfoLine("Folders", result.folderCount.toString(), Modifier.testTag("file_info_folders"))
+                        InfoLine("Size", FileSystemRules.humanBytes(result.totalBytes), Modifier.testTag("file_info_size"))
                         if (!result.complete) {
                             LText(
-                                "Rodomas dalinis turinys arba daliniai aplankų dydžiai, nes pasiekta saugi skenavimo riba.",
+                                "Some contents or folder sizes are partial because the safe scan limit was reached.",
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.testTag("file_info_partial"),
@@ -200,7 +200,7 @@ fun FileInfoDialog(
                     }
                 }
                 if (single != null) {
-                    LText("Kelias", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    LText("Path", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     Text(single.absolutePath, style = MaterialTheme.typography.bodySmall)
                 }
         }

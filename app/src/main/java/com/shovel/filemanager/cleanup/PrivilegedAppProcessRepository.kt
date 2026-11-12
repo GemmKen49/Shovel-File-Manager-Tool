@@ -56,14 +56,14 @@ class PrivilegedAppProcessRepository(
 
     suspend fun forceStop(packageName: String) = withContext(Dispatchers.IO) {
         PrivilegedAppProcessTools.requireValidPackageName(packageName)
-        require(packageName != application.packageName) { "Shovel negali sustabdyti savęs" }
+        require(packageName != application.packageName) { "Shovel cannot stop itself" }
         val info = runCatching { application.packageManager.getApplicationInfoCompat(packageName) }
             .getOrNull()
             ?.takeIf(::isUserApplication)
-            ?: throw IllegalArgumentException("Galima sustabdyti tik įdiegtą naudotojo programą")
+            ?: throw IllegalArgumentException("Only an installed user app can be stopped")
         require(info.packageName == packageName)
         requireConnected()
-        check(privilegedCall { it.forceStopPackage(packageName) }) { "Programos sustabdyti nepavyko" }
+        check(privilegedCall { it.forceStopPackage(packageName) }) { "Could not stop the app" }
     }
 
     private fun requireConnected() {
@@ -71,7 +71,7 @@ class PrivilegedAppProcessRepository(
             AdvancedAccessBackend.SHIZUKU_SHELL,
             AdvancedAccessBackend.SHIZUKU_ROOT,
             AdvancedAccessBackend.ROOT,
-        )) { "Root arba Shizuku prieiga neaktyvi" }
+        )) { "Root or Shizuku access is not active" }
     }
 
     private inline fun <T> privilegedCall(block: (com.shovel.filemanager.advanced.IPrivilegedFileService) -> T): T =

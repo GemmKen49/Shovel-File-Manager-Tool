@@ -43,7 +43,7 @@ internal fun TransferDiagnosticsDialog(onDismiss: () -> Unit, onExport: ((File) 
     val storageFailed by TransferDiagnostics.storageFailed.collectAsStateWithLifecycle()
     var busy by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
-    val shareTitle = uiText("Perdavimo diagnostika")
+    val shareTitle = uiText("Transfer diagnostics")
     fun operation(action: suspend () -> Unit) {
         scope.launch {
             busy = true
@@ -52,11 +52,11 @@ internal fun TransferDiagnosticsDialog(onDismiss: () -> Unit, onExport: ((File) 
         }
     }
     ShovelModalDialog(
-        title = "Perdavimo diagnostika", icon = Icons.Rounded.Info,
+        title = "Transfer diagnostics", icon = Icons.Rounded.Info,
         onDismissRequest = onDismiss, modifier = Modifier.testTag("transfer_diagnostics_dialog"),
         actions = {
             TextButton(onClick = { operation { TransferDiagnostics.clear(context) } }, enabled = !busy,
-                modifier = Modifier.testTag("transfer_diagnostics_clear")) { LText("Išvalyti") }
+                modifier = Modifier.testTag("transfer_diagnostics_clear")) { LText("Clear") }
             TextButton(onClick = { operation {
                 val report = TransferDiagnostics.export(context)
                 if (onExport != null) onExport(report) else {
@@ -69,21 +69,21 @@ internal fun TransferDiagnosticsDialog(onDismiss: () -> Unit, onExport: ((File) 
                     }
                     context.startActivity(Intent.createChooser(intent, shareTitle))
                 }
-            } }, enabled = !busy, modifier = Modifier.testTag("transfer_diagnostics_export")) { LText("Eksportuoti") }
-            TextButton(onClick = onDismiss, modifier = Modifier.testTag("transfer_diagnostics_close")) { LText("Uždaryti") }
+            } }, enabled = !busy, modifier = Modifier.testTag("transfer_diagnostics_export")) { LText("Export") }
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("transfer_diagnostics_close")) { LText("Close") }
         },
     ) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            LText("Duomenys lieka šiame telefone.", style = MaterialTheme.typography.bodyMedium)
+            LText("Data stays on this phone.", style = MaterialTheme.typography.bodyMedium)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                LText(if (enabled) "Įjungtas" else "Išjungta", modifier = Modifier.weight(1f))
+                LText(if (enabled) "Enabled" else "Off", modifier = Modifier.weight(1f))
                 Switch(checked = enabled, onCheckedChange = { selected -> operation {
                     TransferDiagnostics.setEnabled(context, selected)
                 } }, enabled = !busy, modifier = Modifier.testTag("transfer_diagnostics_enabled"))
             }
             if (failed || storageFailed) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LText("Nepavyko", color = MaterialTheme.colorScheme.error)
+                    LText("Failed", color = MaterialTheme.colorScheme.error)
                     Text(TransferDiagnostics.STORAGE_ERROR_CODE, color = MaterialTheme.colorScheme.error)
                 }
             }

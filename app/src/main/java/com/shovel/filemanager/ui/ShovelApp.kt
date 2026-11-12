@@ -109,10 +109,10 @@ private data class SectionDestination(
 )
 
 private val destinations = listOf(
-    SectionDestination(AppSection.FILES, "Failai", Icons.Rounded.Folder),
-    SectionDestination(AppSection.ANALYZE, "Analizė", Icons.Rounded.Analytics),
+    SectionDestination(AppSection.FILES, "Files", Icons.Rounded.Folder),
+    SectionDestination(AppSection.ANALYZE, "Analyze", Icons.Rounded.Analytics),
     SectionDestination(AppSection.OPERATIONS, "Operations", Icons.Rounded.Sync),
-    SectionDestination(AppSection.TOOLS, "Daugiau", Icons.Rounded.MoreHoriz),
+    SectionDestination(AppSection.TOOLS, "More", Icons.Rounded.MoreHoriz),
 )
 
 @Composable
@@ -228,7 +228,7 @@ fun ShovelApp(
             val result = snackbarHostState.showSnackbar(
                 message = UiTranslator.translate(message.text, interfaceLanguage),
                 actionLabel = when (message.action) {
-                    UiMessageAction.UNDO_BATCH_RENAME -> UiTranslator.translate("Atšaukti", interfaceLanguage)
+                    UiMessageAction.UNDO_BATCH_RENAME -> UiTranslator.translate("Cancel", interfaceLanguage)
                     null -> null
                 },
                 duration = if (message.action != null) SnackbarDuration.Long else SnackbarDuration.Short,
@@ -337,7 +337,7 @@ fun ShovelApp(
                                 if (enabled) {
                                     authenticate(
                                         context = context,
-                                        title = UiTranslator.translate("Įjungti Shovel užraktą", interfaceLanguage),
+                                        title = UiTranslator.translate("Enable Shovel lock", interfaceLanguage),
                                         onSuccess = { viewModel.setAppLockEnabled(true); unlocked = true },
                                         onError = { text ->
                                             scope.launch {
@@ -350,7 +350,7 @@ fun ShovelApp(
                                 } else {
                                     authenticate(
                                         context = context,
-                                        title = UiTranslator.translate("Išjungti Shovel užraktą", interfaceLanguage),
+                                        title = UiTranslator.translate("Disable Shovel lock", interfaceLanguage),
                                         onSuccess = { viewModel.setAppLockEnabled(false); unlocked = true },
                                         onError = { text ->
                                             scope.launch {
@@ -470,7 +470,7 @@ fun ShovelApp(
             onUnlock = {
                 authenticate(
                     context = context,
-                    title = UiTranslator.translate("Atrakinti Shovel", interfaceLanguage),
+                    title = UiTranslator.translate("Unlock Shovel", interfaceLanguage),
                     onSuccess = { unlocked = true },
                     onError = { text ->
                         scope.launch {
@@ -513,10 +513,10 @@ internal fun AppLockOverlay(onUnlock: () -> Unit, onCancel: (() -> Unit)? = null
                 verticalArrangement = Arrangement.Center,
             ) {
                 Icon(Icons.Rounded.Fingerprint, contentDescription = null, modifier = Modifier.size(84.dp), tint = MaterialTheme.colorScheme.primary)
-                LText("Shovel užrakinta", style = MaterialTheme.typography.headlineSmall)
+                LText("Shovel is locked", style = MaterialTheme.typography.headlineSmall)
                 message?.let { LText(it, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error) }
-                Button(onClick = onUnlock, modifier = Modifier.padding(top = 18.dp)) { LText("Atrakinti") }
-                onCancel?.let { TextButton(onClick = it) { LText("Atšaukti") } }
+                Button(onClick = onUnlock, modifier = Modifier.padding(top = 18.dp)) { LText("Unlock") }
+                onCancel?.let { TextButton(onClick = it) { LText("Cancel") } }
             }
         }
     }
@@ -529,14 +529,14 @@ internal fun authenticate(
     onError: (String) -> Unit,
 ) {
     val activity = context as? FragmentActivity ?: run {
-        onError("Biometrinio lango atidaryti nepavyko")
+        onError("Could not open authentication")
         return
     }
     val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
         BiometricManager.Authenticators.DEVICE_CREDENTIAL
     val available = BiometricManager.from(context).canAuthenticate(authenticators)
     if (available != BiometricManager.BIOMETRIC_SUCCESS) {
-        onError("Įrenginyje nenustatyta tinkama biometrija arba ekrano užraktas")
+        onError("No supported biometric or screen lock is configured on this device")
         return
     }
     val executor = androidx.core.content.ContextCompat.getMainExecutor(context)
@@ -555,7 +555,7 @@ internal fun authenticate(
     prompt.authenticate(
         BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
-            .setSubtitle(UiTranslator.translate("Patvirtinkite tapatybę Android sistemos lange", context.resources.configuration.locales[0].language))
+            .setSubtitle(UiTranslator.translate("Confirm your identity in the Android system dialog", context.resources.configuration.locales[0].language))
             .setAllowedAuthenticators(authenticators)
             .build(),
     )

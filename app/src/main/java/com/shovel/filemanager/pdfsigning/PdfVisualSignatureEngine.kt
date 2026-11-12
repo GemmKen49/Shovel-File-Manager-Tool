@@ -20,7 +20,7 @@ class PdfVisualSignatureEngine(cacheDirectory: File) {
 
     init {
         if (scratchRoot.exists()) scratchRoot.deleteRecursively()
-        require(scratchRoot.mkdirs() || scratchRoot.isDirectory) { "Nepavyko paruošti privačios PDF darbo vietos" }
+        require(scratchRoot.mkdirs() || scratchRoot.isDirectory) { "Could not prepare the private PDF workspace" }
     }
 
     fun apply(
@@ -29,25 +29,25 @@ class PdfVisualSignatureEngine(cacheDirectory: File) {
         drawing: SignatureDrawing,
         placement: PdfSignaturePlacement,
     ) {
-        require(source.canonicalFile != destination.canonicalFile) { "PDF darbo failai negali sutapti" }
-        require(source.isFile && source.canRead()) { "PDF failas nepasiekiamas" }
-        require(source.length() in 1..EditLimits.MAX_FILE_BYTES) { "PDF failas per didelis redaguoti" }
+        require(source.canonicalFile != destination.canonicalFile) { "PDF working files cannot be the same" }
+        require(source.isFile && source.canRead()) { "The PDF file is unavailable" }
+        require(source.length() in 1..EditLimits.MAX_FILE_BYTES) { "The PDF file is too large to edit" }
         val signature = VisualSignatureRules.validate(drawing)
         requireScratchSpace(source.length())
 
         val document = try {
             PDDocument.load(source, memoryUsage())
         } catch (error: InvalidPasswordException) {
-            throw IllegalArgumentException("Slaptažodžiu apsaugotų PDF pasirašymas dar nepalaikomas", error)
+            throw IllegalArgumentException("Signing password-protected PDFs is not supported yet", error)
         } catch (error: Throwable) {
-            throw IllegalArgumentException("PDF perskaityti nepavyko", error)
+            throw IllegalArgumentException("Could not read the PDF", error)
         }
 
         val expectedPageCount = document.numberOfPages
         document.use { pdf ->
-            require(!pdf.isEncrypted) { "Slaptažodžiu apsaugotų PDF pasirašymas dar nepalaikomas" }
+            require(!pdf.isEncrypted) { "Signing password-protected PDFs is not supported yet" }
             require(pdf.signatureDictionaries.isEmpty()) {
-                "PDF jau turi kriptografinį parašą; jo keitimas galėtų panaikinti parašo galiojimą"
+                "The PDF already has a cryptographic signature; changing it could invalidate that signature"
             }
             val pageCount = pdf.numberOfPages
             val boundedPlacement = VisualSignatureRules.validatePlacement(placement, pageCount)
@@ -79,8 +79,8 @@ class PdfVisualSignatureEngine(cacheDirectory: File) {
             }
         }
 
-        require(destination.isFile && destination.canRead() && destination.length() > 0L) { "Pasirašyto PDF sukurti nepavyko" }
-        require(destination.length() <= EditLimits.MAX_FILE_BYTES) { "Pasirašytas PDF viršijo saugaus redagavimo ribą" }
+        require(destination.isFile && destination.canRead() && destination.length() > 0L) { "Could not create the signed PDF" }
+        require(destination.length() <= EditLimits.MAX_FILE_BYTES) { "The signed PDF exceeded the safe editing limit" }
         verify(destination, expectedPages = expectedPageCount)
         RandomAccessFile(destination, "rw").use { it.fd.sync() }
     }
@@ -127,11 +127,11 @@ class PdfVisualSignatureEngine(cacheDirectory: File) {
         val verified = try {
             PDDocument.load(file, memoryUsage())
         } catch (error: Throwable) {
-            throw IllegalStateException("Pasirašyto PDF patikra nepavyko", error)
+            throw IllegalStateException("Signed PDF verification failed", error)
         }
         verified.use { pdf ->
-            require(!pdf.isEncrypted) { "Pasirašyto PDF patikra nepavyko" }
-            require(pdf.numberOfPages == expectedPages) { "Pasirašyto PDF puslapių patikra nepavyko" }
+            require(!pdf.isEncrypted) { "Signed PDF verification failed" }
+            require(pdf.numberOfPages == expectedPages) { "Signed PDF page verification failed" }
         }
     }
 
@@ -143,7 +143,7 @@ class PdfVisualSignatureEngine(cacheDirectory: File) {
         val needed = (sourceBytes.coerceAtMost(EditLimits.MAX_FILE_BYTES) * 2L + MIN_FREE_BYTES)
             .coerceAtMost(MAX_SCRATCH_BYTES)
         val available = scratchRoot.usableSpace
-        require(available <= 0L || available >= needed) { "Nepakanka vietos saugiai PDF darbo kopijai" }
+        require(available <= 0L || available >= needed) { "Not enough space for a safe PDF working copy" }
     }
 
     private companion object {

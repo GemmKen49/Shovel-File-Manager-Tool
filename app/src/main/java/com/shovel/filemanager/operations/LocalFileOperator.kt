@@ -27,16 +27,16 @@ class LocalFileOperator(private val onMutation: suspend (List<File>) -> Unit = {
         conflictPolicy: ConflictPolicy,
         context: OperationContext,
     ) = withContext(Dispatchers.IO) {
-        require(sourcePaths.isNotEmpty()) { "Nepasirinkta failų" }
+        require(sourcePaths.isNotEmpty()) { "No files selected" }
         val destination = File(destinationDirectoryPath).canonicalFile
-        require(destination.isDirectory) { "Paskirties aplankas nepasiekiamas" }
+        require(destination.isDirectory) { "The destination folder is unavailable" }
 
         val sources = sourcePaths.distinct().map { File(it).canonicalFile }
         sources.forEach { source ->
-            require(source.exists()) { "Failas nebeegzistuoja: ${source.name}" }
-            require(source != destination) { "Negalima kopijuoti aplanko į save" }
+            require(source.exists()) { "The file no longer exists: ${source.name}" }
+            require(source != destination) { "A folder cannot be copied onto itself" }
             require(!source.isDirectory || !FileSystemRules.isContained(source, destination)) {
-                "Negalima kopijuoti aplanko į jo paties poaplankį"
+                "A folder cannot be copied into its own subfolder"
             }
         }
 
@@ -44,13 +44,13 @@ class LocalFileOperator(private val onMutation: suspend (List<File>) -> Unit = {
             val scan = scan(source)
             Scan(Math.addExact(total.items, scan.items), Math.addExact(total.bytes, scan.bytes))
         }
-        require(totals.items <= MAX_OPERATION_ENTRIES) { "Operacija viršija $MAX_OPERATION_ENTRIES elementų ribą" }
+        require(totals.items <= MAX_OPERATION_ENTRIES) { "The operation exceeds the limit of $MAX_OPERATION_ENTRIES items" }
         context.setTotals(totals.items, totals.bytes)
 
         sources.forEach { source ->
             context.checkpoint()
             val initialTarget = File(destination, source.name)
-            require(initialTarget.canonicalFile != source) { "Šaltinis ir paskirtis yra tas pats failas" }
+            require(initialTarget.canonicalFile != source) { "Source and destination are the same file" }
             val target = resolveTarget(initialTarget, source.isDirectory, conflictPolicy) ?: return@forEach
 
             val changed = mutableListOf<File>()
@@ -93,13 +93,13 @@ class LocalFileOperator(private val onMutation: suspend (List<File>) -> Unit = {
         changed: MutableList<File>,
         depth: Int,
     ): Boolean {
-        require(depth <= MAX_TREE_DEPTH) { "Aplankų gylis viršija $MAX_TREE_DEPTH ribą" }
+        require(depth <= MAX_TREE_DEPTH) { "Folder depth exceeds the limit of $MAX_TREE_DEPTH" }
         context.checkpoint()
         val target = resolveTarget(requestedTarget, source.isDirectory, conflictPolicy) ?: return false
 
         if (source.isDirectory) {
-            if (!target.exists()) check(target.mkdir()) { "Nepavyko sukurti ${target.name}" }
-            val children = source.listFiles() ?: throw SecurityException("Nepavyko perskaityti ${source.name}")
+            if (!target.exists()) check(target.mkdir()) { "Could not create ${target.name}" }
+            val children = source.listFiles() ?: throw SecurityException("Could not read ${source.name}")
             var fullyCopied = true
             children.forEach { child ->
                 if (!copyRecursively(child, File(target, child.name), conflictPolicy, context, changed, depth + 1)) fullyCopied = false
@@ -124,7 +124,7 @@ class LocalFileOperator(private val onMutation: suspend (List<File>) -> Unit = {
                     output.fd.sync()
                 }
             }
-            require(partial.length() == source.length()) { "Kopijos dydis nesutampa: ${source.name}" }
+            require(partial.length() == source.length()) { "The copy size does not match: ${source.name}" }
             if (target.exists() && conflictPolicy != ConflictPolicy.REPLACE) throw FileAlreadyExistsException(target)
             if (conflictPolicy == ConflictPolicy.REPLACE) {
                 try {
@@ -143,15 +143,15 @@ class LocalFileOperator(private val onMutation: suspend (List<File>) -> Unit = {
     }
 
     private suspend fun deleteRecursively(file: File, context: OperationContext?, depth: Int, changed: MutableList<File>) {
-        require(depth <= MAX_TREE_DEPTH) { "Aplankų gylis viršija $MAX_TREE_DEPTH ribą" }
+        require(depth <= MAX_TREE_DEPTH) { "Folder depth exceeds the limit of $MAX_TREE_DEPTH" }
         context?.checkpoint()
         if (file.isDirectory) {
-            val children = file.listFiles() ?: throw SecurityException("Nepavyko perskaityti ${file.name}")
+            val children = file.listFiles() ?: throw SecurityException("Could not read ${file.name}")
             children.forEach { deleteRecursively(it, context, depth + 1, changed) }
         }
         val regularFile = file.isFile
         val size = if (regularFile) file.length() else 0
-        if (!file.delete()) throw IllegalStateException("Nepavyko ištrinti ${file.name}")
+        if (!file.delete()) throw IllegalStateException("Could not delete ${file.name}")
         if (regularFile) changed += file
         context?.progress(itemDelta = 1, byteDelta = size, currentName = file.name)
     }
@@ -163,12 +163,12 @@ class LocalFileOperator(private val onMutation: suspend (List<File>) -> Unit = {
         pending.add(root to 0)
         while (pending.isNotEmpty()) {
             val (current, depth) = pending.removeLast()
-            require(depth <= MAX_TREE_DEPTH) { "Aplankų gylis viršija $MAX_TREE_DEPTH ribą" }
+            require(depth <= MAX_TREE_DEPTH) { "Folder depth exceeds the limit of $MAX_TREE_DEPTH" }
             items = Math.addExact(items, 1)
-            require(items <= MAX_OPERATION_ENTRIES) { "Per daug elementų" }
+            require(items <= MAX_OPERATION_ENTRIES) { "Too many items" }
             if (current.isDirectory) {
                 current.listFiles()?.forEach { pending.add(it to depth + 1) }
-                    ?: throw SecurityException("Nepavyko perskaityti ${current.name}")
+                    ?: throw SecurityException("Could not read ${current.name}")
             } else {
                 bytes = Math.addExact(bytes, current.length().coerceAtLeast(0))
             }
@@ -182,11 +182,11 @@ class LocalFileOperator(private val onMutation: suspend (List<File>) -> Unit = {
             ConflictPolicy.SKIP -> null
             ConflictPolicy.KEEP_BOTH -> FileSystemRules.keepBothTarget(target)
             ConflictPolicy.REPLACE -> {
-                require(target.isDirectory == sourceIsDirectory) { "Nepavyko pakeisti ${target.name}" }
+                require(target.isDirectory == sourceIsDirectory) { "Could not replace ${target.name}" }
                 target // The old file stays intact until the replacement copy is complete.
             }
             ConflictPolicy.MERGE -> {
-                require(sourceIsDirectory && target.isDirectory) { "Sujungti galima tik aplankus" }
+                require(sourceIsDirectory && target.isDirectory) { "Only folders can be merged" }
                 target
             }
             ConflictPolicy.ASK -> throw FileAlreadyExistsException(target)
@@ -194,4 +194,4 @@ class LocalFileOperator(private val onMutation: suspend (List<File>) -> Unit = {
     }
 }
 
-class FileAlreadyExistsException(val target: File) : IllegalStateException("Jau egzistuoja: ${target.name}")
+class FileAlreadyExistsException(val target: File) : IllegalStateException("Already exists: ${target.name}")

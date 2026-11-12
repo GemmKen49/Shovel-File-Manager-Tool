@@ -58,17 +58,17 @@ internal fun ApkContentsDialog(file: File, onDismiss: () -> Unit) {
         title = file.name,
         icon = Icons.Rounded.Archive,
         translateTitle = false,
-        subtitle = "Tik skaitymui",
+        subtitle = "Read only",
         expandedContent = true,
         onDismissRequest = navigateBack,
         onClose = onDismiss,
         modifier = Modifier.testTag("apk_contents_dialog"),
-        actions = { TextButton(onClick = onDismiss) { LText("Uždaryti") } },
+        actions = { TextButton(onClick = onDismiss) { LText("Close") } },
     ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = navigateBack, modifier = Modifier.testTag("apk_contents_back")) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Grįžti"))
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Back"))
                 }
                 Text(currentPath.ifBlank { "/" }, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall)
@@ -76,7 +76,7 @@ internal fun ApkContentsDialog(file: File, onDismiss: () -> Unit) {
             val loaded = index
             when {
                 loaded == null -> CircularProgressIndicator()
-                loaded.isFailure -> LText(loaded.exceptionOrNull()?.message ?: "Archyvas nepasiekiamas",
+                loaded.isFailure -> LText(loaded.exceptionOrNull()?.message ?: "The archive is unavailable",
                     color = MaterialTheme.colorScheme.error)
                 else -> {
                     val children = requireNotNull(loaded.getOrNull()).children(currentPath)

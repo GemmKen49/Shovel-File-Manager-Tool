@@ -53,7 +53,7 @@ class ArchiveEngine(
     }
 
     suspend fun list(archiveFile: File, password: CharArray? = null): List<ArchiveEntryInfo> = withContext(Dispatchers.IO) {
-        require(archiveFile.isFile) { "Archyvas nepasiekiamas" }
+        require(archiveFile.isFile) { "The archive is unavailable" }
         when (detectFormat(archiveFile)) {
             ArchiveFormat.ZIP -> listZip(archiveFile, password)
             ArchiveFormat.SEVEN_Z -> listSevenZ(archiveFile, password)
@@ -76,8 +76,8 @@ class ArchiveEngine(
         operation: OperationContext? = null,
         fallbackExtractedName: String = "extracted",
     ) = withContext(Dispatchers.IO) {
-        require(archiveFile.isFile) { "Archyvas nepasiekiamas" }
-        require(destinationDirectory.isDirectory || destinationDirectory.mkdirs()) { "Paskirties aplankas nepasiekiamas" }
+        require(archiveFile.isFile) { "The archive is unavailable" }
+        require(destinationDirectory.isDirectory || destinationDirectory.mkdirs()) { "The destination folder is unavailable" }
         val affected = list(archiveFile, password).filterNot(ArchiveEntryInfo::directory)
             .map { SafeArchivePath.resolve(destinationDirectory, it.name, limits.maxDepth) }
         publishingStorageChanges(onMutation, { affected }) {
@@ -188,17 +188,17 @@ class ArchiveEngine(
         operation: OperationContext? = null,
         password: CharArray? = null,
     ): Int = withContext(Dispatchers.IO) {
-        require(archiveFile.isFile) { "Archyvas nepasiekiamas" }
-        require(destinationDirectory.isDirectory || destinationDirectory.mkdirs()) { "Paskirties aplankas nepasiekiamas" }
+        require(archiveFile.isFile) { "The archive is unavailable" }
+        require(destinationDirectory.isDirectory || destinationDirectory.mkdirs()) { "The destination folder is unavailable" }
         val selected = ArchiveMutationRules.normalizeSelection(selectedPaths).toHashSet()
         val entries = list(archiveFile, password)
         val chosenEntries = entries.filter { entry ->
             selectionContains(selected, ArchiveMutationRules.normalizePath(entry.name))
         }
-        require(chosenEntries.isNotEmpty()) { "Pasirinktuose archyvo įrašuose nėra failų ar aplankų" }
-        require(chosenEntries.size <= limits.maxEntries) { "Archyve per daug įrašų" }
+        require(chosenEntries.isNotEmpty()) { "The selected archive entries contain no files or folders" }
+        require(chosenEntries.size <= limits.maxEntries) { "The archive contains too many entries" }
         val chosenByPath = chosenEntries.associateBy { ArchiveMutationRules.normalizePath(it.name) }
-        require(chosenByPath.size == chosenEntries.size) { "Pasirinktuose archyvo įrašuose kartojasi keliai" }
+        require(chosenByPath.size == chosenEntries.size) { "The selected archive entries contain duplicate paths" }
         enforceDeclaredLimits(chosenEntries.filterNot(ArchiveEntryInfo::directory).map(ArchiveEntryInfo::sizeBytes))
         operation?.setTotals(chosenEntries.size, chosenEntries.sumOf { if (it.directory) 0L else it.sizeBytes.coerceAtLeast(0L) })
 
@@ -207,10 +207,10 @@ class ArchiveEngine(
         fun prepareTarget(path: String, directory: Boolean): File {
             val target = SafeArchivePath.resolve(destinationDirectory, path, limits.maxDepth)
             if (directory) {
-                require(target.isDirectory || target.mkdirs()) { "Nepavyko sukurti $path" }
+                require(target.isDirectory || target.mkdirs()) { "Could not create $path" }
             } else {
-                require(!target.exists()) { "Paskirties failas jau yra: $path" }
-                target.parentFile?.let { require(it.isDirectory || it.mkdirs()) { "Nepavyko sukurti aplanko" } }
+                require(!target.exists()) { "The destination file already exists: $path" }
+                target.parentFile?.let { require(it.isDirectory || it.mkdirs()) { "Could not create the folder" } }
             }
             return target
         }
@@ -269,7 +269,7 @@ class ArchiveEngine(
                         writeExtractedTarget(target) { output ->
                             val bounded = BoundedOutputStream(output, limits.maxSingleEntryBytes) { written ->
                                 expanded = Math.addExact(expanded, written)
-                                require(expanded <= limits.maxExpandedBytes) { "Archyvo išplėtimo riba viršyta" }
+                                require(expanded <= limits.maxExpandedBytes) { "The archive extraction limit was exceeded" }
                                 operation?.progress(byteDelta = written, currentName = normalized)
                             }
                             archive.extractFile(header, bounded)
@@ -283,7 +283,7 @@ class ArchiveEngine(
                     val entry = input.nextEntry ?: break
                     val normalized = ArchiveMutationRules.normalizePath(entry.name)
                     if (normalized !in chosenByPath) continue
-                    require(!entry.isSymbolicLink && !entry.isLink) { "Archyvo nuorodos saugumo sumetimais neišpakuojamos" }
+                    require(!entry.isSymbolicLink && !entry.isLink) { "Archive links are not extracted for safety" }
                     operation?.checkpoint()
                     val target = prepareTarget(normalized, entry.isDirectory)
                     if (!entry.isDirectory) {
@@ -307,7 +307,7 @@ class ArchiveEngine(
                 completed(normalized)
             }
         }
-        require(processed == chosenEntries.size) { "Pasirinktų archyvo įrašų išpakuoti nepavyko" }
+        require(processed == chosenEntries.size) { "Could not extract the selected archive entries" }
         processed
         }
     }
@@ -359,23 +359,23 @@ class ArchiveEngine(
     ) = withContext(Dispatchers.IO) {
         var partial: File? = null
         try {
-            require(sources.all(File::exists)) { "Kai kurie šaltiniai nebeegzistuoja" }
-            require(format != ArchiveFormat.RAR && format != ArchiveFormat.GZIP) { "Šį formatą galima tik išpakuoti" }
+            require(sources.all(File::exists)) { "Some source files no longer exist" }
+            require(format != ArchiveFormat.RAR && format != ArchiveFormat.GZIP) { "This format can only be extracted" }
             require(password == null || format == ArchiveFormat.ZIP || format == ArchiveFormat.SEVEN_Z) {
                 "Encryption is supported for ZIP and 7z archives"
             }
             require(!hideNames || (password != null && format == ArchiveFormat.SEVEN_Z)) {
                 "File names can only be hidden in password protected 7z archives"
             }
-            require(sources.isNotEmpty() || password == null) { "Tuščias archyvas negali būti užšifruotas" }
+            require(sources.isNotEmpty() || password == null) { "An empty archive cannot be encrypted" }
             val validatedCompressionLevel = ArchiveCompressionRules.validated(compressionLevel)
             val validatedTarget = maxOutputBytes?.let { ArchiveTargetSizeRules.validatedBytes(it, limits) }
             require(validatedTarget == null || ArchiveTargetSizeRules.supported(format)) {
-                "Pasirinkto formato archyvo dydžio riboti negalima"
+                "The selected archive format does not support a size limit"
             }
-            require(!outputFile.exists()) { "Toks archyvas jau egzistuoja" }
+            require(!outputFile.exists()) { "An archive with that name already exists" }
             val parent = outputFile.parentFile
-            require(parent != null && (parent.isDirectory || parent.mkdirs())) { "Archyvo aplankas nepasiekiamas" }
+            require(parent != null && (parent.isDirectory || parent.mkdirs())) { "The archive folder is unavailable" }
             val scan = validateCreateSources(sources, outputFile, operation)
             if (validatedTarget != null) {
                 // Video, photos and music are already compressed, so a limit below their size can never be met.
@@ -399,7 +399,7 @@ class ArchiveEngine(
             }
             val partialFile = File(parent, ".${outputFile.name}.partial")
             partial = partialFile
-            require(!partialFile.exists()) { "Laikinas archyvo failas jau egzistuoja" }
+            require(!partialFile.exists()) { "The temporary archive file already exists" }
             when (format) {
                 ArchiveFormat.ZIP -> if (sources.isEmpty()) createEmptyZip(partialFile) else createZip(
                     partialFile,
@@ -411,16 +411,16 @@ class ArchiveEngine(
                 ArchiveFormat.SEVEN_Z -> createSevenZ(partialFile, sources, operation, password, hideNames)
                 ArchiveFormat.TAR -> createTar(partialFile, sources, gzip = false, operation, effectiveCompressionLevel)
                 ArchiveFormat.TAR_GZ -> createTar(partialFile, sources, gzip = true, operation, effectiveCompressionLevel)
-                ArchiveFormat.RAR, ArchiveFormat.GZIP -> error("Nepalaikomas kūrimo formatas")
+                ArchiveFormat.RAR, ArchiveFormat.GZIP -> error("Unsupported archive creation format")
             }
-            require(partialFile.isFile && partialFile.length() > 0) { "Archyvas nesukurtas" }
+            require(partialFile.isFile && partialFile.length() > 0) { "The archive was not created" }
             require(validatedTarget == null || partialFile.length() <= validatedTarget) {
                 "The archive came out at ${FileSystemRules.humanBytes(partialFile.length())}, above the " +
                     "${FileSystemRules.humanBytes(validatedTarget ?: 0L)} limit. Files such as video cannot shrink much. " +
                     "Raise the size limit or leave it empty."
             }
-            require(!outputFile.exists()) { "Toks archyvas jau egzistuoja" }
-            require(partialFile.renameTo(outputFile)) { "Archyvo užbaigti nepavyko" }
+            require(!outputFile.exists()) { "An archive with that name already exists" }
+            require(partialFile.renameTo(outputFile)) { "Could not finish the archive" }
             onMutation(listOf(outputFile))
         } finally {
             password?.fill('\u0000')
@@ -446,7 +446,7 @@ class ArchiveEngine(
         sources.forEach { source ->
             val canonical = source.canonicalFile
             require(output != canonical && !output.path.startsWith(canonical.path + File.separator)) {
-                "Archyvo negalima kurti archyvuojamo aplanko viduje"
+                "The archive cannot be created inside the folder being archived"
             }
             scanCreateSource(source, depth = 0, scan, operation)
         }
@@ -461,22 +461,22 @@ class ArchiveEngine(
         operation: OperationContext?,
     ) {
         operation?.checkpoint()
-        require(depth <= limits.maxDepth) { "Per gilus aplankų medis" }
-        require(!Files.isSymbolicLink(source.toPath())) { "Simbolinės nuorodos į archyvą neįtraukiamos" }
+        require(depth <= limits.maxDepth) { "The folder tree is too deep" }
+        require(!Files.isSymbolicLink(source.toPath())) { "Symbolic links cannot be added to an archive" }
         val canonical = source.canonicalFile
-        require(scan.canonicalPaths.add(canonical.path)) { "Tas pats archyvo šaltinis pasirinktas kelis kartus" }
-        require(canonical.isFile || canonical.isDirectory) { "Archyvo šaltinio tipas nepalaikomas" }
+        require(scan.canonicalPaths.add(canonical.path)) { "The same archive source was selected more than once" }
+        require(canonical.isFile || canonical.isDirectory) { "The archive source type is not supported" }
         scan.entries = Math.addExact(scan.entries, 1)
-        require(scan.entries <= limits.maxEntries) { "Pasirinkta per daug archyvo įrašų" }
+        require(scan.entries <= limits.maxEntries) { "Too many archive entries selected" }
         if (canonical.isFile) {
             val size = canonical.length().coerceAtLeast(0L)
-            require(size <= limits.maxSingleEntryBytes) { "Archyvo šaltinio failas per didelis" }
+            require(size <= limits.maxSingleEntryBytes) { "An archive source file is too large" }
             scan.bytes = Math.addExact(scan.bytes, size)
             if (isAlreadyCompressed(canonical.name)) scan.incompressibleBytes += size
-            require(scan.bytes <= limits.maxExpandedBytes) { "Archyvo šaltiniai viršija dydžio ribą" }
+            require(scan.bytes <= limits.maxExpandedBytes) { "The archive sources exceed the size limit" }
             return
         }
-        val children = canonical.listFiles() ?: throw SecurityException("Aplankas neperskaitomas")
+        val children = canonical.listFiles() ?: throw SecurityException("The folder is not readable")
         children.forEach { child -> scanCreateSource(child, depth + 1, scan, operation) }
     }
 
@@ -494,7 +494,7 @@ class ArchiveEngine(
             lower.endsWith(".gz") -> ArchiveFormat.GZIP
             lower.endsWith(".zip") || lower.endsWith(".jar") || lower.endsWith(".apk") ||
                 lower.endsWith(".apks") || lower.endsWith(".apkm") || lower.endsWith(".xapk") -> ArchiveFormat.ZIP
-            else -> throw IllegalArgumentException("Nepalaikomas archyvo formatas")
+            else -> throw IllegalArgumentException("Unsupported archive format")
         }
     }
 
@@ -533,7 +533,7 @@ class ArchiveEngine(
             openSevenZ(file, password).use { archive ->
                 while (true) {
                     val entry = archive.nextEntry ?: break
-                    require(result.size < limits.maxEntries) { "Archyve per daug įrašų" }
+                    require(result.size < limits.maxEntries) { "The archive contains too many entries" }
                     result += ArchiveEntryInfo(
                         name = entry.name,
                         directory = entry.isDirectory,
@@ -563,7 +563,7 @@ class ArchiveEngine(
         openTarInput(file).use { input ->
             while (true) {
                 val entry = input.nextEntry ?: break
-                require(result.size < limits.maxEntries) { "Archyve per daug įrašų" }
+                require(result.size < limits.maxEntries) { "The archive contains too many entries" }
                 result += ArchiveEntryInfo(
                     name = entry.name,
                     directory = entry.isDirectory,
@@ -585,9 +585,9 @@ class ArchiveEngine(
             operation?.checkpoint()
             val target = SafeArchivePath.resolve(destination, header.fileName, limits.maxDepth)
             if (header.isDirectory) {
-                require(target.isDirectory || target.mkdirs()) { "Nepavyko sukurti ${header.fileName}" }
+                require(target.isDirectory || target.mkdirs()) { "Could not create ${header.fileName}" }
             } else {
-                target.parentFile?.let { require(it.isDirectory || it.mkdirs()) { "Nepavyko sukurti aplanko" } }
+                target.parentFile?.let { require(it.isDirectory || it.mkdirs()) { "Could not create the folder" } }
                 zip.getInputStream(header).use { input ->
                     writeExtractedTarget(target) { output ->
                         expanded = copyBounded(input, output, header.uncompressedSize, expanded, operation, header.fileName)
@@ -606,12 +606,12 @@ class ArchiveEngine(
                 while (true) {
                     val entry = archive.nextEntry ?: break
                     entries += 1
-                    require(entries <= limits.maxEntries) { "Archyve per daug įrašų" }
-                    require(entry.size <= limits.maxSingleEntryBytes) { "Archyvo įrašas per didelis" }
+                    require(entries <= limits.maxEntries) { "The archive contains too many entries" }
+                    require(entry.size <= limits.maxSingleEntryBytes) { "An archive entry is too large" }
                     operation?.checkpoint()
                     val target = SafeArchivePath.resolve(destination, entry.name, limits.maxDepth)
                     if (entry.isDirectory) {
-                        require(target.isDirectory || target.mkdirs()) { "Nepavyko sukurti ${entry.name}" }
+                        require(target.isDirectory || target.mkdirs()) { "Could not create ${entry.name}" }
                     } else {
                         target.parentFile?.mkdirs()
                         writeExtractedTarget(target) { output ->
@@ -634,13 +634,13 @@ class ArchiveEngine(
                 operation?.checkpoint()
                 val target = SafeArchivePath.resolve(destination, header.fileName, limits.maxDepth)
                 if (header.isDirectory) {
-                    require(target.isDirectory || target.mkdirs()) { "Nepavyko sukurti ${header.fileName}" }
+                    require(target.isDirectory || target.mkdirs()) { "Could not create ${header.fileName}" }
                 } else {
                     target.parentFile?.mkdirs()
                     writeExtractedTarget(target) { output ->
                         val bounded = BoundedOutputStream(output, limits.maxSingleEntryBytes) { written ->
                             expanded = Math.addExact(expanded, written)
-                            require(expanded <= limits.maxExpandedBytes) { "Archyvo išplėtimo riba viršyta" }
+                            require(expanded <= limits.maxExpandedBytes) { "The archive extraction limit was exceeded" }
                             operation?.progress(byteDelta = written, currentName = header.fileName)
                         }
                         archive.extractFile(header, bounded)
@@ -658,12 +658,12 @@ class ArchiveEngine(
             while (true) {
                 val entry = input.nextEntry ?: break
                 entries += 1
-                require(entries <= limits.maxEntries) { "Archyve per daug įrašų" }
-                require(!entry.isSymbolicLink && !entry.isLink) { "Archyvo nuorodos saugumo sumetimais neišpakuojamos" }
+                require(entries <= limits.maxEntries) { "The archive contains too many entries" }
+                require(!entry.isSymbolicLink && !entry.isLink) { "Archive links are not extracted for safety" }
                 operation?.checkpoint()
                 val target = SafeArchivePath.resolve(destination, entry.name, limits.maxDepth)
                 if (entry.isDirectory) {
-                    require(target.isDirectory || target.mkdirs()) { "Nepavyko sukurti ${entry.name}" }
+                    require(target.isDirectory || target.mkdirs()) { "Could not create ${entry.name}" }
                 } else {
                     target.parentFile?.mkdirs()
                     writeExtractedTarget(target) { output ->
@@ -723,33 +723,33 @@ class ArchiveEngine(
         mutate: (ZipFile, List<ArchiveEntryInfo>) -> (List<ArchiveEntryInfo>) -> Boolean,
     ): List<ArchiveEntryInfo> = withContext(Dispatchers.IO) {
         val original = archiveFile.canonicalFile
-        require(original.isFile && original.canRead() && original.canWrite()) { "Archyvo negalima pakeisti" }
-        require(original.name.lowercase().endsWith(".zip")) { "Keisti galima tik ZIP archyvus" }
-        val parent = original.parentFile ?: throw IllegalArgumentException("Archyvo aplankas nepasiekiamas")
-        require(parent.isDirectory && parent.canWrite()) { "Archyvo aplankas neleidžia rašyti" }
+        require(original.isFile && original.canRead() && original.canWrite()) { "The archive cannot be replaced" }
+        require(original.name.lowercase().endsWith(".zip")) { "Only ZIP archives can be edited" }
+        val parent = original.parentFile ?: throw IllegalArgumentException("The archive folder is unavailable")
+        require(parent.isDirectory && parent.canWrite()) { "The archive folder is not writable" }
         val token = UUID.randomUUID().toString()
         val working = File(parent, ".${original.name}.$token.shovel-rewrite")
         val backup = File(parent, ".${original.name}.$token.shovel-recovery")
         var replacementStarted = false
         try {
             Files.copy(original.toPath(), working.toPath(), StandardCopyOption.COPY_ATTRIBUTES)
-            require(working.length() == original.length()) { "Laikina archyvo kopija nepatikrinta" }
+            require(working.length() == original.length()) { "The temporary archive copy was not verified" }
             Files.copy(original.toPath(), backup.toPath(), StandardCopyOption.COPY_ATTRIBUTES)
-            require(backup.length() == original.length()) { "Archyvo atkūrimo kopija nepatikrinta" }
+            require(backup.length() == original.length()) { "The archive recovery backup was not verified" }
 
             val before = listZip(working, password)
             val zip = if (password == null) ZipFile(working) else ZipFile(working, password)
-            require(zip.isValidZipFile) { "Laikina ZIP kopija sugadinta" }
+            require(zip.isValidZipFile) { "The temporary ZIP copy is damaged" }
             val verify = mutate(zip, before)
-            require(zip.isValidZipFile) { "Pakeista ZIP kopija sugadinta" }
+            require(zip.isValidZipFile) { "The modified ZIP copy is damaged" }
             val expected = listZip(working, password)
-            require(verify(expected)) { "Archyvo pakeitimo patikra nepavyko" }
+            require(verify(expected)) { "Archive replacement verification failed" }
 
             replacementStarted = true
             moveReplacing(working, original)
             val actual = listZip(original, password)
-            require(verify(actual)) { "Įrašyto archyvo patikra nepavyko" }
-            require(backup.delete()) { "Archyvas pakeistas, bet laikinos atkūrimo kopijos pašalinti nepavyko" }
+            require(verify(actual)) { "Written archive verification failed" }
+            require(backup.delete()) { "The archive was updated, but the temporary recovery backup could not be removed" }
             onMutation(listOf(original))
             actual
         } catch (failure: Throwable) {
@@ -757,9 +757,9 @@ class ArchiveEngine(
                 val restore = File(parent, ".${original.name}.$token.shovel-restore")
                 runCatching {
                     Files.copy(backup.toPath(), restore.toPath())
-                    require(restore.length() == backup.length()) { "Archyvo atkūrimo kopija nepatikrinta" }
+                    require(restore.length() == backup.length()) { "The archive recovery backup was not verified" }
                     moveReplacing(restore, original)
-                    require(ZipFile(original).isValidZipFile) { "Atkurto archyvo patikra nepavyko" }
+                    require(ZipFile(original).isValidZipFile) { "Restored archive verification failed" }
                     backup.delete()
                 }.onFailure { restoreFailure ->
                     failure.addSuppressed(restoreFailure)
@@ -822,7 +822,7 @@ class ArchiveEngine(
         operation: OperationContext?,
         depth: Int,
     ) {
-        require(depth <= limits.maxDepth) { "Per gilus aplankų medis" }
+        require(depth <= limits.maxDepth) { "The folder tree is too deep" }
         operation?.checkpoint()
         val entry = output.createArchiveEntry(source, archiveName)
         output.putArchiveEntry(entry)
@@ -841,7 +841,7 @@ class ArchiveEngine(
         operation?.progress(itemDelta = 1, byteDelta = source.length(), currentName = source.name)
         if (source.isDirectory) {
             source.listFiles()?.forEach { child -> addToSevenZ(output, child, "$archiveName/${child.name}", operation, depth + 1) }
-                ?: throw SecurityException("Aplankas neperskaitomas")
+                ?: throw SecurityException("The folder is not readable")
         }
     }
 
@@ -860,6 +860,8 @@ class ArchiveEngine(
         }
         TarArchiveOutputStream(compressed).use { output ->
             output.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX)
+            // Needed for files of 8 GiB and more.
+            output.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_POSIX)
             sources.forEach { source -> addToTar(output, source, source.name, operation, 0) }
         }
     }
@@ -871,7 +873,7 @@ class ArchiveEngine(
         operation: OperationContext?,
         depth: Int,
     ) {
-        require(depth <= limits.maxDepth) { "Per gilus aplankų medis" }
+        require(depth <= limits.maxDepth) { "The folder tree is too deep" }
         operation?.checkpoint()
         val entry = TarArchiveEntry(source, archiveName)
         output.putArchiveEntry(entry)
@@ -880,7 +882,7 @@ class ArchiveEngine(
         operation?.progress(itemDelta = 1, byteDelta = source.length(), currentName = source.name)
         if (source.isDirectory) {
             source.listFiles()?.forEach { child -> addToTar(output, child, "$archiveName/${child.name}", operation, depth + 1) }
-                ?: throw SecurityException("Aplankas neperskaitomas")
+                ?: throw SecurityException("The folder is not readable")
         }
     }
 
@@ -934,7 +936,7 @@ class ArchiveEngine(
         operation: OperationContext?,
         name: String,
     ): Long {
-        if (declaredSize >= 0) require(declaredSize <= limits.maxSingleEntryBytes) { "Archyvo įrašas per didelis" }
+        if (declaredSize >= 0) require(declaredSize <= limits.maxSingleEntryBytes) { "An archive entry is too large" }
         var entryBytes = 0L
         var expanded = expandedBefore
         val buffer = ByteArray(BUFFER_SIZE)
@@ -944,8 +946,8 @@ class ArchiveEngine(
             if (read < 0) break
             entryBytes = Math.addExact(entryBytes, read.toLong())
             expanded = Math.addExact(expanded, read.toLong())
-            require(entryBytes <= limits.maxSingleEntryBytes) { "Archyvo įrašas viršijo ribą" }
-            require(expanded <= limits.maxExpandedBytes) { "Archyvo išplėtimo riba viršyta" }
+            require(entryBytes <= limits.maxSingleEntryBytes) { "An archive entry exceeded the limit" }
+            require(expanded <= limits.maxExpandedBytes) { "The archive extraction limit was exceeded" }
             output.write(buffer, 0, read)
             operation?.progress(byteDelta = read.toLong(), currentName = name)
         }
@@ -960,7 +962,7 @@ class ArchiveEngine(
         operation: OperationContext?,
         name: String,
     ): Long {
-        require(declaredSize <= limits.maxSingleEntryBytes) { "Archyvo įrašas per didelis" }
+        require(declaredSize <= limits.maxSingleEntryBytes) { "An archive entry is too large" }
         var entryBytes = 0L
         var expanded = expandedBefore
         val buffer = ByteArray(BUFFER_SIZE)
@@ -970,7 +972,7 @@ class ArchiveEngine(
             if (read < 0) break
             entryBytes = Math.addExact(entryBytes, read.toLong())
             expanded = Math.addExact(expanded, read.toLong())
-            require(entryBytes <= limits.maxSingleEntryBytes && expanded <= limits.maxExpandedBytes) { "Archyvo riba viršyta" }
+            require(entryBytes <= limits.maxSingleEntryBytes && expanded <= limits.maxExpandedBytes) { "The archive limit was exceeded" }
             output.write(buffer, 0, read)
             operation?.progress(byteDelta = read.toLong(), currentName = name)
         }
@@ -978,7 +980,7 @@ class ArchiveEngine(
     }
 
     private suspend fun writeExtractedTarget(target: File, block: suspend (OutputStream) -> Unit) {
-        target.parentFile?.let { require(it.isDirectory || it.mkdirs()) { "Nepavyko sukurti paskirties aplanko" } }
+        target.parentFile?.let { require(it.isDirectory || it.mkdirs()) { "Could not create destination folder" } }
         val partial = File(target.parentFile, ".${target.name}.shovel-partial")
         try {
             BufferedOutputStream(FileOutputStream(partial)).use { output -> block(output) }
@@ -998,17 +1000,17 @@ class ArchiveEngine(
     }
 
     private fun enforceDeclaredLimits(sizes: List<Long>) {
-        require(sizes.size <= limits.maxEntries) { "Archyve per daug įrašų" }
+        require(sizes.size <= limits.maxEntries) { "The archive contains too many entries" }
         var total = 0L
         sizes.forEach { size ->
-            require(size < 0 || size <= limits.maxSingleEntryBytes) { "Archyvo įrašas per didelis" }
+            require(size < 0 || size <= limits.maxSingleEntryBytes) { "An archive entry is too large" }
             if (size > 0) total = Math.addExact(total, size)
-            require(total <= limits.maxExpandedBytes) { "Archyvas išsiplečia per daug" }
+            require(total <= limits.maxExpandedBytes) { "The archive expands beyond the allowed ratio" }
         }
     }
 
     private fun <T> List<T>.takeChecked(): List<T> {
-        require(size <= limits.maxEntries) { "Archyve per daug įrašų" }
+        require(size <= limits.maxEntries) { "The archive contains too many entries" }
         return this
     }
 }
@@ -1021,14 +1023,14 @@ private class BoundedOutputStream(
     private var written = 0L
 
     override fun write(value: Int) {
-        require(written < maxBytes) { "Archyvo įrašas viršijo ribą" }
+        require(written < maxBytes) { "An archive entry exceeded the limit" }
         delegate.write(value)
         written += 1
         onWrite(1)
     }
 
     override fun write(buffer: ByteArray, offset: Int, length: Int) {
-        require(written + length <= maxBytes) { "Archyvo įrašas viršijo ribą" }
+        require(written + length <= maxBytes) { "An archive entry exceeded the limit" }
         delegate.write(buffer, offset, length)
         written += length
         onWrite(length.toLong())

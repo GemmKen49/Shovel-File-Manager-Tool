@@ -38,7 +38,7 @@ internal object ArchiveMutationRules {
             }
             .distinct()
             .toList()
-        require(affected.isNotEmpty()) { "Pasirinktų archyvo įrašų neberasta" }
+        require(affected.isNotEmpty()) { "The selected archive entries no longer exist" }
         return affected
     }
 
@@ -51,16 +51,16 @@ internal object ArchiveMutationRules {
         val newName = validateLeafName(requestedName)
         val parent = source.substringBeforeLast('/', missingDelimiterValue = "")
         val target = if (parent.isEmpty()) newName else "$parent/$newName"
-        require(target != source) { "Pavadinimas nepasikeitė" }
+        require(target != source) { "The name has not changed" }
 
         val normalizedEntries = entries.map { entry -> entry.name to normalizePath(entry.name) }
         val affected = normalizedEntries.filter { (_, normalized) -> isAtOrBelow(normalized, source) }
-        require(affected.isNotEmpty()) { "Archyvo įrašas neberastas" }
+        require(affected.isNotEmpty()) { "The archive entry no longer exists" }
 
         val sourceIsDirectory = affected.any { (_, normalized) -> normalized != source } ||
             entries.any { it.directory && normalizePath(it.name) == source }
         if (!sourceIsDirectory) {
-            require(affected.size == 1 && affected.single().second == source) { "Archyvo įrašo tipas neaiškus" }
+            require(affected.size == 1 && affected.single().second == source) { "The archive entry type is unknown" }
         }
 
         val affectedNormalized = affected.mapTo(hashSetOf()) { it.second }
@@ -71,15 +71,15 @@ internal object ArchiveMutationRules {
             renamed[original] = if (original.replace('\\', '/').endsWith('/')) "$renamedPath/" else renamedPath
         }
         val targetNormalized = renamed.values.map(::normalizePath)
-        require(targetNormalized.distinct().size == targetNormalized.size) { "Nauji archyvo keliai kartojasi" }
+        require(targetNormalized.distinct().size == targetNormalized.size) { "The new archive paths repeat" }
         val unaffected = normalizedEntries.map { it.second }.filterNot(affectedNormalized::contains).toSet()
-        require(targetNormalized.none(unaffected::contains)) { "Toks archyvo įrašas jau yra" }
+        require(targetNormalized.none(unaffected::contains)) { "An archive entry with this name already exists" }
         return ArchiveRenamePlan(source, target, renamed)
     }
 
     fun normalizeSelection(paths: Collection<String>): List<String> {
-        require(paths.isNotEmpty()) { "Nepasirinkta archyvo įrašų" }
-        require(paths.size <= MAX_SELECTED_PATHS) { "Pasirinkta per daug archyvo įrašų" }
+        require(paths.isNotEmpty()) { "No archive entries selected" }
+        require(paths.size <= MAX_SELECTED_PATHS) { "Too many archive entries selected" }
         val ordered = paths.map(::normalizePath).distinct().sortedBy(String::length)
         return ordered.filter { candidate ->
             ordered.none { other -> other != candidate && other.length < candidate.length && isAtOrBelow(candidate, other) }
@@ -88,19 +88,19 @@ internal object ArchiveMutationRules {
 
     fun normalizePath(raw: String): String {
         val normalized = raw.replace('\\', '/').trim('/')
-        require(normalized.isNotBlank() && '\u0000' !in normalized) { "Netinkamas archyvo kelias" }
+        require(normalized.isNotBlank() && '\u0000' !in normalized) { "Invalid archive path" }
         val segments = normalized.split('/')
         require(segments.size <= 64 && segments.none { it.isBlank() || it == "." || it == ".." }) {
-            "Nesaugus archyvo kelias"
+            "Unsafe archive path"
         }
         return segments.joinToString("/")
     }
 
     private fun validateLeafName(raw: String): String {
         val name = raw.trim()
-        require(name.isNotEmpty() && name.length <= MAX_NAME_CHARACTERS) { "Netinkamas archyvo įrašo pavadinimo ilgis" }
+        require(name.isNotEmpty() && name.length <= MAX_NAME_CHARACTERS) { "Invalid archive entry name length" }
         require(name != "." && name != ".." && name.none { it == '/' || it == '\\' || it == '\u0000' || it.isISOControl() }) {
-            "Archyvo įrašo pavadinime yra neleistinų ženklų"
+            "The archive entry name contains invalid characters"
         }
         return name
     }

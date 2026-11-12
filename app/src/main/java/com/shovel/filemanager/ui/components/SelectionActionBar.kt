@@ -40,13 +40,13 @@ fun SelectionHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = uiText("Uždaryti"))
+                Icon(Icons.Rounded.Close, contentDescription = uiText("Close"))
             }
-            LText("Pasirinkta: $count", modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+            LText("Selected: $count", modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
             IconButton(onClick = onToggleSelectAll) {
                 Icon(
                     if (allSelected) Icons.Rounded.IndeterminateCheckBox else Icons.Rounded.CheckBox,
-                    contentDescription = uiText(if (allSelected) "Atžymėti visus" else "Pasirinkti visus"),
+                    contentDescription = uiText(if (allSelected) "Deselect all" else "Select all"),
                 )
             }
         }
@@ -92,13 +92,13 @@ fun SelectionActionBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = uiText("Uždaryti"))
+                Icon(Icons.Rounded.Close, contentDescription = uiText("Close"))
             }
-            LText("Pasirinkta: $count", fontWeight = FontWeight.SemiBold)
+            LText("Selected: $count", fontWeight = FontWeight.SemiBold)
             IconButton(onClick = onToggleSelectAll) {
                 Icon(
                     if (allSelected) Icons.Rounded.IndeterminateCheckBox else Icons.Rounded.CheckBox,
-                    contentDescription = uiText(if (allSelected) "Atžymėti visus" else "Pasirinkti visus"),
+                    contentDescription = uiText(if (allSelected) "Deselect all" else "Select all"),
                 )
             }
             actions()

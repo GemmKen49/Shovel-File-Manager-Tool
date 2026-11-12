@@ -34,21 +34,21 @@ class SignatureLibraryRepository(
     fun load(): List<SavedSignature> {
         if (!storageFile.exists()) return emptyList()
         require(storageFile.isFile && storageFile.length() in 1..MAX_FILE_BYTES) {
-            "Parašų bibliotekos failo dydis netinkamas"
+            "The signature library file size is invalid"
         }
         val root = JSONObject(storageFile.readText(Charsets.UTF_8))
-        require(root.getInt("schemaVersion") == SCHEMA_VERSION) { "Parašų bibliotekos versija nepalaikoma" }
+        require(root.getInt("schemaVersion") == SCHEMA_VERSION) { "The signature library version is unsupported" }
         val records = root.getJSONArray("signatures")
-        require(records.length() <= MAX_SIGNATURES) { "Parašų bibliotekos riba viršyta" }
+        require(records.length() <= MAX_SIGNATURES) { "The signature library limit was exceeded" }
         val parsed = List(records.length()) { index -> parseSignature(records.getJSONObject(index)) }
-        require(parsed.map(SavedSignature::id).distinct().size == parsed.size) { "Parašų bibliotekoje kartojasi identifikatoriai" }
+        require(parsed.map(SavedSignature::id).distinct().size == parsed.size) { "The signature library contains duplicate identifiers" }
         return parsed.sortedByDescending(SavedSignature::createdAtMillis)
     }
 
     @Synchronized
     fun save(name: String, drawing: SignatureDrawing): List<SavedSignature> {
         val current = load()
-        require(current.size < MAX_SIGNATURES) { "Parašų bibliotekos riba viršyta" }
+        require(current.size < MAX_SIGNATURES) { "The signature library limit was exceeded" }
         val record = SavedSignature(
             id = UUID.randomUUID().toString(),
             name = normalizeName(name),
@@ -60,32 +60,32 @@ class SignatureLibraryRepository(
 
     @Synchronized
     fun delete(id: String): List<SavedSignature> {
-        require(SAFE_ID.matches(id)) { "Parašo identifikatorius netinkamas" }
+        require(SAFE_ID.matches(id)) { "The signature identifier is invalid" }
         val current = load()
         val remaining = current.filterNot { it.id == id }
-        require(remaining.size != current.size) { "Išsaugotas parašas neberastas" }
+        require(remaining.size != current.size) { "The saved signature could not be found" }
         write(remaining)
         return remaining
     }
 
     private fun parseSignature(json: JSONObject): SavedSignature {
         val id = json.getString("id")
-        require(SAFE_ID.matches(id)) { "Parašo identifikatorius netinkamas" }
+        require(SAFE_ID.matches(id)) { "The signature identifier is invalid" }
         val strokesJson = json.getJSONArray("strokes")
-        require(strokesJson.length() in 1..VisualSignatureRules.MAX_STROKES) { "Paraše per daug brūkšnių" }
+        require(strokesJson.length() in 1..VisualSignatureRules.MAX_STROKES) { "The signature contains too many strokes" }
         var totalPoints = 0
         val strokes = List(strokesJson.length()) { strokeIndex ->
             val pointsJson = strokesJson.getJSONArray(strokeIndex)
-            require(pointsJson.length() in 1..VisualSignatureRules.MAX_POINTS) { "Paraše yra netinkamas brūkšnys" }
+            require(pointsJson.length() in 1..VisualSignatureRules.MAX_POINTS) { "The signature contains an invalid stroke" }
             totalPoints += pointsJson.length()
-            require(totalPoints <= VisualSignatureRules.MAX_POINTS) { "Paraše per daug taškų" }
+            require(totalPoints <= VisualSignatureRules.MAX_POINTS) { "The signature contains too many points" }
             SignatureStroke(
                 List(pointsJson.length()) { pointIndex ->
                     val pointJson = pointsJson.getJSONArray(pointIndex)
-                    require(pointJson.length() == 2) { "Parašo taškas netinkamas" }
+                    require(pointJson.length() == 2) { "The signature point is invalid" }
                     val x = pointJson.getDouble(0).toFloat()
                     val y = pointJson.getDouble(1).toFloat()
-                    require(x.isFinite() && y.isFinite() && x in 0f..1f && y in 0f..1f) { "Parašo taškas netinkamas" }
+                    require(x.isFinite() && y.isFinite() && x in 0f..1f && y in 0f..1f) { "The signature point is invalid" }
                     SignaturePoint(x, y)
                 },
             )
@@ -95,13 +95,13 @@ class SignatureLibraryRepository(
             name = normalizeName(json.getString("name")),
             drawing = VisualSignatureRules.validate(SignatureDrawing(strokes)),
             createdAtMillis = json.getLong("createdAtMillis").also {
-                require(it >= 0L) { "Parašo data netinkama" }
+                require(it >= 0L) { "The signature date is invalid" }
             },
         )
     }
 
     private fun write(records: List<SavedSignature>) {
-        require(records.size <= MAX_SIGNATURES) { "Parašų bibliotekos riba viršyta" }
+        require(records.size <= MAX_SIGNATURES) { "The signature library limit was exceeded" }
         val payload = JSONObject()
             .put("schemaVersion", SCHEMA_VERSION)
             .put(
@@ -131,8 +131,8 @@ class SignatureLibraryRepository(
             )
             .toString()
             .toByteArray(Charsets.UTF_8)
-        require(payload.size.toLong() in 1..MAX_FILE_BYTES) { "Parašų biblioteka per didelė" }
-        require(directory.isDirectory || directory.mkdirs()) { "Parašų bibliotekos katalogo sukurti nepavyko" }
+        require(payload.size.toLong() in 1..MAX_FILE_BYTES) { "The signature library is too large" }
+        require(directory.isDirectory || directory.mkdirs()) { "Could not create the signature library directory" }
         val temporary = File(directory, ".${storageFile.name}.tmp")
         try {
             FileOutputStream(temporary).use { output ->
@@ -157,8 +157,8 @@ class SignatureLibraryRepository(
 
     private fun normalizeName(raw: String): String {
         val name = raw.trim()
-        require(name.isNotEmpty() && name.length <= MAX_NAME_LENGTH) { "Parašo pavadinimo ilgis netinkamas" }
-        require(name.none { it == '\u0000' || it.isISOControl() }) { "Parašo pavadinime yra neleistinų ženklų" }
+        require(name.isNotEmpty() && name.length <= MAX_NAME_LENGTH) { "The signature name length is invalid" }
+        require(name.none { it == '\u0000' || it.isISOControl() }) { "The signature name contains invalid characters" }
         return name
     }
 }

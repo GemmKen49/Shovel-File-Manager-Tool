@@ -374,13 +374,13 @@ fun FilePreviewDialog(
     val launchSystemSaveAs: () -> Unit = {
         val session = editSession
         if (session == null) {
-            actionError = "Redaguojama kopija dar neparuošta"
+            actionError = "The editable copy is not ready"
         } else {
             saveAsLauncher.launch(createSaveAsIntent(session))
         }
     }
     val launchSaveAs: () -> Unit = {
-        if (editSession == null) actionError = "Redaguojama kopija dar neparuošta"
+        if (editSession == null) actionError = "The editable copy is not ready"
         else showSaveAs = true
     }
 
@@ -401,7 +401,7 @@ fun FilePreviewDialog(
         val session = editSession ?: return@LaunchedEffect
         launchExternalEditorWhenReady = false
         runCatching { externalEditorLauncher.launch(createExternalEditIntent(context, session)) }
-            .onFailure { actionError = it.message ?: "Nepavyko atidaryti redaktoriaus pasirinkimo" }
+            .onFailure { actionError = it.message ?: "Could not open the editor chooser" }
     }
     LaunchedEffect(
         launchPdfSignerWhenReady,
@@ -450,7 +450,7 @@ fun FilePreviewDialog(
                 ) {
                     IconButton(onClick = navigateBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = uiText(if (archivePath.isEmpty()) "Uždaryti" else "Grįžti į ankstesnį archyvo aplanką"))
+                            contentDescription = uiText(if (archivePath.isEmpty()) "Close" else "Return to the previous archive folder"))
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(editSession?.displayName ?: source.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -465,7 +465,7 @@ fun FilePreviewDialog(
                         onDetails = if (source.kind in setOf(EntryKind.IMAGE, EntryKind.AUDIO, EntryKind.VIDEO)) ({ showDetails = true }) else null,
                         onOpenWith = {
                             runCatching { openWith(context, actionSource) }
-                                .onFailure { actionError = it.message ?: "Programų pasirinkiklio atidaryti nepavyko" }
+                                .onFailure { actionError = it.message ?: "Could not open the app chooser" }
                         },
                         onEditWith = if (!externalEditorAvailable) null else ({
                             if (editSession == null) {
@@ -473,7 +473,7 @@ fun FilePreviewDialog(
                                 onPrepareEdit()
                             } else {
                                 runCatching { externalEditorLauncher.launch(createExternalEditIntent(context, editSession)) }
-                                    .onFailure { actionError = it.message ?: "Nepavyko atidaryti redaktoriaus pasirinkimo" }
+                                    .onFailure { actionError = it.message ?: "Could not open the editor chooser" }
                             }
                         }),
                         onSignPdf = if (!pdfSigningAvailable) null else ({
@@ -484,14 +484,14 @@ fun FilePreviewDialog(
                         }),
                         onShare = {
                             runCatching { shareFile(context, actionSource) }
-                                .onFailure { actionError = it.message ?: "Dalijimosi programos atidaryti nepavyko" }
+                                .onFailure { actionError = it.message ?: "Could not open the sharing app" }
                         },
                         onCalculateHash = {
                             hashRunning = true
                             scope.launch {
                                 try {
                                     val result = withContext(Dispatchers.IO) { runCatching { sha256(context, actionSource) } }
-                                    result.onSuccess { hash = it }.onFailure { actionError = it.message ?: "SHA-256 apskaičiuoti nepavyko" }
+                                    result.onSuccess { hash = it }.onFailure { actionError = it.message ?: "Could not calculate SHA-256" }
                                 } finally {
                                     hashRunning = false
                                 }
@@ -656,16 +656,16 @@ fun FilePreviewDialog(
             target is PreviewTarget.ContentFile ||
             (target is PreviewTarget.PrivilegedFile && !target.localOrigin)
         val explanation = when (target) {
-            is PreviewTarget.ContentFile -> "Elementas bus trinamas per Android dokumentų teikėją ir nepateks į Shovel šiukšlinę."
-            is PreviewTarget.PrivilegedFile -> if (target.localOrigin) "Elementus bus galima atkurti iš Shovel šiukšlinės."
-                else "Šių apsaugotų failų nebus galima atkurti iš Shovel šiukšlinės."
-            is PreviewTarget.TrashFile -> "Elemento nebebus galima atkurti iš programos šiukšliadėžės."
-            else -> "Elementus bus galima atkurti iš Shovel šiukšlinės."
+            is PreviewTarget.ContentFile -> "The item will be deleted through Android's document provider and will not enter Shovel Trash."
+            is PreviewTarget.PrivilegedFile -> if (target.localOrigin) "Items can be restored from Shovel Trash."
+                else "These protected files cannot be restored from Shovel Trash."
+            is PreviewTarget.TrashFile -> "The item can no longer be restored from the app Trash."
+            else -> "Items can be restored from Shovel Trash."
         }
         DeleteConfirmationDialog(
             names = listOf(source.name),
             permanent = permanent,
-            title = if (permanent) "Ištrinti visam laikui?" else "Perkelti į šiukšlinę?",
+            title = if (permanent) "Delete permanently?" else "Move to trash?",
             onDismiss = { confirmDelete = false },
             onConfirm = {
                 confirmDelete = false
@@ -680,15 +680,15 @@ fun FilePreviewDialog(
     if (activeEditState?.confirmDiscard == true) {
         AlertDialog(
             onDismissRequest = onKeepEditing,
-            title = { LText("Atmesti neišsaugotus pakeitimus?") },
-            text = { LText("Redaguojamoje kopijoje yra niekur neišsaugotų pakeitimų. Originalus failas nepakeistas.") },
+            title = { LText("Discard unsaved changes?") },
+            text = { LText("The editable copy has changes that have not been saved anywhere. The original file has not been modified.") },
             confirmButton = {
                 Button(onClick = onDiscardEditAndClose, modifier = Modifier.testTag("discard-edit-confirm")) {
-                    LText("Atmesti pakeitimus")
+                    LText("Discard changes")
                 }
             },
             dismissButton = {
-                TextButton(onClick = onKeepEditing) { LText("Tęsti redagavimą") }
+                TextButton(onClick = onKeepEditing) { LText("Keep editing") }
             },
         )
     }
@@ -881,8 +881,8 @@ private fun PdfPreview(source: PreviewSource) {
     }
     DisposableEffect(selectionRequests) { onDispose { selectionRequests.close() } }
     val directSelectionSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
-    val selectionFailureText = uiText("PDF perskaityti nepavyko")
-    val copiedText = uiText("Nukopijuota")
+    val selectionFailureText = uiText("Could not read the PDF")
+    val copiedText = uiText("Copied")
     var directSelection by remember(source.key) { mutableStateOf<PdfPageTextSelection?>(null) }
     var selectionPendingPage by remember(source.key) { mutableStateOf<Int?>(null) }
     var selectionRevision by remember(source.key) { mutableLongStateOf(0L) }
@@ -1301,7 +1301,7 @@ private fun PdfPageItem(
             ) {
                 Image(
                     bitmap = loadedBitmap.asImageBitmap(),
-                    contentDescription = uiText("PDF puslapis ${pageIndex + 1}"),
+                    contentDescription = uiText("PDF page ${pageIndex + 1}"),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
                 )
@@ -1356,8 +1356,8 @@ private fun ZoomControls(
     onCopySelectedText: (() -> Unit)? = null,
     onClearSelectedText: (() -> Unit)? = null,
 ) {
-    val zoomOutDescription = uiText("Atitolinti")
-    val zoomInDescription = uiText("Priartinti")
+    val zoomOutDescription = uiText("Zoom out")
+    val zoomInDescription = uiText("Zoom in")
     FlowRow(
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         horizontalArrangement = Arrangement.Center,
@@ -1380,7 +1380,7 @@ private fun ZoomControls(
             modifier = Modifier.semantics { contentDescription = zoomInDescription },
         ) { LText("+", style = MaterialTheme.typography.headlineSmall) }
         TextButton(onClick = { onScaleChanged(PreviewZoomRules.MIN_SCALE) }, enabled = scale > PreviewZoomRules.MIN_SCALE) {
-            LText("Atstatyti")
+            LText("Reset")
         }
         onSelectText?.let { selectText ->
             IconButton(
@@ -1389,7 +1389,7 @@ private fun ZoomControls(
             ) {
                 Icon(
                     Icons.Rounded.ContentCopy,
-                    contentDescription = uiText("Kopijuoti pažymėtą tekstą"),
+                    contentDescription = uiText("Copy selected text"),
                 )
             }
         }
@@ -1400,7 +1400,7 @@ private fun ZoomControls(
             ) {
                 Icon(
                     Icons.Rounded.ContentCopy,
-                    contentDescription = uiText("Kopijuoti pažymėtą tekstą"),
+                    contentDescription = uiText("Copy selected text"),
                 )
             }
         }
@@ -1409,7 +1409,7 @@ private fun ZoomControls(
                 onClick = clearSelectedText,
                 modifier = Modifier.testTag("pdf-clear-selection"),
             ) {
-                Icon(Icons.Rounded.Close, contentDescription = uiText("Išvalyti"))
+                Icon(Icons.Rounded.Close, contentDescription = uiText("Clear"))
             }
         }
     }
@@ -1431,15 +1431,15 @@ private fun PdfTextSelectionDialog(
         }
     }
     ShovelModalDialog(
-        title = "PDF puslapis ${pageIndex + 1}",
-        subtitle = "Kopijuoti pažymėtą tekstą",
+        title = "PDF page ${pageIndex + 1}",
+        subtitle = "Copy selected text",
         icon = Icons.Rounded.ContentCopy,
         onDismissRequest = onDismiss,
         expandedContent = true,
         modifier = Modifier.testTag("pdf-text-selection-dialog"),
         actions = {
             TextButton(onClick = onDismiss, modifier = Modifier.testTag("pdf-text-close")) {
-                LText("Uždaryti")
+                LText("Close")
             }
         },
     ) {
@@ -1451,7 +1451,7 @@ private fun PdfTextSelectionDialog(
                 onSuccess = { text ->
                     if (text.isBlank()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            LText("Atitikmenų nerasta")
+                            LText("No matches found")
                         }
                     } else {
                         AndroidView(
@@ -1486,7 +1486,7 @@ internal fun PreviewLoadError(error: Throwable) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(Icons.Rounded.Description, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error)
-        LText("Failo peržiūros sukurti nepavyko", style = MaterialTheme.typography.titleMedium)
+        LText("Could not create the file preview", style = MaterialTheme.typography.titleMedium)
         error.message?.takeIf(String::isNotBlank)?.let {
             LText(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -1714,7 +1714,7 @@ private fun AudioPreview(
             onPlayInBackground = startBackground,
         )
         if (backgroundPlaybackError) {
-            Text(uiText("Foninio atkūrimo paleisti nepavyko"), color = MaterialTheme.colorScheme.error)
+            Text(uiText("Could not start background playback"), color = MaterialTheme.colorScheme.error)
         }
     }
 }
@@ -1899,7 +1899,7 @@ private fun VideoPreview(
         )
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
             if (backgroundPlaybackError) {
-                Text(uiText("Foninio atkūrimo paleisti nepavyko"), color = MaterialTheme.colorScheme.error)
+                Text(uiText("Could not start background playback"), color = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -1945,12 +1945,12 @@ internal fun PlaybackControls(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onPrevious, enabled = canNavigateMedia) {
-                Icon(Icons.Rounded.SkipPrevious, contentDescription = uiText("Ankstesnis failas"))
+                Icon(Icons.Rounded.SkipPrevious, contentDescription = uiText("Previous file"))
             }
             IconButton(
                 onClick = { onSeek(MediaPlaybackRules.skippedPosition(positionMillis, durationMillis, -MediaPlaybackRules.SKIP_MILLIS)) },
                 enabled = prepared,
-            ) { Icon(Icons.Rounded.Replay10, contentDescription = uiText("Atgal")) }
+            ) { Icon(Icons.Rounded.Replay10, contentDescription = uiText("Back")) }
             FilledTonalIconButton(
                 onClick = onToggle,
                 enabled = prepared,
@@ -1958,22 +1958,22 @@ internal fun PlaybackControls(
             ) {
                 Icon(
                     if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = uiText(if (playing) "Pauzė" else "Paleisti"),
+                    contentDescription = uiText(if (playing) "Pause" else "Start"),
                 )
             }
             IconButton(
                 onClick = { onSeek(MediaPlaybackRules.skippedPosition(positionMillis, durationMillis, MediaPlaybackRules.SKIP_MILLIS)) },
                 enabled = prepared,
-            ) { Icon(Icons.Rounded.Forward10, contentDescription = uiText("Pirmyn")) }
+            ) { Icon(Icons.Rounded.Forward10, contentDescription = uiText("Forward")) }
             IconButton(onClick = onNext, enabled = canNavigateMedia) {
-                Icon(Icons.Rounded.SkipNext, contentDescription = uiText("Kitas failas"))
+                Icon(Icons.Rounded.SkipNext, contentDescription = uiText("Next file"))
             }
         }
         ShovelActionRow(modifier = Modifier.testTag("${prefix}_playback_options")) {
             FilterChip(
                 selected = loopEnabled,
                 onClick = { onLoopChanged(!loopEnabled) },
-                label = { LText("Kartoti") },
+                label = { LText("Repeat") },
                 leadingIcon = { Icon(Icons.Rounded.Repeat, contentDescription = null) },
             )
             var speedMenu by remember { mutableStateOf(false) }
@@ -1993,11 +1993,11 @@ internal fun PlaybackControls(
             OutlinedButton(onClick = onPlayInBackground, enabled = prepared, modifier = Modifier.testTag("${prefix}_background_start")) {
                 Icon(Icons.Rounded.Headphones, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                LText("Groti fone")
+                LText("Play in background")
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.VolumeUp, contentDescription = uiText("Garsumas"))
+            Icon(Icons.Rounded.VolumeUp, contentDescription = uiText("Volume"))
             Slider(
                 value = volume,
                 onValueChange = onVolumeChanged,
@@ -2011,9 +2011,9 @@ internal fun PlaybackControls(
 
 @Composable
 private fun MediaPropertyRows(info: MediaPreviewInfo) {
-    PropertyRow("Trukmė", MediaPlaybackRules.timeLabel(info.durationMillis))
-    info.mimeType?.let { PropertyRow("Tipas", it) }
-    info.bitRate?.let { PropertyRow("Bitų sparta", it) }
+    PropertyRow("Duration", MediaPlaybackRules.timeLabel(info.durationMillis))
+    info.mimeType?.let { PropertyRow("Type", it) }
+    info.bitRate?.let { PropertyRow("Bit rate", it) }
 }
 
 @Composable
@@ -2038,13 +2038,13 @@ private fun FileEditActions(
                 if (busy) CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
                 LText(
                     when {
-                        state.modifyingPdf -> "Parašas įrašomas į privačią darbinę kopiją…"
-                        state.preparing -> "Ruošiama saugi redaguojama kopija…"
-                        state.saving -> "Išsaugoma ir patikrinama…"
-                        state.hasUnsavedChanges -> "Neišsaugoti pakeitimai laikomi privačioje darbinėje kopijoje"
-                        state.hasOriginChanges -> "Kopija išsaugota kitur; originalas vis dar skiriasi"
-                        session != null -> "Redaguojama naudojant privačią darbinę kopiją"
-                        else -> "Redagavimo paruošti nepavyko"
+                        state.modifyingPdf -> "The signature is being added to the private working copy…"
+                        state.preparing -> "Preparing a safe editable copy…"
+                        state.saving -> "Saving and verifying…"
+                        state.hasUnsavedChanges -> "Unsaved changes are kept in a private working copy"
+                        state.hasOriginChanges -> "A copy is saved elsewhere; the original still differs"
+                        session != null -> "Editing uses a private working copy"
+                        else -> "Editing could not be prepared"
                     },
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodySmall,
@@ -2062,7 +2062,7 @@ private fun FileEditActions(
                 ) {
                     Icon(Icons.Rounded.Save, contentDescription = null)
                     Spacer(Modifier.width(5.dp))
-                    LText("Išsaugoti")
+                    LText("Save")
                 }
                 OutlinedButton(
                     onClick = onSaveAs,
@@ -2071,12 +2071,12 @@ private fun FileEditActions(
                 ) {
                     Icon(Icons.Rounded.SaveAs, contentDescription = null)
                     Spacer(Modifier.width(5.dp))
-                    LText("Išsaugoti kaip")
+                    LText("Save as")
                 }
             }
             if (session != null && !session.origin.canWrite) {
                 LText(
-                    "Originalas skirtas tik skaityti. Išsaugokite redaguotą failą kitoje vietoje.",
+                    "The original is read-only. Save the edited file to another location.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
@@ -2106,7 +2106,7 @@ private fun TextPreview(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) { CircularProgressIndicator() }
         state.session == null -> LText(
-            state.error ?: "Nepavyko paruošti vidinio redaktoriaus",
+            state.error ?: "Could not prepare the built-in editor",
             modifier = Modifier.fillMaxSize().padding(18.dp),
             color = MaterialTheme.colorScheme.error,
         )
@@ -2140,26 +2140,26 @@ private fun EditConflictDialog(
     val dateFormat = rememberLocalizedDateTimeFormat(DateFormat.SHORT, DateFormat.SHORT)
     AlertDialog(
         onDismissRequest = onKeepEditing,
-        title = { LText("Originalus failas pasikeitė") },
+        title = { LText("The original file changed") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LText("Shovel jo neperrašė. Palyginkite versijas ir pasirinkite veiksmą.")
+                LText("Shovel did not overwrite it. Compare the revisions and choose what to do.")
                 Text(conflict.originLabel, style = MaterialTheme.typography.bodySmall)
-                LText("Originalas atidarymo metu", fontWeight = FontWeight.SemiBold)
+                LText("Original when opened", fontWeight = FontWeight.SemiBold)
                 Text(revisionSummary(conflict.expected, dateFormat), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                LText("Jūsų redaguojama kopija", fontWeight = FontWeight.SemiBold)
+                LText("Your edited copy", fontWeight = FontWeight.SemiBold)
                 Text(revisionSummary(workingRevision, dateFormat), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                LText("Dabartinis originalas", fontWeight = FontWeight.SemiBold)
+                LText("Current original", fontWeight = FontWeight.SemiBold)
                 if (conflict.current == null) {
-                    LText("Originalaus failo nebėra")
+                    LText("The original file no longer exists")
                 } else {
                     Text(revisionSummary(conflict.current, dateFormat), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                 }
                 LText(
                     if (canMerge) {
-                        "„Sujungti“ palygins originalą, jūsų pakeitimus ir dabartinę serverio versiją. Neaiškios vietos bus aiškiai pažymėtos redaktoriuje."
+                        "Merge compares the original, your changes, and the current server version. Ambiguous sections are clearly marked in the editor."
                     } else {
-                        "Perrašymas pakeis dabartinį originalą. „Išsaugoti kaip“ paliks abi versijas."
+                        "Overwrite replaces the current original. Save as keeps both versions."
                     },
                 )
             }
@@ -2169,7 +2169,7 @@ private fun EditConflictDialog(
                 onClick = if (canMerge) onMerge else onOverwrite,
                 enabled = !saving,
                 modifier = Modifier.testTag(if (canMerge) "merge-edit-conflict" else "overwrite-edit-conflict"),
-            ) { LText(if (canMerge) "Sujungti pakeitimus" else "Perrašyti originalą") }
+            ) { LText(if (canMerge) "Merge changes" else "Overwrite original") }
         },
         dismissButton = {
             Column(horizontalAlignment = Alignment.End) {
@@ -2178,11 +2178,11 @@ private fun EditConflictDialog(
                         onClick = onOverwrite,
                         enabled = !saving,
                         modifier = Modifier.testTag("overwrite-edit-conflict"),
-                    ) { LText("Perrašyti originalą") }
+                    ) { LText("Overwrite original") }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = onSaveAs, enabled = !saving) { LText("Išsaugoti kaip") }
-                    TextButton(onClick = onKeepEditing, enabled = !saving) { LText("Tęsti redagavimą") }
+                    TextButton(onClick = onSaveAs, enabled = !saving) { LText("Save as") }
+                    TextButton(onClick = onKeepEditing, enabled = !saving) { LText("Keep editing") }
                 }
             }
         },
@@ -2201,28 +2201,28 @@ private fun EditSaveAsConflictDialog(
     val dateFormat = rememberLocalizedDateTimeFormat()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { LText("Paskirties failas jau yra") },
+        title = { LText("The destination file already exists") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LText("Shovel nieko neperrašė. Pasirinkite, kaip išspręsti konfliktą.")
+                LText("Shovel did not overwrite anything. Choose how to resolve the conflict.")
                 Text(conflict.destination.label, style = MaterialTheme.typography.bodySmall)
-                PropertyRow("Esamo failo dydis", FileSystemRules.humanBytes(conflict.existing.sizeBytes))
+                PropertyRow("Existing file size", FileSystemRules.humanBytes(conflict.existing.sizeBytes))
                 conflict.existing.modifiedAtMillis?.let { modified ->
-                    PropertyRow("Esamas failas pakeistas", dateFormat.format(Date(modified)))
+                    PropertyRow("Existing file modified", dateFormat.format(Date(modified)))
                 }
                 conflict.existing.sha256?.let { sha ->
-                    PropertyRow("Esamo failo SHA-256", sha.take(16) + "…")
+                    PropertyRow("Existing file SHA-256", sha.take(16) + "…")
                 }
-                LText("„Perrašyti“ saugiai pakeis esamą failą. „Palikti abu“ parinks laisvą pavadinimą.")
+                LText("Overwrite safely replaces the existing file. Keep both chooses an available name.")
             }
         },
         confirmButton = {
-            Button(onClick = onReplace, enabled = !saving) { LText("Perrašyti") }
+            Button(onClick = onReplace, enabled = !saving) { LText("Overwrite") }
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                TextButton(onClick = onKeepBoth, enabled = !saving) { LText("Palikti abu") }
-                TextButton(onClick = onChooseAnother, enabled = !saving) { LText("Rinktis kitur") }
+                TextButton(onClick = onKeepBoth, enabled = !saving) { LText("Keep both") }
+                TextButton(onClick = onChooseAnother, enabled = !saving) { LText("Choose another location") }
             }
         },
     )
@@ -2245,11 +2245,11 @@ private fun ApkPreview(file: File) {
         Icon(Icons.Rounded.InstallMobile, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
         info?.packageName?.let {
             Text(it, style = MaterialTheme.typography.titleLarge)
-        } ?: LText("APK informacija nepasiekiama", style = MaterialTheme.typography.titleLarge)
+        } ?: LText("APK information unavailable", style = MaterialTheme.typography.titleLarge)
         info?.let { packageInfo ->
             @Suppress("DEPRECATION")
             val versionCode = if (android.os.Build.VERSION.SDK_INT >= 28) packageInfo.longVersionCode else packageInfo.versionCode.toLong()
-            PropertyRow("Versija", "${packageInfo.versionName ?: "?"} ($versionCode)")
+            PropertyRow("Version", "${packageInfo.versionName ?: "?"} ($versionCode)")
             @Suppress("DEPRECATION")
             val certificate = if (android.os.Build.VERSION.SDK_INT >= 28) {
                 packageInfo.signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()
@@ -2257,16 +2257,16 @@ private fun ApkPreview(file: File) {
                 packageInfo.signatures?.firstOrNull()?.toByteArray()
             }
             certificate?.let {
-                PropertyRow("Parašo SHA-256", MessageDigest.getInstance("SHA-256").digest(certificate).joinToString("") { "%02x".format(it) })
+                PropertyRow("Signature SHA-256", MessageDigest.getInstance("SHA-256").digest(certificate).joinToString("") { "%02x".format(it) })
             }
         }
-        LText("Diegimą visada patvirtina Android sistema. Programa negali jo atlikti tyliai.", style = MaterialTheme.typography.bodySmall)
+        LText("Android always confirms installation. The app cannot install silently.", style = MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick = { showContents = true }, modifier = Modifier.testTag("apk_open_contents")) {
-            LText("Atidaryti archyvą")
+            LText("Open archive")
         }
         Button(onClick = { confirmInstall = true }) {
             Icon(Icons.Rounded.InstallMobile, contentDescription = null)
-            LText("Atidaryti diegimo lange", modifier = Modifier.padding(start = 8.dp))
+            LText("Open installer", modifier = Modifier.padding(start = 8.dp))
         }
     }
     if (showContents) ApkContentsDialog(file, onDismiss = { showContents = false })
@@ -2398,18 +2398,18 @@ private fun ArchivePreview(
             ) {
                 onCopyEntries?.let { copy ->
                     IconButton(onClick = { copy(selectedPaths); selectedPaths = emptySet() }) {
-                        Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Kopijuoti"))
+                        Icon(Icons.Rounded.ContentCopy, contentDescription = uiText("Copy"))
                     }
                 }
                 IconButton(onClick = { onShareEntries(selectedPaths); selectedPaths = emptySet() }) {
-                    Icon(Icons.Rounded.Share, contentDescription = uiText("Dalintis"))
+                    Icon(Icons.Rounded.Share, contentDescription = uiText("Share"))
                 }
                 IconButton(onClick = { extractSelectionRequested = selectedPaths }) {
-                    Icon(Icons.Rounded.Archive, contentDescription = uiText("Išpakuoti"))
+                    Icon(Icons.Rounded.Archive, contentDescription = uiText("Extract"))
                 }
                 if (mutable && onMoveEntries != null) {
                     IconButton(onClick = { moveRequested = selectedPaths }) {
-                        Icon(Icons.Rounded.DriveFileMove, contentDescription = uiText("Perkelti iš archyvo"))
+                        Icon(Icons.Rounded.DriveFileMove, contentDescription = uiText("Move from archive"))
                     }
                 }
                 if (mutable && selectedPaths.size == 1 && onRenameEntry != null) {
@@ -2418,18 +2418,18 @@ private fun ArchivePreview(
                             ?: children.firstOrNull { it.path == selectedPaths.single() }
                         renameText = renameTarget?.name.orEmpty()
                     }) {
-                        Icon(Icons.Rounded.Edit, contentDescription = uiText("Pervadinti"))
+                        Icon(Icons.Rounded.Edit, contentDescription = uiText("Rename"))
                     }
                 }
                 if (mutable && onDeleteEntries != null) {
                     IconButton(onClick = { deleteRequested = selectedPaths }) {
-                        Icon(Icons.Rounded.Delete, contentDescription = uiText("Ištrinti"))
+                        Icon(Icons.Rounded.Delete, contentDescription = uiText("Delete"))
                     }
                 }
             }
         } else {
         DirectoryBrowserToolbar(
-            title = if (currentPath.isEmpty()) uiText("Archyvo pradžia") else ArchiveBrowserIndex.folderName(currentPath),
+            title = if (currentPath.isEmpty()) uiText("Archive root") else ArchiveBrowserIndex.folderName(currentPath),
             path = if (currentPath.isEmpty()) file.name else "${file.name} / $currentPath",
             backEnabled = currentPath.isNotEmpty(),
             forwardEnabled = false,
@@ -2453,19 +2453,19 @@ private fun ArchivePreview(
         ) {
             Box {
                 IconButton(onClick = { menu = true }, modifier = Modifier.testTag("archive_actions")) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Aplanko veiksmai"))
+                    Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Folder actions"))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     if (onExtract != null) {
                         DropdownMenuItem(
-                            text = { LText("Išpakuoti") },
+                            text = { LText("Extract") },
                             leadingIcon = { Icon(Icons.Rounded.Archive, contentDescription = null) },
                             onClick = { menu = false; extractAllRequested = true },
                         )
                     }
                     if (onCopyEntry != null && currentPath.isNotEmpty()) {
                         DropdownMenuItem(
-                            text = { LText("Kopijuoti archyvo aplanką") },
+                            text = { LText("Copy archive folder") },
                             leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
                             onClick = { menu = false; onCopyEntry(currentPath) },
                         )
@@ -2495,7 +2495,7 @@ private fun ArchivePreview(
                     )
                     HorizontalDivider()
                     DropdownMenuItem(
-                        text = { LText("Atnaujinti") },
+                        text = { LText("Refresh") },
                         leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
                         enabled = !refreshing,
                         onClick = { menu = false; requestRefresh() },
@@ -2525,7 +2525,7 @@ private fun ArchivePreview(
                 CircularProgressIndicator()
             }
             visibleEntries.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                LText(if (children.isEmpty()) "Aplankas tuščias" else "Atitikmenų nerasta")
+                LText(if (children.isEmpty()) "Folder is empty" else "No matches found")
             }
             grid -> {
                 LazyVerticalGrid(
@@ -2643,13 +2643,13 @@ private fun ArchivePreview(
     renameTarget?.let { entry ->
         AlertDialog(
             onDismissRequest = { renameTarget = null; renameText = "" },
-            title = { LText("Pervadinti archyvo įrašą") },
+            title = { LText("Rename archive entry") },
             text = {
                 OutlinedTextField(
                     value = renameText,
                     onValueChange = { renameText = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { LText("Naujas pavadinimas") },
+                    label = { LText("New name") },
                     singleLine = true,
                 )
             },
@@ -2662,9 +2662,9 @@ private fun ArchivePreview(
                         renameText = ""
                     },
                     enabled = renameText.isNotBlank() && renameText.trim() != entry.name,
-                ) { LText("Pervadinti") }
+                ) { LText("Rename") }
             },
-            dismissButton = { TextButton(onClick = { renameTarget = null; renameText = "" }) { LText("Atšaukti") } },
+            dismissButton = { TextButton(onClick = { renameTarget = null; renameText = "" }) { LText("Cancel") } },
         )
     }
     deleteRequested?.let { requested ->
@@ -2674,14 +2674,14 @@ private fun ArchivePreview(
         }
         DeleteConfirmationDialog(
             names = requested.map { it.substringAfterLast('/') }, permanent = false,
-            title = "Ištrinti iš archyvo?", confirmLabel = "Ištrinti",
+            title = "Delete from archive?", confirmLabel = "Delete",
             onDismiss = { deleteRequested = null },
             onConfirm = {
                 onDeleteEntries?.invoke(requested)
                 selectedPaths = emptySet()
                 deleteRequested = null
             },
-            explanation = "Bus saugiai perrašytas ZIP archyvas. Prieš pakeitimą sukuriama atkūrimo kopija.",
+            explanation = "The ZIP archive will be rewritten safely. A recovery backup is created before the change.",
             fallbackFiles = affected.count { !it.directory },
             fallbackFolders = affected.count(ArchiveEntryInfo::directory),
             fallbackBytes = affected.filterNot(ArchiveEntryInfo::directory).sumOf { it.sizeBytes.coerceAtLeast(0L) },
@@ -2690,16 +2690,16 @@ private fun ArchivePreview(
     moveRequested?.let { requested ->
         AlertDialog(
             onDismissRequest = { moveRequested = null },
-            title = { LText("Perkelti iš archyvo?") },
-            text = { LText("Pirmiausia failai bus patikrintai išpakuoti šalia archyvo. Tik tada jie bus pašalinti iš ZIP.") },
+            title = { LText("Move from archive?") },
+            text = { LText("Files will first be extracted and verified beside the archive. Only then will they be removed from the ZIP.") },
             confirmButton = {
                 Button(onClick = {
                     onMoveEntries?.invoke(requested)
                     selectedPaths = emptySet()
                     moveRequested = null
-                }) { LText("Perkelti") }
+                }) { LText("Move") }
             },
-            dismissButton = { TextButton(onClick = { moveRequested = null }) { LText("Atšaukti") } },
+            dismissButton = { TextButton(onClick = { moveRequested = null }) { LText("Cancel") } },
         )
     }
 }
@@ -2752,7 +2752,7 @@ private fun ArchiveListItem(
         }
         Box {
             IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Failo veiksmai: ${entry.name}"))
+                Icon(Icons.Rounded.MoreVert, contentDescription = uiText("File actions: ${entry.name}"))
             }
             ArchiveEntryActionMenu(
                 expanded = menuExpanded,
@@ -2769,7 +2769,7 @@ private fun ArchiveListItem(
                 onDelete = onDelete,
             )
         }
-        if (entry.directory) Icon(Icons.Rounded.ChevronRight, contentDescription = uiText("Atidaryti aplanką"))
+        if (entry.directory) Icon(Icons.Rounded.ChevronRight, contentDescription = uiText("Open folder"))
     }
     }
 }
@@ -2835,7 +2835,7 @@ private fun ArchiveGridItem(
             }
             Box(modifier = Modifier.align(Alignment.TopEnd)) {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Failo veiksmai: ${entry.name}"))
+                    Icon(Icons.Rounded.MoreVert, contentDescription = uiText("File actions: ${entry.name}"))
                 }
                 ArchiveEntryActionMenu(
                     expanded = menuExpanded,
@@ -2938,7 +2938,7 @@ private fun ArchiveExtractionDialog(
             onSuccess = { loaded ->
                 directories = loaded.asSequence().filter(FileEntry::isDirectory).take(10_000).toList()
             },
-            onFailure = { failure -> error = failure.message ?: "Katalogo atidaryti nepavyko" },
+            onFailure = { failure -> error = failure.message ?: "Could not open the folder" },
         )
         loading = false
     }
@@ -2947,17 +2947,17 @@ private fun ArchiveExtractionDialog(
         modifier = Modifier.testTag("archive_extract_dialog"),
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.Archive, contentDescription = null) },
-        title = { LText(if (selection == null) "Išpakuoti archyvą" else "Išpakuoti pasirinktus įrašus") },
+        title = { LText(if (selection == null) "Extract archive" else "Extract selected entries") },
         text = {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LText("Pasirinkite katalogą, kuriame bus sukurtas išpakuotas aplankas.")
+                LText("Choose the folder where the extracted folder will be created.")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val parent = File(currentPath).parentFile?.absolutePath
                     IconButton(
                         onClick = { parent?.let { navigation = navigation.navigateTo(it) } },
                         enabled = parent != null && !loading,
                     ) {
-                        Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Aukštyn"))
+                        Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Up"))
                     }
                     Text(
                         currentPath,
@@ -2967,12 +2967,12 @@ private fun ArchiveExtractionDialog(
                         overflow = TextOverflow.Ellipsis,
                     )
                     IconButton(onClick = { refreshToken += 1 }, enabled = !loading) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = uiText("Atnaujinti"))
+                        Icon(Icons.Rounded.Refresh, contentDescription = uiText("Refresh"))
                     }
                 }
-                LText("Bus sukurta: $outputName", fontWeight = FontWeight.SemiBold)
+                LText("Will be created: $outputName", fontWeight = FontWeight.SemiBold)
                 LText(
-                    "Jei toks aplankas jau yra, jis nebus perrašytas – bus parinktas naujas numeruotas pavadinimas.",
+                    "If that folder already exists, it will not be overwritten — a new numbered name will be used.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -2981,7 +2981,7 @@ private fun ArchiveExtractionDialog(
                         CircularProgressIndicator()
                     }
                     error != null -> LText(error.orEmpty(), color = MaterialTheme.colorScheme.error)
-                    directories.isEmpty() -> LText("Šiame kataloge nėra poaplankių", style = MaterialTheme.typography.bodySmall)
+                    directories.isEmpty() -> LText("This folder has no subfolders", style = MaterialTheme.typography.bodySmall)
                     else -> LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp)) {
                         items(directories, key = FileEntry::absolutePath) { directory ->
                              Row(
@@ -3000,7 +3000,7 @@ private fun ArchiveExtractionDialog(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Icon(Icons.Rounded.ChevronRight, contentDescription = uiText("Atidaryti aplanką"))
+                                Icon(Icons.Rounded.ChevronRight, contentDescription = uiText("Open folder"))
                             }
                             HorizontalDivider()
                         }
@@ -3010,7 +3010,7 @@ private fun ArchiveExtractionDialog(
                     value = password,
                     onValueChange = { password = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { LText("Archyvo slaptažodis (nebūtinas)") },
+                    label = { LText("Archive password (optional)") },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
                 )
@@ -3025,10 +3025,10 @@ private fun ArchiveExtractionDialog(
                     onConfirm(currentPath, secret)
                 },
                 enabled = !loading && error == null,
-            ) { LText("Išpakuoti čia") }
+            ) { LText("Extract here") }
         },
         dismissButton = {
-            TextButton(onClick = { password = ""; onDismiss() }) { LText("Atšaukti") }
+            TextButton(onClick = { password = ""; onDismiss() }) { LText("Cancel") }
         },
     )
 }
@@ -3054,50 +3054,50 @@ private fun ArchiveEntryActionMenu(
     }
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
-            text = { LText(if (directory) "Atidaryti aplanką" else "Atidaryti") },
+            text = { LText(if (directory) "Open folder" else "Open") },
             leadingIcon = { Icon(if (directory) Icons.Rounded.Folder else Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
             onClick = { run(onOpen) },
         )
         DropdownMenuItem(
-            text = { LText(if (selected) "Atžymėti" else "Pasirinkti") },
+            text = { LText(if (selected) "Deselect" else "Select") },
             leadingIcon = { Checkbox(checked = selected, onCheckedChange = null) },
             onClick = { run(onSelect) },
         )
         onCopy?.let { copy ->
             DropdownMenuItem(
-                text = { LText("Kopijuoti") },
+                text = { LText("Copy") },
                 leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
                 onClick = { run(copy) },
             )
         }
         DropdownMenuItem(
-            text = { LText("Dalintis") },
+            text = { LText("Share") },
             leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
             onClick = { run(onShare) },
         )
         DropdownMenuItem(
-            text = { LText("Išpakuoti") },
+            text = { LText("Extract") },
             leadingIcon = { Icon(Icons.Rounded.Archive, contentDescription = null) },
             onClick = { run(onExtract) },
         )
         if (onRename != null || onMove != null || onDelete != null) HorizontalDivider()
         onMove?.let { move ->
             DropdownMenuItem(
-                text = { LText("Perkelti iš archyvo") },
+                text = { LText("Move from archive") },
                 leadingIcon = { Icon(Icons.Rounded.DriveFileMove, contentDescription = null) },
                 onClick = { run(move) },
             )
         }
         onRename?.let { rename ->
             DropdownMenuItem(
-                text = { LText("Pervadinti") },
+                text = { LText("Rename") },
                 leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                 onClick = { run(rename) },
             )
         }
         onDelete?.let { delete ->
             DropdownMenuItem(
-                text = { LText("Ištrinti") },
+                text = { LText("Delete") },
                 leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
                 onClick = { run(delete) },
             )
@@ -3129,12 +3129,12 @@ private fun PropertiesPreview(source: PreviewSource, note: String? = null) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
         Icon(Icons.Rounded.Description, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
         note?.let { LText(it, modifier = Modifier.padding(vertical = 10.dp)) }
-        PropertyRow("Pavadinimas", source.name)
-        PropertyRow("Vieta", source.locationLabel)
-        PropertyRow("Dydis", source.sizeBytes?.let(FileSystemRules::humanBytes) ?: uiText("Nežinomas"))
-        source.modifiedAtMillis?.let { PropertyRow("Pakeista", dateFormat.format(Date(it))) }
-        PropertyRow("Skaitomas", uiText(if (source.isReadable) "Taip" else "Ne"))
-        PropertyRow("Įrašomas", uiText(if (source.isWritable) "Taip" else "Ne"))
+        PropertyRow("Name", source.name)
+        PropertyRow("Location", source.locationLabel)
+        PropertyRow("Size", source.sizeBytes?.let(FileSystemRules::humanBytes) ?: uiText("Unknown"))
+        source.modifiedAtMillis?.let { PropertyRow("Modified", dateFormat.format(Date(it))) }
+        PropertyRow("Readable", uiText(if (source.isReadable) "Yes" else "No"))
+        PropertyRow("Writable", uiText(if (source.isWritable) "Yes" else "No"))
     }
 }
 
@@ -3156,18 +3156,18 @@ private fun MediaDetailsDialog(source: PreviewSource, onDismiss: () -> Unit) {
             runCatching {
                 if (source.kind == EntryKind.IMAGE) imageMetadata(context, source, locale)
                 else mediaPreviewInfo(context, source, includeArtwork = false).let {
-                    listOfNotNull("Trukmė" to MediaPlaybackRules.timeLabel(it.durationMillis),
-                        it.mimeType?.let { value -> "Tipas" to value }, it.bitRate?.let { value -> "Bitų sparta" to value })
+                    listOfNotNull("Duration" to MediaPlaybackRules.timeLabel(it.durationMillis),
+                        it.mimeType?.let { value -> "Type" to value }, it.bitRate?.let { value -> "Bit rate" to value })
                 }
             }
         }
     }
-    ShovelModalDialog(title = "Informacija", icon = Icons.Rounded.Info, onDismissRequest = onDismiss,
-        modifier = Modifier.testTag("preview_details_dialog"), actions = { TextButton(onClick = onDismiss) { LText("Uždaryti") } }) {
+    ShovelModalDialog(title = "Info", icon = Icons.Rounded.Info, onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("preview_details_dialog"), actions = { TextButton(onClick = onDismiss) { LText("Close") } }) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
-            PropertyRow("Pavadinimas", source.name)
-            PropertyRow("Vieta", source.locationLabel)
-            source.sizeBytes?.let { PropertyRow("Dydis", FileSystemRules.humanBytes(it)) }
+            PropertyRow("Name", source.name)
+            PropertyRow("Location", source.locationLabel)
+            source.sizeBytes?.let { PropertyRow("Size", FileSystemRules.humanBytes(it)) }
             val result = rows
             if (result == null) CircularProgressIndicator()
             else result.fold(
@@ -3223,8 +3223,8 @@ private fun setMediaDataSource(
 internal fun pdfDocumentInfo(context: android.content.Context, source: PreviewSource): PdfDocumentInfo =
     source.openFileDescriptor(context).use { descriptor ->
         PdfRenderer(descriptor).use { renderer ->
-            require(renderer.pageCount > 0) { "PDF neturi puslapių" }
-            require(renderer.pageCount <= PdfRenderRules.MAX_PAGE_COUNT) { "PDF viršijo ${PdfRenderRules.MAX_PAGE_COUNT} puslapių saugos ribą" }
+            require(renderer.pageCount > 0) { "The PDF has no pages" }
+            require(renderer.pageCount <= PdfRenderRules.MAX_PAGE_COUNT) { "The PDF exceeds the safe limit of ${PdfRenderRules.MAX_PAGE_COUNT} pages" }
             PdfDocumentInfo(
                 pages = List(renderer.pageCount) { pageIndex ->
                     renderer.openPage(pageIndex).use { page ->
@@ -3244,8 +3244,8 @@ internal fun renderPdfPage(
 ): Bitmap {
     source.openFileDescriptor(context).use { descriptor ->
         PdfRenderer(descriptor).use { renderer ->
-            require(renderer.pageCount in 1..PdfRenderRules.MAX_PAGE_COUNT) { "PDF puslapių skaičius nepalaikomas" }
-            require(pageIndex in 0 until renderer.pageCount) { "PDF puslapis nepasiekiamas" }
+            require(renderer.pageCount in 1..PdfRenderRules.MAX_PAGE_COUNT) { "Unsupported PDF page count" }
+            require(pageIndex in 0 until renderer.pageCount) { "The PDF page is unavailable" }
             renderer.openPage(pageIndex).use { page ->
                 val (width, height) = PdfRenderRules.pageSizeForViewport(
                     sourceWidth = page.width,
@@ -3278,13 +3278,13 @@ private fun decodeBoundedBitmap(context: android.content.Context, source: Previe
     source.openFileDescriptor(context).use { descriptor ->
         BitmapFactory.decodeFileDescriptor(descriptor.fileDescriptor, null, bounds)
     }
-    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "Vaizdo perskaityti nepavyko" }
+    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "Could not read the image" }
     var sample = 1
     while (bounds.outWidth / sample > 2_048 || bounds.outHeight / sample > 2_048) sample *= 2
     return requireNotNull(source.openFileDescriptor(context).use { descriptor ->
         BitmapFactory.decodeFileDescriptor(descriptor.fileDescriptor, null, BitmapFactory.Options().apply { inSampleSize = sample })
     }) {
-        "Vaizdo perskaityti nepavyko"
+        "Could not read the image"
     }
 }
 
@@ -3298,12 +3298,12 @@ private fun imageMetadata(context: android.content.Context, source: PreviewSourc
             parseExifDateTimeMillis(exif.getAttribute(dateTag), exif.getAttribute(offsetTag))
         }
         return listOfNotNull(
-            exif.getAttribute(ExifInterface.TAG_MAKE)?.let { "Gamintojas" to it },
-            exif.getAttribute(ExifInterface.TAG_MODEL)?.let { "Modelis" to it },
+            exif.getAttribute(ExifInterface.TAG_MAKE)?.let { "Manufacturer" to it },
+            exif.getAttribute(ExifInterface.TAG_MODEL)?.let { "Model" to it },
             takenAt?.let {
-                "Fotografuota" to com.shovel.filemanager.ui.localization.localizedDateTime(it, locale)
+                "Taken" to com.shovel.filemanager.ui.localization.localizedDateTime(it, locale)
             },
-            exif.getAttribute(ExifInterface.TAG_ORIENTATION)?.let { "Orientacija" to it },
+            exif.getAttribute(ExifInterface.TAG_ORIENTATION)?.let { "Orientation" to it },
         )
     }
     return source.localFile?.let { attributes(ExifInterface(it)) }

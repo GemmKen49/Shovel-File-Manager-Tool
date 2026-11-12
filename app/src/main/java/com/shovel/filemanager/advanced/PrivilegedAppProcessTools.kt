@@ -14,7 +14,7 @@ internal object PrivilegedAppProcessTools {
         val preferred = execute(listOf("/system/bin/ps", "-A", "-o", "RSS,NAME"))
         val result = if (preferred.exitCode == 0 && !preferred.truncated) preferred
         else execute(listOf("/system/bin/ps", "-A"))
-        require(result.exitCode == 0 && !result.truncated) { "Veikiančių programų sąrašas nepasiekiamas" }
+        require(result.exitCode == 0 && !result.truncated) { "The running app list is unavailable" }
         return parsePsOutput(result.output).entries
             .sortedByDescending(Map.Entry<String, Long>::value)
             .take(MAX_PROCESSES)
@@ -29,7 +29,7 @@ internal object PrivilegedAppProcessTools {
     }
 
     fun requireValidPackageName(packageName: String): String {
-        require(packageName.length in 3..255 && packagePattern.matches(packageName)) { "Netinkamas paketo pavadinimas" }
+        require(packageName.length in 3..255 && packagePattern.matches(packageName)) { "Invalid package name" }
         return packageName
     }
 
@@ -86,7 +86,7 @@ internal object PrivilegedAppProcessTools {
             reader.interrupt()
             reader.join(1_000L)
         }
-        check(!reader.isAlive) { "Privilegijuotos komandos išvesties skaitytuvas nesustojo" }
+        check(!reader.isAlive) { "The privileged command output reader did not stop" }
         return CommandResult(
             exitCode = if (completed) process.exitValue() else -1,
             output = output.toString(Charsets.UTF_8.name()),

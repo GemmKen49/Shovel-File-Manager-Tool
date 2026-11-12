@@ -174,13 +174,13 @@ internal fun PdfSignatureDialog(
                     ) {
                         Icon(
                             if (step == PdfSignatureStep.PLACE) Icons.AutoMirrored.Rounded.ArrowBack else Icons.Rounded.Close,
-                            contentDescription = uiText(if (step == PdfSignatureStep.PLACE) "Grįžti" else "Uždaryti"),
+                            contentDescription = uiText(if (step == PdfSignatureStep.PLACE) "Back" else "Close"),
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        LText("Pasirašyti PDF", fontWeight = FontWeight.SemiBold)
+                        LText("Sign PDF", fontWeight = FontWeight.SemiBold)
                         LText(
-                            if (step == PdfSignatureStep.DRAW) "1 iš 2 · Nupieškite parašą" else "2 iš 2 · Padėkite parašą",
+                            if (step == PdfSignatureStep.DRAW) "1 of 2 · Draw your signature" else "2 of 2 · Place your signature",
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -192,7 +192,7 @@ internal fun PdfSignatureDialog(
                     shape = MaterialTheme.shapes.medium,
                 ) {
                     LText(
-                        "Tai matomas ranka pieštas žymuo, o ne kvalifikuotas kriptografinis elektroninis parašas.",
+                        "This is a visible handwritten mark, not a qualified cryptographic electronic signature.",
                         modifier = Modifier.padding(10.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -268,10 +268,10 @@ internal fun PdfSignatureDialog(
     deleteSignature?.let { saved ->
         AlertDialog(
             onDismissRequest = { deleteSignature = null },
-            title = { LText("Pašalinti parašą?") },
+            title = { LText("Remove signature?") },
             text = { androidx.compose.material3.Text(saved.name) },
             dismissButton = {
-                TextButton(onClick = { deleteSignature = null }) { LText("Atšaukti") }
+                TextButton(onClick = { deleteSignature = null }) { LText("Cancel") }
             },
             confirmButton = {
                 Button(
@@ -281,7 +281,7 @@ internal fun PdfSignatureDialog(
                     },
                     enabled = !signatureLibrary.loading,
                     modifier = Modifier.testTag("saved-signature-delete-confirm"),
-                ) { LText("Pašalinti") }
+                ) { LText("Remove") }
             },
         )
     }
@@ -302,7 +302,7 @@ private fun SignatureDrawStep(
         modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        LText("Pieškite pirštu arba rašikliu baltoje srityje.", style = MaterialTheme.typography.bodyMedium)
+        LText("Draw with your finger or stylus in the white area.", style = MaterialTheme.typography.bodyMedium)
         BoxWithConstraints(
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentAlignment = Alignment.Center,
@@ -335,7 +335,7 @@ private fun SignatureDrawStep(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                LText("Anuliuoti")
+                LText("Undo")
             }
             OutlinedButton(
                 onClick = { onDrawingChanged(SignatureDrawing(emptyList())) },
@@ -344,7 +344,7 @@ private fun SignatureDrawStep(
             ) {
                 Icon(Icons.Rounded.DeleteSweep, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                LText("Atstatyti")
+                LText("Reset")
             }
             OutlinedButton(
                 onClick = onSaveRequested,
@@ -354,7 +354,7 @@ private fun SignatureDrawStep(
             ) {
                 Icon(Icons.Rounded.Save, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                LText("Išsaugoti programėlėje")
+                LText("Save in app")
             }
             OutlinedButton(
                 onClick = onOpenLibrary,
@@ -363,7 +363,7 @@ private fun SignatureDrawStep(
             ) {
                 Icon(Icons.Rounded.Draw, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                LText("Išsaugoti parašai")
+                LText("Saved signatures")
             }
         }
         library.error?.let { LText(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -372,12 +372,12 @@ private fun SignatureDrawStep(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onCancel, enabled = enabled) { LText("Atšaukti") }
+            TextButton(onClick = onCancel, enabled = enabled) { LText("Cancel") }
             Button(
                 onClick = onNext,
                 enabled = enabled && !drawing.isEmpty,
                 modifier = Modifier.testTag("signature-next"),
-            ) { LText("Toliau") }
+            ) { LText("Next") }
         }
     }
 }
@@ -391,17 +391,17 @@ private fun SaveSignatureDialog(
     var name by remember { mutableStateOf("") }
     val normalizedName = name.trim()
     ShovelModalDialog(
-        title = "Išsaugoti parašą",
+        title = "Save signature",
         icon = Icons.Rounded.Save,
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("signature-save-dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             Button(
                 onClick = { onSave(normalizedName) },
                 enabled = enabled && normalizedName.isNotEmpty(),
                 modifier = Modifier.testTag("signature-save-confirm"),
-            ) { LText("Išsaugoti") }
+            ) { LText("Save") }
         },
     ) {
         Column(
@@ -409,7 +409,7 @@ private fun SaveSignatureDialog(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             LText(
-                "Duomenys saugomi tik šios programos privačioje saugykloje.",
+                "Data is stored only in this app's private storage.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -420,7 +420,7 @@ private fun SaveSignatureDialog(
                         .filterNot { it == '\u0000' || it.isISOControl() }
                         .take(SignatureLibraryRepository.MAX_NAME_LENGTH)
                 },
-                label = { LText("Pavadinimas") },
+                label = { LText("Name") },
                 singleLine = true,
                 enabled = enabled,
                 modifier = Modifier.fillMaxWidth().testTag("signature-save-name"),
@@ -438,7 +438,7 @@ private fun SavedSignaturesDialog(
     onDismiss: () -> Unit,
 ) {
     ShovelModalDialog(
-        title = "Išsaugoti parašai",
+        title = "Saved signatures",
         icon = Icons.Rounded.Draw,
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("saved-signatures-dialog"),
@@ -448,8 +448,8 @@ private fun SavedSignaturesDialog(
                 onClick = onRefresh,
                 enabled = !state.loading,
                 modifier = Modifier.testTag("saved-signatures-refresh"),
-            ) { LText("Atnaujinti") }
-            TextButton(onClick = onDismiss) { LText("Uždaryti") }
+            ) { LText("Refresh") }
+            TextButton(onClick = onDismiss) { LText("Close") }
         },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -468,7 +468,7 @@ private fun SavedSignaturesDialog(
                         modifier = Modifier.size(40.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    LText("Parašų dar nėra", style = MaterialTheme.typography.titleMedium)
+                    LText("There are no saved signatures", style = MaterialTheme.typography.titleMedium)
                     state.error?.let {
                         LText(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
@@ -481,7 +481,7 @@ private fun SavedSignaturesDialog(
                 ) {
                     item {
                         LText(
-                            "Duomenys saugomi tik šios programos privačioje saugykloje.",
+                            "Data is stored only in this app's private storage.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -526,13 +526,13 @@ private fun SavedSignaturesDialog(
                                     ) {
                                         Icon(Icons.Rounded.Delete, contentDescription = null)
                                         Spacer(Modifier.width(4.dp))
-                                        LText("Pašalinti")
+                                        LText("Remove")
                                     }
                                     Button(
                                         onClick = { onSelect(saved) },
                                         enabled = !state.loading,
                                         modifier = Modifier.testTag("saved-signature-select"),
-                                    ) { LText("Pasirinkti") }
+                                    ) { LText("Select") }
                                 }
                             }
                         }
@@ -681,23 +681,23 @@ private fun SignaturePlacementStep(
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     IconButton(onClick = { onPageChanged(pageIndex - 1) }, enabled = !applying && pageIndex > 0) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Ankstesnis puslapis"))
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Previous page"))
                     }
                     OutlinedTextField(
                         value = pageInput,
                         onValueChange = onPageInputChanged,
-                        label = { LText("Puslapis") },
+                        label = { LText("Page") },
                         singleLine = true,
                         enabled = !applying,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.width(105.dp).testTag("signature-page-input"),
                     )
-                    LText("iš ${documentInfo.pageCount}", modifier = Modifier.padding(horizontal = 8.dp))
+                    LText("of ${documentInfo.pageCount}", modifier = Modifier.padding(horizontal = 8.dp))
                     IconButton(
                         onClick = { onPageChanged(pageIndex + 1) },
                         enabled = !applying && pageIndex + 1 < documentInfo.pageCount,
                     ) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = uiText("Kitas puslapis"))
+                        Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = uiText("Next page"))
                     }
                 }
                 BoxWithConstraints(
@@ -719,7 +719,7 @@ private fun SignaturePlacementStep(
                             ) {
                                 Image(
                                     bitmap = pageBitmap.asImageBitmap(),
-                                    contentDescription = uiText("PDF puslapis ${pageIndex + 1}"),
+                                    contentDescription = uiText("PDF page ${pageIndex + 1}"),
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.FillBounds,
                                 )
@@ -737,7 +737,7 @@ private fun SignaturePlacementStep(
                     }
                 }
                 LText(
-                    "Vilkite rėmelį į norimą vietą. Tempkite jo apatinį dešinį kampą dydžiui keisti.",
+                    "Drag the box into position. Drag its bottom-right corner to resize it.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 error?.let {
@@ -752,7 +752,7 @@ private fun SignaturePlacementStep(
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
                     }
-                    LText(if (applying) "Įrašomas parašas…" else "Pridėti parašą")
+                    LText(if (applying) "Adding signature…" else "Add signature")
                 }
             }
         }

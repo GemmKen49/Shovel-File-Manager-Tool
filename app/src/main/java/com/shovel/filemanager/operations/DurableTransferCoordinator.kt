@@ -46,7 +46,7 @@ class DurableTransferCoordinator(
             .take(MAX_AUTO_RESUME)
             .forEach { record ->
                 val interrupted = if (record.state.status == DurableTransferStatus.RUNNING) {
-                    engine.markInterrupted(record.state, "Procesas nutrūko; planas tikrinamas ir tęsiamas")
+                    engine.markInterrupted(record.state, "The process was interrupted; the plan is being checked and resumed")
                         .also(repository::saveState)
                 } else record.state
                 submit(DurableTransferRecord(record.plan, interrupted))
@@ -71,7 +71,7 @@ class DurableTransferCoordinator(
         repository.saveState(queued)
         return operationManager.submitExisting(
             id = plan.id,
-            title = if (plan.move) "Patikimai perkeliama" else "Patikimai kopijuojama",
+            title = if (plan.move) "Reliable move" else "Reliable copy",
             retryable = true,
         ) {
             val files = plan.items.filterNot(PlannedTransferItem::directory)
@@ -134,7 +134,7 @@ class DurableTransferCoordinator(
         }
         return OperationSnapshot(
             id = plan.id,
-            title = if (plan.move) "Patikimai perkeliama" else "Patikimai kopijuojama",
+            title = if (plan.move) "Reliable move" else "Reliable copy",
             status = status,
             completedItems = copiedItems + deletedItems,
             totalItems = plan.items.size * if (plan.move) 2 else 1,

@@ -141,12 +141,12 @@ internal class EncryptedSevenZWriter(
     // Reading the sources
 
     private suspend fun addEntry(source: File, archiveName: String, depth: Int, operation: OperationContext?) {
-        require(depth <= maxDepth) { "Per gilus aplankų medis" }
+        require(depth <= maxDepth) { "The folder tree is too deep" }
         operation?.checkpoint()
         if (source.isDirectory) {
             entries += Entry(archiveName, true, 0L, 0L, source.lastModified())
             operation?.progress(itemDelta = 1, currentName = source.name)
-            val children = source.listFiles() ?: throw SecurityException("Aplankas neperskaitomas")
+            val children = source.listFiles() ?: throw SecurityException("The folder is not readable")
             children.forEach { child -> addEntry(child, "$archiveName/${child.name}", depth + 1, operation) }
             return
         }

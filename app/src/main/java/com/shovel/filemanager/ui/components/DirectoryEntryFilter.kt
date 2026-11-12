@@ -64,13 +64,13 @@ fun DirectoryEntryFilterDialog(
     onDismiss: () -> Unit,
 ) {
     ShovelModalDialog(
-        title = "Filtras",
-        subtitle = "Nepasirinkus nė vieno tipo rodomi visi elementai.",
+        title = "Filter",
+        subtitle = "When no type is selected, all items are shown.",
         icon = Icons.Rounded.FilterAlt,
         onDismissRequest = onDismiss,
         actions = {
-            TextButton(onClick = { onSelectedChange(emptySet()) }) { LText("Išvalyti") }
-            TextButton(onClick = onDismiss) { LText("Atlikta") }
+            TextButton(onClick = { onSelectedChange(emptySet()) }) { LText("Clear") }
+            TextButton(onClick = onDismiss) { LText("Done") }
         },
     ) {
         DirectoryEntryFilterChoices(selected, onSelectedChange)
@@ -107,12 +107,12 @@ internal fun DirectoryEntryFilterChoices(
 
 internal val DirectoryEntryFilter.label: String
     get() = when (this) {
-        DirectoryEntryFilter.FOLDERS -> "Aplankai"
-        DirectoryEntryFilter.FILES -> "Visi failai"
-        DirectoryEntryFilter.DOCUMENTS -> "Dokumentai"
-        DirectoryEntryFilter.ARCHIVES -> "Archyvai"
-        DirectoryEntryFilter.IMAGES -> "Nuotraukos"
-        DirectoryEntryFilter.VIDEOS -> "Vaizdo įrašai"
-        DirectoryEntryFilter.MUSIC -> "Muzika"
+        DirectoryEntryFilter.FOLDERS -> "Folders"
+        DirectoryEntryFilter.FILES -> "All files"
+        DirectoryEntryFilter.DOCUMENTS -> "Documents"
+        DirectoryEntryFilter.ARCHIVES -> "Archives"
+        DirectoryEntryFilter.IMAGES -> "Pictures"
+        DirectoryEntryFilter.VIDEOS -> "Videos"
+        DirectoryEntryFilter.MUSIC -> "Music"
         DirectoryEntryFilter.APKS -> "APK"
     }

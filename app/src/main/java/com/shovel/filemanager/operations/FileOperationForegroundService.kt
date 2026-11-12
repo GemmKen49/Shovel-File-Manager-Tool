@@ -84,14 +84,14 @@ class FileOperationForegroundService : Service() {
             ?: operations.firstOrNull { it.status == OperationStatus.QUEUED }
 
     private fun notification(operation: OperationSnapshot?): Notification {
-        val title = operation?.title?.let(::localized) ?: localized("Ruošiama failų operacija")
+        val title = operation?.title?.let(::localized) ?: localized("Preparing file operation")
         val progress = operation?.progressPair()
         val current = operation?.currentName?.let { File(it).name.take(100) }
         val summary = when {
             current != null -> current
             operation?.totalBytes != null -> "${FileSystemRules.humanBytes(operation.completedBytes)} / ${FileSystemRules.humanBytes(operation.totalBytes)}"
             operation?.totalItems != null -> "${operation.completedItems} / ${operation.totalItems}"
-            else -> localized("Ruošiama…")
+            else -> localized("Preparing…")
         }
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_app)
@@ -105,7 +105,7 @@ class FileOperationForegroundService : Service() {
         if (progress == null) builder.setProgress(1, 0, true)
         else builder.setProgress(progress.first, progress.second, false)
         operation?.let {
-            builder.addAction(0, localized("Atšaukti"), PendingIntent.getService(this, it.id.hashCode(),
+            builder.addAction(0, localized("Cancel"), PendingIntent.getService(this, it.id.hashCode(),
                 Intent(this, FileOperationForegroundService::class.java).setAction(ACTION_CANCEL)
                     .putExtra(EXTRA_OPERATION_ID, it.id),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
@@ -131,8 +131,8 @@ class FileOperationForegroundService : Service() {
     }
 
     private fun createChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, localized("Failų operacijos"), NotificationManager.IMPORTANCE_LOW).apply {
-            description = localized("Kopijavimo, perkėlimo ir šalinimo eiga")
+        val channel = NotificationChannel(CHANNEL_ID, localized("File operations"), NotificationManager.IMPORTANCE_LOW).apply {
+            description = localized("Copy, move, and delete progress")
             setShowBadge(false)
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)

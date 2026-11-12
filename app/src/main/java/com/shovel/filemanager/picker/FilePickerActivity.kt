@@ -91,7 +91,7 @@ class FilePickerActivity : AppCompatActivity() {
                 Box(Modifier.fillMaxSize()) {
                     if (lockEnabled && !unlocked) {
                         AppLockOverlay(onUnlock = {
-                            authenticate(this@FilePickerActivity, translated("Atrakinti Shovel"), { unlocked = true }) { error = it }
+                            authenticate(this@FilePickerActivity, translated("Unlock Shovel"), { unlocked = true }) { error = it }
                         }, onCancel = { finish() }, message = error)
                     } else {
                         PickerContent(request)
@@ -133,11 +133,11 @@ class FilePickerActivity : AppCompatActivity() {
                     }
                 }
                 boundary = discovered
-                if (rootEntries.isEmpty()) error = "Saugykla nepasiekiama"
+                if (rootEntries.isEmpty()) error = "Storage is unavailable"
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                error = "Saugykla nepasiekiama"
+                error = "Storage is unavailable"
             }
         }
         val allowed = boundary
@@ -147,7 +147,7 @@ class FilePickerActivity : AppCompatActivity() {
                 initiallySelected = emptySet(),
                 loadDirectory = { path -> loadDirectory(path, allowed, request) },
                 onDismiss = { finish() }, onCopy = { paths -> confirm(paths, allowed, request) },
-                title = "Shovel", confirmLabel = "Pasirinkti",
+                title = "Shovel", confirmLabel = "Select",
                 filesOnly = true, allowMultiple = request.allowMultiple, selectionLimit = request.selectionLimit,
                 parentDirectory = allowed::parent, message = error ?: warning, confirming = confirming,
             )
@@ -165,9 +165,9 @@ class FilePickerActivity : AppCompatActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         if (hasAccess && error == null) CircularProgressIndicator()
-                        LText(error ?: if (!hasAccess) "Leidimas nesuteiktas" else "Įkeliama…")
-                        if (!hasAccess) Button(onClick = ::requestFileAccess) { LText("Suteikti") }
-                        TextButton(onClick = { finish() }) { LText("Atšaukti") }
+                        LText(error ?: if (!hasAccess) "Permission not granted" else "Loading…")
+                        if (!hasAccess) Button(onClick = ::requestFileAccess) { LText("Grant access") }
+                        TextButton(onClick = { finish() }) { LText("Cancel") }
                     }
                 }
             }
@@ -182,7 +182,7 @@ class FilePickerActivity : AppCompatActivity() {
             var truncated = false
             val entries = withContext(Dispatchers.IO) {
                 val directory = allowed.permitted(path)
-                require(directory != null && directory.isDirectory) { "Pasirinkta dokumentų vieta nepasiekiama" }
+                require(directory != null && directory.isDirectory) { "The selected document location is unavailable" }
                 graph.localFiles.listProgressively(directory.path, false, SortMode.NAME, SortDirection.ASCENDING) {
                     truncated = it.truncated
                 }.getOrThrow().filter { entry ->
@@ -191,12 +191,12 @@ class FilePickerActivity : AppCompatActivity() {
                     file != null && file.canRead() && (file.isDirectory || (file.isFile && request.accepts(mimeType(file))))
                 }
             }
-            if (truncated) warning = "Rezultatas sutrumpintas pasiekus saugos ribą"
+            if (truncated) warning = "The result was truncated at the safety limit"
             Result.success(entries)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
-            Result.failure(IllegalStateException("Aplanko turinio perskaityti nepavyko"))
+            Result.failure(IllegalStateException("Could not read the folder contents"))
         }
     }
 
@@ -230,7 +230,7 @@ class FilePickerActivity : AppCompatActivity() {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                error = "Pasirinkti failai nepasiekiami arba neatitinka prašomo tipo"
+                error = "Selected files are unavailable or do not match the requested type"
             } finally {
                 confirming = false
             }
@@ -245,7 +245,7 @@ class FilePickerActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= 30) startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.fromParts("package", packageName, null)))
             else legacyPermission.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
         } catch (_: Exception) {
-            error = "Leidimas nesuteiktas"
+            error = "Permission not granted"
         }
     }
 

@@ -82,7 +82,7 @@ internal class ArchiveBrowserIndex private constructor(
 
             if (omittedEntries > 0) {
                 itemsByPath["\u0000omitted-archive-paths"] = ArchiveBrowserItem(
-                    name = "$omittedEntries archyvo įrašų nerodoma: viršyta saugi kelio arba naršymo riba",
+                    name = "$omittedEntries archive entries not shown: safe path or browsing limit exceeded",
                     path = "\u0000omitted-archive-paths",
                     directory = false,
                     sizeBytes = -1,

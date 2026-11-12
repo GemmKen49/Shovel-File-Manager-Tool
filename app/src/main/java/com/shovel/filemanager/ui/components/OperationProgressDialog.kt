@@ -42,13 +42,13 @@ internal fun OperationProgressDialog(
         onDismissRequest = onHide,
         modifier = Modifier.testTag("operation_progress_dialog"),
         actions = {
-            TextButton(onClick = onHide, modifier = Modifier.testTag("hide_operation")) { LText("Slėpti") }
+            TextButton(onClick = onHide, modifier = Modifier.testTag("hide_operation")) { LText("Hide") }
             if (operation.status == OperationStatus.PAUSED) {
-                TextButton(onClick = onResume, modifier = Modifier.testTag("resume_operation")) { LText("Tęsti") }
+                TextButton(onClick = onResume, modifier = Modifier.testTag("resume_operation")) { LText("Resume") }
             } else if (operation.status == OperationStatus.RUNNING) {
-                TextButton(onClick = onPause, modifier = Modifier.testTag("pause_operation")) { LText("Pristabdyti") }
+                TextButton(onClick = onPause, modifier = Modifier.testTag("pause_operation")) { LText("Pause") }
             }
-            Button(onClick = onCancel, modifier = Modifier.testTag("cancel_operation")) { LText("Atšaukti") }
+            Button(onClick = onCancel, modifier = Modifier.testTag("cancel_operation")) { LText("Cancel") }
         },
     ) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -63,12 +63,12 @@ internal fun OperationProgressDialog(
                     style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("operation_bytes"))
             }
             operation.totalItems?.let { total ->
-                LText("Atlikta ${operation.completedItems} iš $total", style = MaterialTheme.typography.bodyMedium,
+                LText("${operation.completedItems} of $total done", style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.testTag("operation_items"))
             }
             operation.message?.let { LText(it, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            LText("Paslėpus operacija tęsis fone ir bus rodoma Android pranešimuose.",
+            LText("When hidden, the operation continues in the background and appears in Android notifications.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

@@ -123,7 +123,7 @@ class AdvancedAccessManager(context: Context) {
             runCatching {
                 val privileged = IPrivilegedFileService.Stub.asInterface(requireNotNull(service))
                 val uid = privileged.processUid
-                require(uid == 0 || uid == 2_000) { "Netikėtas Shizuku tarnybos UID: $uid" }
+                require(uid == 0 || uid == 2_000) { "Unexpected Shizuku service UID: $uid" }
                 val remote = FileSystemManager.getRemote(privileged.fileSystemService)
                 fileSystem = remote
                 privilegedService = privileged
@@ -140,7 +140,7 @@ class AdvancedAccessManager(context: Context) {
                 shizukuBound = false
                 fileSystem = null
                 privilegedService = null
-                setConnectionFailure("Shizuku failų tarnybos paleisti nepavyko", error)
+                setConnectionFailure("Could not start the Shizuku file service", error)
             }
         }
 
@@ -157,7 +157,7 @@ class AdvancedAccessManager(context: Context) {
                         serviceUid = null,
                         connecting = false,
                         androidDataAccessible = null,
-                        error = "Shizuku failų tarnyba atsijungė",
+                        error = "The Shizuku file service disconnected",
                     )
                 }
             }
@@ -170,7 +170,7 @@ class AdvancedAccessManager(context: Context) {
             bindingAttempt += 1
             runCatching {
                 val privileged = IPrivilegedFileService.Stub.asInterface(requireNotNull(service))
-                require(privileged.processUid == 0) { "Netikėtas root tarnybos UID: ${privileged.processUid}" }
+                require(privileged.processUid == 0) { "Unexpected root service UID: ${privileged.processUid}" }
                 fileSystem = FileSystemManager.getRemote(privileged.fileSystemService)
                 privilegedService = privileged
                 rootBound = true
@@ -187,7 +187,7 @@ class AdvancedAccessManager(context: Context) {
                 rootBound = false
                 fileSystem = null
                 privilegedService = null
-                setConnectionFailure("Root failų tarnybos paleisti nepavyko", error)
+                setConnectionFailure("Could not start the root file service", error)
             }
         }
 
@@ -204,7 +204,7 @@ class AdvancedAccessManager(context: Context) {
                         serviceUid = null,
                         connecting = false,
                         androidDataAccessible = null,
-                        error = "Root failų tarnyba atsijungė",
+                        error = "The root file service disconnected",
                     )
                 }
             }
@@ -232,7 +232,7 @@ class AdvancedAccessManager(context: Context) {
             _state.update { it.copy(connecting = false, error = null) }
             bindShizuku()
         }
-        else _state.update { it.copy(connecting = false, error = "Shizuku leidimas nesuteiktas") }
+        else _state.update { it.copy(connecting = false, error = "Shizuku permission was not granted") }
     }
 
     init {
@@ -270,9 +270,9 @@ class AdvancedAccessManager(context: Context) {
         refreshCapabilities()
         if (!_state.value.shizukuRunning) {
             val message = if (_state.value.shizukuManagerDetected) {
-                "Atidarykite Shizuku ir paleiskite tarnybą"
+                "Open Shizuku and start the service"
             } else {
-                "Shizuku tarnyba nepaleista. Įdiekite arba paleiskite Shizuku"
+                "The Shizuku service is not running. Install or start Shizuku"
             }
             _state.update { it.copy(connecting = false, error = message) }
             return
@@ -284,14 +284,14 @@ class AdvancedAccessManager(context: Context) {
         runCatching {
             _state.update { it.copy(connecting = true, error = null) }
             Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST)
-        }.onFailure { error -> setConnectionFailure("Shizuku leidimo paprašyti nepavyko", error) }
+        }.onFailure { error -> setConnectionFailure("Could not request Shizuku permission", error) }
     }
 
     fun requestRootAccess() {
         if (_state.value.selectedMode == AdvancedAccessMode.OFF) setMode(AdvancedAccessMode.ROOT)
         else refreshCapabilities()
         if (!AdvancedAccessCapabilityRules.canRequestRoot(_state.value.rootPermission)) {
-            _state.update { it.copy(connecting = false, error = "Root prieiga šiame įrenginyje nepasiekiama") }
+            _state.update { it.copy(connecting = false, error = "Root access is not available on this device") }
             return
         }
         bindRoot(requestPermission = true)
@@ -336,17 +336,17 @@ class AdvancedAccessManager(context: Context) {
     }
 
     fun fileSystemOrThrow(): FileSystemManager = fileSystem
-        ?: throw IllegalStateException("Privilegijuota failų prieiga neaktyvi")
+        ?: throw IllegalStateException("Privileged file access is inactive")
 
     fun privilegedTerminalServiceOrThrow(): IPrivilegedFileService = privilegedService
         ?.takeIf { it.asBinder().isBinderAlive }
-        ?: throw IllegalStateException("Privilegijuota terminalo prieiga neaktyvi")
+        ?: throw IllegalStateException("Privileged terminal access is inactive")
 
     fun reportAndroidDataProbe(accessible: Boolean, error: Throwable? = null) {
         _state.update {
             it.copy(
                 androidDataAccessible = accessible,
-                error = if (accessible) null else error?.message ?: "Android/data šiuo režimu nepasiekiamas",
+                error = if (accessible) null else error?.message ?: "Android/data is not accessible in this mode",
             )
         }
     }
@@ -361,7 +361,7 @@ class AdvancedAccessManager(context: Context) {
                     serviceUid = null,
                     connecting = false,
                     androidDataAccessible = null,
-                    error = "Privilegijuota tarnyba atsijungė",
+                    error = "The privileged service disconnected",
                 )
             }
         }
@@ -394,7 +394,7 @@ class AdvancedAccessManager(context: Context) {
             scheduleConnectionTimeout(shizuku = true)
         }.onFailure { error ->
             shizukuBinding = false
-            setConnectionFailure("Shizuku failų tarnybos paleisti nepavyko", error)
+            setConnectionFailure("Could not start the Shizuku file service", error)
         }
     }
 
@@ -402,7 +402,7 @@ class AdvancedAccessManager(context: Context) {
         if (rootBound || rootBinding || _state.value.connecting) return
         if (!requestPermission && _state.value.rootPermission != CapabilityState.GRANTED) return
         if (requestPermission && !AdvancedAccessCapabilityRules.canRequestRoot(_state.value.rootPermission)) {
-            _state.update { it.copy(connecting = false, error = "Root prieiga šiame įrenginyje nepasiekiama") }
+            _state.update { it.copy(connecting = false, error = "Root access is not available on this device") }
             return
         }
         disconnectShizuku()
@@ -417,7 +417,7 @@ class AdvancedAccessManager(context: Context) {
             scheduleConnectionTimeout(shizuku = false)
         }.onFailure { error ->
             rootBinding = false
-            setRootConnectionFailure("Root leidimo paprašyti nepavyko", error)
+            setRootConnectionFailure("Could not request root access", error)
         }
     }
 
@@ -500,14 +500,14 @@ class AdvancedAccessManager(context: Context) {
             if (shizuku) {
                 disconnectShizuku()
                 setConnectionFailure(
-                    "Shizuku failų tarnyba neatsakė laiku",
-                    IllegalStateException("15 s ryšio laukimo riba"),
+                    "The Shizuku file service did not respond in time",
+                    IllegalStateException("15 s connection timeout"),
                 )
             } else {
                 disconnectRoot()
                 setRootConnectionFailure(
-                    "Root failų tarnyba neatsakė laiku",
-                    IllegalStateException("15 s ryšio laukimo riba"),
+                    "The root file service did not respond in time",
+                    IllegalStateException("15 s connection timeout"),
                 )
             }
         }

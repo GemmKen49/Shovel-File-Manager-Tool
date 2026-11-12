@@ -25,10 +25,10 @@ class DurableTransferRepository(context: Context) : DurableTransferStateWriter {
     }
 
     private val directory = File(context.filesDir, "durable_operations_v1").apply {
-        require(isDirectory || mkdirs()) { "Operacijų saugyklos sukurti nepavyko" }
+        require(isDirectory || mkdirs()) { "Could not create the operation storage" }
     }
     private val corruptDirectory = File(directory, "corrupt").apply {
-        require(isDirectory || mkdirs()) { "Sugadintų operacijų karantino sukurti nepavyko" }
+        require(isDirectory || mkdirs()) { "Could not create the corrupted-operation quarantine" }
     }
 
     @Synchronized
@@ -36,7 +36,7 @@ class DurableTransferRepository(context: Context) : DurableTransferStateWriter {
         validatePlan(plan)
         val planFile = planFile(plan.id)
         val stateFile = stateFile(plan.id)
-        require(!planFile.exists() && !stateFile.exists()) { "Tokia operacija jau egzistuoja" }
+        require(!planFile.exists() && !stateFile.exists()) { "This operation already exists" }
         val state = DurableTransferState(planId = plan.id)
         atomicWrite(planFile, plan.toJson().toString(), MAX_PLAN_BYTES)
         try {
@@ -52,7 +52,7 @@ class DurableTransferRepository(context: Context) : DurableTransferStateWriter {
     @Synchronized
     override fun saveState(state: DurableTransferState) {
         validateState(state)
-        require(planFile(state.planId).isFile) { "Operacijos planas neberastas" }
+        require(planFile(state.planId).isFile) { "The operation plan could not be found" }
         atomicWrite(stateFile(state.planId), state.toJson().toString(), MAX_STATE_BYTES)
     }
 
@@ -61,7 +61,7 @@ class DurableTransferRepository(context: Context) : DurableTransferStateWriter {
         validateId(id)
         val plan = readPlan(planFile(id))
         val state = readState(stateFile(id))
-        require(plan.id == state.planId) { "Plano ir būsenos tapatybės nesutampa" }
+        require(plan.id == state.planId) { "The plan and state identities do not match" }
         return DurableTransferRecord(plan, state)
     }
 
@@ -90,11 +90,11 @@ class DurableTransferRepository(context: Context) : DurableTransferStateWriter {
 
     private fun readPlan(file: File): DurableTransferPlan {
         val json = JSONObject(readLimited(file, MAX_PLAN_BYTES))
-        require(json.getInt("schemaVersion") == 1) { "Nepalaikoma operacijos plano versija" }
+        require(json.getInt("schemaVersion") == 1) { "Unsupported operation-plan version" }
         val itemsJson = json.getJSONArray("items")
-        require(itemsJson.length() in 1..DurableTransferPlanner.MAX_PLAN_ITEMS) { "Netinkamas plano elementų skaičius" }
+        require(itemsJson.length() in 1..DurableTransferPlanner.MAX_PLAN_ITEMS) { "Invalid plan item count" }
         val rootsJson = json.getJSONArray("sourceRoots")
-        require(rootsJson.length() in 1..DurableTransferPlanner.MAX_SOURCE_PATHS) { "Netinkamas pradinių kelių skaičius" }
+        require(rootsJson.length() in 1..DurableTransferPlanner.MAX_SOURCE_PATHS) { "Invalid source path count" }
         val plan = DurableTransferPlan(
             schemaVersion = 1,
             id = json.getString("id"),
@@ -126,7 +126,7 @@ class DurableTransferRepository(context: Context) : DurableTransferStateWriter {
 
     private fun readState(file: File): DurableTransferState {
         val json = JSONObject(readLimited(file, MAX_STATE_BYTES))
-        require(json.getInt("schemaVersion") == 1) { "Nepalaikoma operacijos būsenos versija" }
+        require(json.getInt("schemaVersion") == 1) { "Unsupported operation state version" }
         return DurableTransferState(
             schemaVersion = 1,
             planId = json.getString("planId"),
@@ -145,35 +145,35 @@ class DurableTransferRepository(context: Context) : DurableTransferStateWriter {
     }
 
     private fun validatePlan(plan: DurableTransferPlan) {
-        require(plan.schemaVersion == 1) { "Nepalaikoma plano versija" }
+        require(plan.schemaVersion == 1) { "Unsupported plan version" }
         validateId(plan.id)
         validatePath(plan.destinationPath)
-        require(plan.sourceRoots.size in 1..DurableTransferPlanner.MAX_SOURCE_PATHS) { "Pradinių kelių riba viršyta" }
+        require(plan.sourceRoots.size in 1..DurableTransferPlanner.MAX_SOURCE_PATHS) { "The source-path limit was exceeded" }
         plan.sourceRoots.forEach(::validatePath)
-        require(plan.items.size in 1..DurableTransferPlanner.MAX_PLAN_ITEMS) { "Plano elementų riba viršyta" }
-        require(plan.totalBytes >= 0) { "Netinkamas bendras dydis" }
-        require(!plan.move || plan.failurePolicy == TransferFailurePolicy.STOP) { "Nesaugi perkėlimo klaidų politika" }
+        require(plan.items.size in 1..DurableTransferPlanner.MAX_PLAN_ITEMS) { "The plan item limit was exceeded" }
+        require(plan.totalBytes >= 0) { "Invalid total size" }
+        require(!plan.move || plan.failurePolicy == TransferFailurePolicy.STOP) { "Unsafe move error policy" }
         val destination = File(plan.destinationPath).canonicalFile
         plan.items.forEachIndexed { expectedIndex, item ->
-            require(item.index == expectedIndex) { "Plano indeksai nėra nuoseklūs" }
-            require(item.sourceRootIndex in plan.sourceRoots.indices) { "Netinkama šaltinio šaknis" }
+            require(item.index == expectedIndex) { "The plan indexes are not sequential" }
+            require(item.sourceRootIndex in plan.sourceRoots.indices) { "Invalid source root" }
             validatePath(item.sourcePath)
             validatePath(item.targetPath)
-            require(FileSystemRules.isContained(destination, File(item.targetPath))) { "Tikslas išeina už paskirties katalogo" }
-            require(item.sizeBytes >= 0 && item.modifiedAtMillis >= 0) { "Netinkami failo metaduomenys" }
+            require(FileSystemRules.isContained(destination, File(item.targetPath))) { "The target escapes the destination folder" }
+            require(item.sizeBytes >= 0 && item.modifiedAtMillis >= 0) { "Invalid file metadata" }
         }
     }
 
     private fun validateState(state: DurableTransferState) {
-        require(state.schemaVersion == 1) { "Nepalaikoma būsenos versija" }
+        require(state.schemaVersion == 1) { "Unsupported state version" }
         validateId(state.planId)
         require(state.nextItemIndex >= 0 && state.nextDeleteRootIndex >= 0 && state.nextFinalizeItemIndex >= 0) {
-            "Netinkamas kontrolinis taškas"
+            "Invalid checkpoint"
         }
-        require(state.failedItemIndices.size <= 100 && state.retryItemIndices.size <= 100) { "Klaidų sąrašo riba viršyta" }
-        require(state.retryPosition in 0..state.retryItemIndices.size) { "Netinkama kartojimo padėtis" }
-        require(state.attempt in 0..1_000) { "Bandymų riba viršyta" }
-        require(state.lastMessage == null || state.lastMessage.length <= 500) { "Klaidos pranešimas per ilgas" }
+        require(state.failedItemIndices.size <= 100 && state.retryItemIndices.size <= 100) { "The error-list limit was exceeded" }
+        require(state.retryPosition in 0..state.retryItemIndices.size) { "Invalid retry position" }
+        require(state.attempt in 0..1_000) { "The attempt limit was exceeded" }
+        require(state.lastMessage == null || state.lastMessage.length <= 500) { "The error message is too long" }
     }
 
     private fun DurableTransferPlan.toJson(): JSONObject {
@@ -223,14 +223,14 @@ class DurableTransferRepository(context: Context) : DurableTransferStateWriter {
         .put("updatedAtMillis", updatedAtMillis)
 
     private fun readLimited(file: File, maxBytes: Long): String {
-        require(file.isFile) { "Operacijos metaduomenys nerasti" }
-        require(file.length() in 1..maxBytes) { "Operacijos metaduomenų dydis netinkamas" }
+        require(file.isFile) { "Operation metadata was not found" }
+        require(file.length() in 1..maxBytes) { "The operation metadata size is invalid" }
         return file.readText(Charsets.UTF_8)
     }
 
     private fun atomicWrite(target: File, value: String, maxBytes: Long) {
         val bytes = value.toByteArray(Charsets.UTF_8)
-        require(bytes.size.toLong() in 1..maxBytes) { "Operacijos metaduomenys viršija ribą" }
+        require(bytes.size.toLong() in 1..maxBytes) { "The operation metadata exceeds the limit" }
         val temporary = File(directory, ".${target.name}.tmp")
         try {
             FileOutputStream(temporary).use { output ->
@@ -277,7 +277,7 @@ class DurableTransferRepository(context: Context) : DurableTransferStateWriter {
     private fun planFile(id: String): File = File(directory, "${validatedId(id)}.plan.json")
     private fun stateFile(id: String): File = File(directory, "${validatedId(id)}.state.json")
     private fun validatedId(id: String): String = id.also(::validateId)
-    private fun validateId(id: String) = require(SAFE_ID.matches(id)) { "Netinkama operacijos tapatybė" }
-    private fun validatePath(path: String) = require(path.isNotBlank() && path.length <= MAX_PATH_LENGTH && '\u0000' !in path) { "Netinkamas kelias" }
+    private fun validateId(id: String) = require(SAFE_ID.matches(id)) { "Invalid operation identity" }
+    private fun validatePath(path: String) = require(path.isNotBlank() && path.length <= MAX_PATH_LENGTH && '\u0000' !in path) { "Invalid path" }
     private fun JSONArray.toIntList(): List<Int> = (0 until length()).map(::getInt)
 }

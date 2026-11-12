@@ -39,7 +39,7 @@ internal fun selectPdfPageText(
     PdfTextRules.requireSourceSize(source.sizeBytes)
     return source.openFileDescriptor(context).use { descriptor ->
         val knownSize = descriptor.statSize.takeIf { it >= 0L } ?: source.sizeBytes
-        PdfTextRules.requireSourceSize(requireNotNull(knownSize) { "PDF perskaityti nepavyko" })
+        PdfTextRules.requireSourceSize(requireNotNull(knownSize) { "Could not read the PDF" })
         PdfRenderer(descriptor).use { renderer ->
             PdfTextRules.requirePageIndex(pageIndex, renderer.pageCount)
             renderer.openPage(pageIndex).use { page ->

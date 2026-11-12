@@ -79,13 +79,13 @@ fun DirectoryBrowserToolbar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (featureVisible(OptionalFeature.TOOLBAR_BACK)) IconButton(onClick = onBack, enabled = backEnabled) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Atgal"))
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = uiText("Back"))
         }
         if (featureVisible(OptionalFeature.TOOLBAR_FORWARD)) IconButton(onClick = onForward, enabled = forwardEnabled) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = uiText("Pirmyn"))
+            Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = uiText("Forward"))
         }
         if (featureVisible(OptionalFeature.TOOLBAR_UP)) IconButton(onClick = onUp, enabled = upEnabled) {
-            Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Aukštyn"))
+            Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Up"))
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -131,7 +131,7 @@ fun DirectoryLayoutButton(
     modifier: Modifier = Modifier,
 ) {
     if (!featureVisible(OptionalFeature.TOOLBAR_LAYOUT)) return
-    val toggleLabel = uiText(if (grid) "Rodyti sąrašą" else "Rodyti tinklelį")
+    val toggleLabel = uiText(if (grid) "Show list" else "Show grid")
     Box(
         modifier = modifier
             .size(48.dp)
@@ -139,7 +139,7 @@ fun DirectoryLayoutButton(
             .clip(CircleShape)
             .combinedClickable(
                 onClickLabel = toggleLabel,
-                onLongClickLabel = uiText("Rodinio nustatymai"),
+                onLongClickLabel = uiText("Display settings"),
                 onClick = onToggleLayout,
                 onLongClick = onOpenSettings,
             ),
@@ -163,7 +163,7 @@ fun DirectorySearchButton(
     IconButton(onClick = onClick, modifier = modifier.testTag(testTag)) {
         Icon(
             Icons.Rounded.Search,
-            contentDescription = uiText(if (active) "Uždaryti greitą paiešką" else "Greita paieška šiame aplanke"),
+            contentDescription = uiText(if (active) "Close quick search" else "Quick search in this folder"),
         )
     }
 }
@@ -188,17 +188,17 @@ fun DirectoryQuickSearchField(
                     IconButton(onClick = onOpenFilter) {
                         Icon(
                             Icons.Rounded.FilterAlt,
-                            contentDescription = uiText(if (filterActive) "Filtras aktyvus" else "Filtras"),
+                            contentDescription = uiText(if (filterActive) "Filter active" else "Filter"),
                             tint = if (filterActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Rounded.Close, contentDescription = uiText("Uždaryti greitą paiešką"))
+                    Icon(Icons.Rounded.Close, contentDescription = uiText("Close quick search"))
                 }
             }
         },
-        placeholder = { LText("Filtruoti šį aplanką") },
+        placeholder = { LText("Filter this folder") },
         singleLine = true,
     )
 }
@@ -225,7 +225,7 @@ fun DirectoryDisplayMenuItems(
 ) {
     if (onOpenFilter != null) {
         DropdownMenuItem(
-            text = { LText(if (filterActive) "Filtras aktyvus" else "Filtras") },
+            text = { LText(if (filterActive) "Filter active" else "Filter") },
             leadingIcon = {
                 Icon(
                     Icons.Rounded.FilterAlt,
@@ -241,7 +241,7 @@ fun DirectoryDisplayMenuItems(
     }
     if (hiddenFilesAvailable) {
         DropdownMenuItem(
-            text = { LText(if (includeHidden) "Slėpti paslėptus failus" else "Rodyti paslėptus failus") },
+            text = { LText(if (includeHidden) "Hide hidden files" else "Show hidden files") },
             leadingIcon = {
                 Icon(if (includeHidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff, contentDescription = null)
             },
@@ -252,7 +252,7 @@ fun DirectoryDisplayMenuItems(
         )
     }
     DropdownMenuItem(
-        text = { LText(if (grid) "Rodyti sąrašą" else "Rodyti tinklelį") },
+        text = { LText(if (grid) "Show list" else "Show grid") },
         leadingIcon = {
             Icon(if (grid) Icons.AutoMirrored.Rounded.List else Icons.Rounded.GridView, contentDescription = null)
         },
@@ -263,7 +263,7 @@ fun DirectoryDisplayMenuItems(
     )
     if (thumbnailsAvailable) {
         DropdownMenuItem(
-            text = { LText(if (showThumbnails) "Rodyti piktogramas" else "Rodyti miniatiūras") },
+            text = { LText(if (showThumbnails) "Show icons" else "Show thumbnails") },
             leadingIcon = {
                 Icon(
                     if (showThumbnails) Icons.AutoMirrored.Rounded.InsertDriveFile else Icons.Rounded.PhotoLibrary,
@@ -279,7 +279,7 @@ fun DirectoryDisplayMenuItems(
     DropdownMenuItem(
         text = {
             Column {
-                LText("Rodinio nustatymai")
+                LText("Display settings")
                 Text(
                     directorySortSummary(sortMode, sortDirection),
                     style = MaterialTheme.typography.labelSmall,
@@ -301,11 +301,11 @@ fun DirectoryDisplayMenuItems(
 @Composable
 private fun directorySortSummary(mode: SortMode, direction: SortDirection): String {
     val modeLabel = when (mode) {
-        SortMode.NAME -> "Pagal pavadinimą"
-        SortMode.MODIFIED -> "Pagal datą"
-        SortMode.SIZE -> "Pagal dydį"
-        SortMode.TYPE -> "Pagal tipą"
+        SortMode.NAME -> "By name"
+        SortMode.MODIFIED -> "By date"
+        SortMode.SIZE -> "By size"
+        SortMode.TYPE -> "By type"
     }
-    val directionLabel = if (direction == SortDirection.ASCENDING) "Didėjančiai" else "Mažėjančiai"
+    val directionLabel = if (direction == SortDirection.ASCENDING) "Ascending" else "Descending"
     return "${uiText(modeLabel)} · ${uiText(directionLabel)}"
 }

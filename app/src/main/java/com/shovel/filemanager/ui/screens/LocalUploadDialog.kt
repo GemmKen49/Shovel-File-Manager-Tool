@@ -79,8 +79,8 @@ internal fun LocalUploadDialog(
     loadDirectory: suspend (String) -> Result<List<FileEntry>>,
     onDismiss: () -> Unit,
     onCopy: (List<String>) -> Unit,
-    title: String = "Pasirinkti failus",
-    confirmLabel: String = "Kopijuoti",
+    title: String = "Select files",
+    confirmLabel: String = "Copy",
     filesOnly: Boolean = false,
     allowMultiple: Boolean = true,
     selectionLimit: Int = MAX_LOCAL_UPLOAD_SELECTION,
@@ -127,7 +127,7 @@ internal fun LocalUploadDialog(
             onSuccess = { loaded -> entries = loaded },
             onFailure = { failure ->
                 entries = emptyList()
-                error = failure.message ?: "Katalogo atverti nepavyko"
+                error = failure.message ?: "Could not open the folder"
             },
         )
         loading = false
@@ -168,7 +168,7 @@ internal fun LocalUploadDialog(
         expandedContent = true,
         modifier = Modifier.testTag("local_upload_dialog"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             Button(
                 onClick = { onCopy(selected.toList()) },
                 enabled = selected.isNotEmpty() && !confirming,
@@ -181,42 +181,42 @@ internal fun LocalUploadDialog(
                     onClick = { parentPath?.let(::navigateTo) },
                     enabled = parentPath != null && !loading,
                     modifier = Modifier.testTag("local_upload_up"),
-                ) { Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Aukštyn")) }
-                Text(currentPath.ifEmpty { uiText("Saugykla") }, modifier = Modifier.weight(1f),
+                ) { Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Up")) }
+                Text(currentPath.ifEmpty { uiText("Storage") }, modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (searchVisible || featureVisible(OptionalFeature.TOOLBAR_SEARCH)) IconButton(onClick = { searchVisible = !searchVisible; if (!searchVisible) searchQuery = "" },
                     modifier = Modifier.testTag("local_upload_search_toggle")) {
-                    Icon(Icons.Rounded.Search, contentDescription = uiText(if (searchVisible) "Slėpti paiešką" else "Ieškoti"))
+                    Icon(Icons.Rounded.Search, contentDescription = uiText(if (searchVisible) "Hide search" else "Search"))
                 }
                 Box {
                     IconButton(onClick = { pickerMenu = true }, modifier = Modifier.testTag("local_upload_more")) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Daugiau veiksmų"))
+                        Icon(Icons.Rounded.MoreVert, contentDescription = uiText("More actions"))
                     }
                     DropdownMenu(expanded = pickerMenu, onDismissRequest = { pickerMenu = false }) {
-                        DropdownMenuItem(text = { LText("Visi elementai") }, onClick = {
+                        DropdownMenuItem(text = { LText("All items") }, onClick = {
                             showOnlyFolders = false; showOnlyFiles = false; pickerMenu = false
                         }, leadingIcon = if (!showOnlyFolders && !showOnlyFiles) ({ Icon(Icons.Rounded.CheckCircle, contentDescription = null) }) else null)
-                        DropdownMenuItem(text = { LText("Tik aplankai") }, onClick = {
+                        DropdownMenuItem(text = { LText("Folders only") }, onClick = {
                             showOnlyFolders = true; showOnlyFiles = false; pickerMenu = false
                         }, leadingIcon = if (showOnlyFolders) ({ Icon(Icons.Rounded.CheckCircle, contentDescription = null) }) else null)
-                        DropdownMenuItem(text = { LText("Tik failai") }, onClick = {
+                        DropdownMenuItem(text = { LText("Files only") }, onClick = {
                             showOnlyFiles = true; showOnlyFolders = false; pickerMenu = false
                         }, leadingIcon = if (showOnlyFiles) ({ Icon(Icons.Rounded.CheckCircle, contentDescription = null) }) else null)
                         HorizontalDivider()
                         SortMode.entries.forEach { mode ->
                             DropdownMenuItem(text = { LText(when (mode) {
-                                SortMode.NAME -> "Pavadinimas"; SortMode.SIZE -> "Dydis";
-                                SortMode.MODIFIED -> "Pakeista"; SortMode.TYPE -> "Tipas"
+                                SortMode.NAME -> "Name"; SortMode.SIZE -> "Size";
+                                SortMode.MODIFIED -> "Modified"; SortMode.TYPE -> "Type"
                             }) }, onClick = { pickerSort = mode; pickerMenu = false },
                                 leadingIcon = if (pickerSort == mode) ({ Icon(Icons.Rounded.CheckCircle, contentDescription = null) }) else null)
                         }
                     }
                 }
             }
-            if (remotePath.isNotBlank()) LText("Į: $remotePath", style = MaterialTheme.typography.bodySmall)
+            if (remotePath.isNotBlank()) LText("To: $remotePath", style = MaterialTheme.typography.bodySmall)
             if (searchVisible) OutlinedTextField(
                 value = searchQuery, onValueChange = { searchQuery = it.take(200) },
-                label = { LText("Ieškoti šiame sąraše") }, singleLine = true,
+                label = { LText("Search this list") }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().testTag("local_upload_search"),
             )
             if (selected.isNotEmpty()) SelectionActionBar(
@@ -258,7 +258,7 @@ internal fun LocalUploadDialog(
                         )
                     }
                 } else if (displayedEntries.isEmpty()) {
-                    item { LText(if (searchQuery.isBlank()) "Katalogas tuščias" else "Atitinkančių failų nėra") }
+                    item { LText(if (searchQuery.isBlank()) "Folder is empty" else "No matching files") }
                 }
                 items(displayedEntries, key = FileEntry::absolutePath) { entry ->
                     val entrySelected = entry.absolutePath in selected
@@ -300,7 +300,7 @@ internal fun LocalUploadDialog(
                             Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
                                 Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 if (entry.isDirectory) {
-                                    LText("Aplankas", style = MaterialTheme.typography.labelSmall)
+                                    LText("Folder", style = MaterialTheme.typography.labelSmall)
                                 } else {
                                     Text(FileSystemRules.humanBytes(entry.sizeBytes), style = MaterialTheme.typography.labelSmall)
                                 }
@@ -310,7 +310,7 @@ internal fun LocalUploadDialog(
                                     onClick = { navigateTo(entry.absolutePath) },
                                     modifier = Modifier.testTag("local_upload_open_${entry.absolutePath}"),
                                 ) {
-                                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = uiText("Atidaryti aplanką"))
+                                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = uiText("Open folder"))
                                 }
                             }
                         }

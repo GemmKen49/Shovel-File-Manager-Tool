@@ -18,9 +18,9 @@ class ContentFileRepository(private val context: Context) {
 
     suspend fun describe(uri: Uri, suppliedMimeType: String?): Result<ContentFileEntry> = withContext(Dispatchers.IO) {
         runCatching {
-            require(uri.scheme == "content") { "Palaikomos tik Android content nuorodos" }
+            require(uri.scheme == "content") { "Only Android content URIs are supported" }
             val resolver = context.contentResolver
-            resolver.openFileDescriptor(uri, "r")?.use { } ?: throw IllegalArgumentException("Failo srautas nepasiekiamas")
+            resolver.openFileDescriptor(uri, "r")?.use { } ?: throw IllegalArgumentException("The file stream is unavailable")
             val isWritable = runCatching {
                 resolver.openFileDescriptor(uri, "rw")?.use { true } ?: false
             }.getOrDefault(false)
@@ -56,13 +56,13 @@ class ContentFileRepository(private val context: Context) {
     suspend fun delete(uriText: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val uri = Uri.parse(uriText)
-            require(uri.scheme == "content") { "Palaikomos tik Android content nuorodos" }
+            require(uri.scheme == "content") { "Only Android content URIs are supported" }
             val deleted = if (DocumentsContract.isDocumentUri(context, uri)) {
                 DocumentsContract.deleteDocument(context.contentResolver, uri)
             } else {
                 context.contentResolver.delete(uri, null, null) > 0
             }
-            require(deleted) { "Android dokumentų teikėjas failo neištrynė" }
+            require(deleted) { "The Android document provider did not delete the file" }
         }
     }
 
@@ -71,7 +71,7 @@ class ContentFileRepository(private val context: Context) {
             .replace(Regex("[\\p{Cc}\\p{Cf}/\\\\]"), "_")
             .trim()
             .take(MAX_DISPLAY_NAME_LENGTH)
-        return cleaned.ifBlank { "Atidaromas failas" }
+        return cleaned.ifBlank { "Opening file" }
     }
 
     private fun normalizeMimeType(value: String?): String? = value

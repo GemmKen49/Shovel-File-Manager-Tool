@@ -44,35 +44,35 @@ internal fun PreviewActionsMenu(
     fun invoke(action: () -> Unit) { expanded = false; action() }
     Box {
         IconButton(onClick = { expanded = true }, modifier = Modifier.testTag("preview_actions_menu")) {
-            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Veiksmai"))
+            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Actions"))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             onDetails?.let { action ->
-                DropdownMenuItem(text = { LText("Informacija") },
+                DropdownMenuItem(text = { LText("Info") },
                     leadingIcon = { Icon(Icons.Rounded.Info, contentDescription = null) },
                     onClick = { invoke(action) }, modifier = Modifier.testTag("preview_details_action"))
             }
             DropdownMenuItem(
-                text = { LText("Atidaryti su kita programa") },
+                text = { LText("Open with another app") },
                 leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
                 onClick = { invoke(onOpenWith) }, modifier = Modifier.testTag("open-with-action"),
             )
             onSignPdf?.let { action ->
                 DropdownMenuItem(
-                    text = { LText("Pasirašyti PDF") },
+                    text = { LText("Sign PDF") },
                     leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                     enabled = editEnabled, onClick = { invoke(action) }, modifier = Modifier.testTag("sign-pdf-action"),
                 )
             }
             onEditWith?.let { action ->
                 DropdownMenuItem(
-                    text = { LText("Redaguoti su kita programa") },
+                    text = { LText("Edit with another app") },
                     leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                     enabled = editEnabled, onClick = { invoke(action) }, modifier = Modifier.testTag("edit-with-action"),
                 )
             }
             DropdownMenuItem(
-                text = { LText("Dalintis") },
+                text = { LText("Share") },
                 leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
                 onClick = { invoke(onShare) }, modifier = Modifier.testTag("preview_share_action"),
             )
@@ -86,7 +86,7 @@ internal fun PreviewActionsMenu(
             )
             onDelete?.let { action ->
                 DropdownMenuItem(
-                    text = { LText("Ištrinti") },
+                    text = { LText("Delete") },
                     leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
                     enabled = editEnabled,
                     onClick = { invoke(action) },

@@ -29,7 +29,7 @@ class SharedStorageIndex(context: Context) {
     var onChanged: () -> Unit = {}
 
     suspend fun changed(paths: List<File>) = withContext(Dispatchers.IO) {
-        require(paths.size <= MAX_NODES) { "Per daug elementų" }
+        require(paths.size <= MAX_NODES) { "Too many items" }
         lock.withLock {
             val roots = LocalFileRepository(context).roots().map { File(it.path).toPath().normalize() }
             var visited = 0
@@ -73,11 +73,11 @@ class SharedStorageIndex(context: Context) {
                         val uri = MediaStore.Files.getContentUri("external").buildUpon()
                             .appendQueryParameter("limit", (remaining + 1).toString()).build()
                         val cursor = context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DATA), args, null)
-                            ?: throw java.io.IOException("Android failų indekso atnaujinti nepavyko")
+                            ?: throw java.io.IOException("Could not update Android's file index")
                         cursor.use {
                             while (it.moveToNext()) {
                                 coroutineContext.ensureActive()
-                                check(++visited <= MAX_NODES) { "Per daug elementų" }
+                                check(++visited <= MAX_NODES) { "Too many items" }
                                 it.getString(0)?.let { old -> if (!File(old).exists()) add(old) }
                             }
                         }
@@ -85,7 +85,7 @@ class SharedStorageIndex(context: Context) {
                     if (exists) {
                         suspend fun visit(file: File, depth: Int) {
                             coroutineContext.ensureActive()
-                            check(++visited <= MAX_NODES && depth <= MAX_DEPTH) { "Per daug elementų" }
+                            check(++visited <= MAX_NODES && depth <= MAX_DEPTH) { "Too many items" }
                             if (Files.isSymbolicLink(file.toPath())) return
                             if (file.isDirectory) {
                                 Files.newDirectoryStream(file.toPath()).use { children ->
@@ -142,7 +142,7 @@ class SharedStorageIndex(context: Context) {
                 put(MediaStore.MediaColumns.MIME_TYPE, mime)
             }
             if (context.contentResolver.update(collection, values, "${MediaStore.MediaColumns.DATA} = ?", arrayOf(path)) == 0) {
-                check(context.contentResolver.insert(collection, values) != null) { "Android failų indekso atnaujinti nepavyko" }
+                check(context.contentResolver.insert(collection, values) != null) { "Could not update Android's file index" }
             }
         }
         // The legacy provider normally deletes the underlying media as well. The

@@ -145,7 +145,7 @@ fun TrashBrowserDialog(
         ) {
             Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
                 DirectoryBrowserToolbar(
-                    title = state.rootName ?: uiText("Šiukšliadėžė"),
+                    title = state.rootName ?: uiText("Trash"),
                     path = trashLocationLabel(state),
                     backEnabled = true,
                     forwardEnabled = false,
@@ -165,7 +165,7 @@ fun TrashBrowserDialog(
                 ) {
                     Box {
                         IconButton(onClick = { menu = true }) {
-                            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Aplanko veiksmai"))
+                            Icon(Icons.Rounded.MoreVert, contentDescription = uiText("Folder actions"))
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DirectoryDisplayMenuItems(
@@ -188,7 +188,7 @@ fun TrashBrowserDialog(
                             )
                             HorizontalDivider()
                             DropdownMenuItem(
-                                text = { LText("Atnaujinti") },
+                                text = { LText("Refresh") },
                                 leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
                                 enabled = !state.loading && !state.emptying,
                                 onClick = { menu = false; viewModel.refreshTrashBrowser() },
@@ -197,7 +197,7 @@ fun TrashBrowserDialog(
                                 DropdownMenuItem(
                                     text = {
                                         Column {
-                                            LText("Automatinis šiukšliadėžės valymas")
+                                            LText("Automatic Trash cleanup")
                                             LText(
                                                 trashRetentionLabel(state.retentionPeriod),
                                                 style = MaterialTheme.typography.labelSmall,
@@ -211,7 +211,7 @@ fun TrashBrowserDialog(
                                 )
                             }
                             DropdownMenuItem(
-                                text = { LText("Išvalyti visą šiukšliadėžę") },
+                                text = { LText("Empty trash") },
                                 leadingIcon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null) },
                                 enabled = cleanupAvailable && !state.emptying,
                                 modifier = Modifier.testTag("trash_empty_all"),
@@ -240,14 +240,14 @@ fun TrashBrowserDialog(
                     testTag = "pull_to_refresh_trash",
                 ) {
                     when {
-                        state.error != null -> TrashEmptyState("Katalogo atidaryti nepavyko", state.error)
+                        state.error != null -> TrashEmptyState("Could not open the folder", state.error)
                         state.loading && state.entries.isEmpty() -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                         transforming && displayedEntries.isEmpty() -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                         state.entries.isEmpty() -> TrashEmptyState(
-                            if (state.itemId == null) "Šiukšliadėžė tuščia" else "Katalogas tuščias",
-                            if (state.itemId == null) "Ištrinti elementai bus rodomi čia." else "Šiame kataloge nėra failų.",
+                            if (state.itemId == null) "Trash is empty" else "Folder is empty",
+                            if (state.itemId == null) "Deleted items appear here." else "There are no files in this folder.",
                         )
-                        displayedEntries.isEmpty() -> TrashEmptyState("Atitikmenų nerasta", "Pabandykite kitą pavadinimą")
+                        displayedEntries.isEmpty() -> TrashEmptyState("No matches found", "Try another name")
                         state.grid -> LazyVerticalGrid(
                             columns = GridCells.Fixed(state.gridColumns.coerceIn(1, 6)),
                             state = gridState,
@@ -297,16 +297,16 @@ fun TrashBrowserDialog(
         val roots = state.entries.filter(TrashBrowserEntry::topLevel)
         DeleteConfirmationDialog(
             names = roots.map(TrashBrowserEntry::name), permanent = true,
-            title = "Išvalyti visą šiukšliadėžę?", confirmLabel = "Išvalyti viską",
+            title = "Empty all trash?", confirmLabel = "Delete all",
             onDismiss = { confirmEmpty = false },
             onConfirm = { confirmEmpty = false; viewModel.emptyTrash() },
             loadSummary = roots.takeIf { it.isNotEmpty() }?.let { items ->
                 suspend { viewModel.loadFileSelectionInfo(items.map(TrashBrowserEntry::storedPath)) }
             },
             explanation = if (state.storedItemCountComplete && cleanupItemCount > 0) {
-                "Visi $cleanupItemCount šiukšliadėžėje esantys elementai bus ištrinti visam laikui ir jų atkurti nebebus galima."
+                "All $cleanupItemCount items in the trash will be deleted permanently and cannot be restored."
             } else {
-                "Šio veiksmo nebus galima atšaukti."
+                "This action cannot be undone."
             },
         )
     }
@@ -317,7 +317,7 @@ fun TrashBrowserDialog(
             onDismiss = { deleteTarget = null },
             onConfirm = { viewModel.deleteTrashForever(entry.itemId); deleteTarget = null },
             loadSummary = { viewModel.loadFileSelectionInfo(listOf(entry.storedPath)) },
-            explanation = "Elemento nebebus galima atkurti iš programos šiukšliadėžės.",
+            explanation = "The item can no longer be restored from the app Trash.",
         )
     }
 
@@ -356,20 +356,20 @@ fun TrashBrowserDialog(
     if (showRetention) {
         var draft by remember(state.retentionPeriod) { mutableStateOf(state.retentionPeriod) }
         ShovelModalDialog(
-            title = "Automatinis šiukšliadėžės valymas",
-            subtitle = "Pasirinkite, kiek laiko ištrinti elementai turi būti saugomi.",
+            title = "Automatic Trash cleanup",
+            subtitle = "Choose how long deleted items are kept.",
             icon = Icons.Rounded.Schedule,
             expandedContent = false,
             onDismissRequest = { showRetention = false },
             actions = {
-                TextButton(onClick = { showRetention = false }) { LText("Atšaukti") }
+                TextButton(onClick = { showRetention = false }) { LText("Cancel") }
                 Button(
                     onClick = {
                         viewModel.setTrashRetentionPeriod(draft)
                         showRetention = false
                     },
                     modifier = Modifier.testTag("trash_retention_save"),
-                ) { LText("Išsaugoti") }
+                ) { LText("Save") }
             },
         ) {
             LazyColumn(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
@@ -392,14 +392,14 @@ fun TrashBrowserDialog(
 }
 
 private fun trashRetentionLabel(period: TrashRetentionPeriod): String = when (period) {
-    TrashRetentionPeriod.ONE_DAY -> "Po 1 dienos"
-    TrashRetentionPeriod.THREE_DAYS -> "Po 3 dienų"
-    TrashRetentionPeriod.SEVEN_DAYS -> "Po 7 dienų"
-    TrashRetentionPeriod.FOURTEEN_DAYS -> "Po 14 dienų"
-    TrashRetentionPeriod.THIRTY_DAYS -> "Po 30 dienų"
-    TrashRetentionPeriod.SIXTY_DAYS -> "Po 60 dienų"
-    TrashRetentionPeriod.NINETY_DAYS -> "Po 90 dienų"
-    TrashRetentionPeriod.NEVER -> "Niekada netrinti automatiškai"
+    TrashRetentionPeriod.ONE_DAY -> "After 1 day"
+    TrashRetentionPeriod.THREE_DAYS -> "After 3 days"
+    TrashRetentionPeriod.SEVEN_DAYS -> "After 7 days"
+    TrashRetentionPeriod.FOURTEEN_DAYS -> "After 14 days"
+    TrashRetentionPeriod.THIRTY_DAYS -> "After 30 days"
+    TrashRetentionPeriod.SIXTY_DAYS -> "After 60 days"
+    TrashRetentionPeriod.NINETY_DAYS -> "After 90 days"
+    TrashRetentionPeriod.NEVER -> "Never delete automatically"
 }
 
 @Composable
@@ -446,8 +446,8 @@ private fun TrashBrowserRow(
                 }
             }
             if (entry.topLevel) {
-                IconButton(onClick = onRestore) { Icon(Icons.Rounded.Restore, contentDescription = uiText("Atkurti ${entry.name}")) }
-                IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Ištrinti ${entry.name} visam laikui")) }
+                IconButton(onClick = onRestore) { Icon(Icons.Rounded.Restore, contentDescription = uiText("Restore ${entry.name}")) }
+                IconButton(onClick = onDelete) { Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Delete ${entry.name} permanently")) }
             }
         }
     }
@@ -496,10 +496,10 @@ private fun TrashBrowserGridItem(
             if (entry.topLevel) {
                 Row {
                     IconButton(onClick = onRestore) {
-                        Icon(Icons.Rounded.Restore, contentDescription = uiText("Atkurti ${entry.name}"))
+                        Icon(Icons.Rounded.Restore, contentDescription = uiText("Restore ${entry.name}"))
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Ištrinti ${entry.name} visam laikui"))
+                        Icon(Icons.Rounded.DeleteForever, contentDescription = uiText("Delete ${entry.name} permanently"))
                     }
                 }
             }
@@ -525,18 +525,18 @@ private fun orderTrashEntries(
 
 @Composable
 private fun trashLocationLabel(state: TrashBrowserUiState): String = buildString {
-    append(uiText("Šiukšliadėžė"))
+    append(uiText("Trash"))
     state.rootName?.let { append(" / ").append(it) }
     if (state.relativePath.isNotEmpty()) append(" / ").append(state.relativePath)
 }
 
 private fun trashEntryMeta(entry: TrashBrowserEntry, dateFormat: DateFormat): String = when {
     entry.deletedAtMillis != null -> buildString {
-        append(if (entry.isDirectory) "Katalogas" else FileSystemRules.humanBytes(entry.sizeBytes))
+        append(if (entry.isDirectory) "Folder" else FileSystemRules.humanBytes(entry.sizeBytes))
         append(" · ")
         append(dateFormat.format(Date(entry.deletedAtMillis)))
     }
-    entry.isDirectory -> "Katalogas"
+    entry.isDirectory -> "Folder"
     else -> FileSystemRules.humanBytes(entry.sizeBytes)
 }
 

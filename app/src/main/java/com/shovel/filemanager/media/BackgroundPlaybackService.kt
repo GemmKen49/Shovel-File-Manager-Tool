@@ -105,8 +105,8 @@ class BackgroundPlaybackService : Service() {
     override fun onCreate() {
         super.onCreate()
         getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(
-            CHANNEL_ID, localized("Foninis medijos atkūrimas"), NotificationManager.IMPORTANCE_LOW,
-        ).apply { description = localized("Naudotojo paleista medija atkuriama fone") })
+            CHANNEL_ID, localized("Background media playback"), NotificationManager.IMPORTANCE_LOW,
+        ).apply { description = localized("Media explicitly started by the user plays in the background") })
         audioManager = getSystemService(AudioManager::class.java)
         focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(mediaAttributes())
@@ -279,7 +279,7 @@ class BackgroundPlaybackService : Service() {
             .setActions(PlaybackState.ACTION_STOP or if (preparing) 0L else
                 PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or
                 if (now.canSkip) PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS else 0L)
-            .addCustomAction(ACTION_STOP, localized("Sustabdyti"), android.R.drawable.ic_menu_close_clear_cancel)
+            .addCustomAction(ACTION_STOP, localized("Stop"), android.R.drawable.ic_menu_close_clear_cancel)
             .build())
         session.isActive = true
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java)
@@ -287,18 +287,18 @@ class BackgroundPlaybackService : Service() {
         val builder = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_app).setContentTitle(now.title)
             .setContentText(localized(when (now.phase) {
-                BackgroundPlaybackPhase.PREPARING -> "Ruošiamas foninis atkūrimas"
-                BackgroundPlaybackPhase.PAUSED -> "Pauzė"
-                else -> "Atkuriama fone"
+                BackgroundPlaybackPhase.PREPARING -> "Preparing background playback"
+                BackgroundPlaybackPhase.PAUSED -> "Pause"
+                else -> "Playing in background"
             }))
             .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PRIVATE).setCategory(Notification.CATEGORY_TRANSPORT)
         if (!preparing) builder.addAction(Notification.Action.Builder(
             Icon.createWithResource(this, if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play),
-            localized(if (playing) "Pauzė" else "Tęsti"), commandIntent(ACTION_TOGGLE, 2),
+            localized(if (playing) "Pause" else "Resume"), commandIntent(ACTION_TOGGLE, 2),
         ).build())
         builder.addAction(Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel),
-            localized("Sustabdyti"), commandIntent(ACTION_STOP, 1)).build())
+            localized("Stop"), commandIntent(ACTION_STOP, 1)).build())
         builder.setStyle(Notification.MediaStyle().setMediaSession(session.sessionToken)
             .setShowActionsInCompactView(*if (preparing) intArrayOf(0) else intArrayOf(0, 1)))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

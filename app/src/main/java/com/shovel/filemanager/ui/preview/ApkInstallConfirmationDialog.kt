@@ -41,18 +41,18 @@ internal fun ApkInstallConfirmationDialog(
         value = withContext(Dispatchers.IO) { runCatching { load() } }
     }
     ShovelModalDialog(
-        title = "Patvirtinti programos diegimą", icon = Icons.Rounded.InstallMobile,
+        title = "Confirm app installation", icon = Icons.Rounded.InstallMobile,
         onDismissRequest = onDismiss, modifier = Modifier.testTag("apk_install_confirmation"),
         actions = {
-            TextButton(onClick = onDismiss) { LText("Atšaukti") }
+            TextButton(onClick = onDismiss) { LText("Cancel") }
             Button(onClick = onInstall, enabled = result?.isSuccess == true,
-                modifier = Modifier.testTag("confirm_apk_install")) { LText("Diegti") }
+                modifier = Modifier.testTag("confirm_apk_install")) { LText("Install") }
         },
     ) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when {
                 result == null -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-                result?.isFailure == true -> LText(result?.exceptionOrNull()?.message ?: "APK informacija nepasiekiama",
+                result?.isFailure == true -> LText(result?.exceptionOrNull()?.message ?: "APK information unavailable",
                     color = MaterialTheme.colorScheme.error)
                 else -> result?.getOrNull()?.let { info ->
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -62,15 +62,15 @@ internal fun ApkInstallConfirmationDialog(
                             Text(info.packageName, style = MaterialTheme.typography.bodySmall)
                         }
                     }
-                    MetadataLine("Diegiama versija", info.candidateVersion)
-                    MetadataLine("Įdiegta versija", info.installedVersion ?: "Neįdiegta")
-                    MetadataLine("Failo dydis", FileSystemRules.humanBytes(info.fileBytes))
-                    MetadataLine("Minimali Android API", info.minimumSdk?.toString() ?: "Nežinoma")
-                    MetadataLine("Tikslinė Android API", info.targetSdk?.toString() ?: "Nežinoma")
-                    MetadataLine("Procesoriaus architektūros", info.abis.ifEmpty { listOf("Universalus / nėra vietinių bibliotekų") }.joinToString())
-                    LText("APK nenurodo patikimos maksimalios Android versijos; rodoma kūrėjo pasirinkta tikslinė API.",
+                    MetadataLine("Version to install", info.candidateVersion)
+                    MetadataLine("Installed version", info.installedVersion ?: "Not installed")
+                    MetadataLine("File size", FileSystemRules.humanBytes(info.fileBytes))
+                    MetadataLine("Minimali Android API", info.minimumSdk?.toString() ?: "Unknown")
+                    MetadataLine("Target Android API", info.targetSdk?.toString() ?: "Unknown")
+                    MetadataLine("Processor architectures", info.abis.ifEmpty { listOf("Universal / no native libraries") }.joinToString())
+                    LText("The APK does not specify a reliable maximum Android version; the developer's target API is shown.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    LText("Diegimą visada patvirtina Android sistema. Programa negali jo atlikti tyliai.",
+                    LText("Android always confirms installation. The app cannot install silently.",
                         style = MaterialTheme.typography.bodySmall)
                 }
             }

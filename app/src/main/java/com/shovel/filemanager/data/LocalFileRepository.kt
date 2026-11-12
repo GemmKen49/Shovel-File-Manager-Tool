@@ -151,7 +151,7 @@ class LocalFileRepository(
             val description = volume.getDescription(context)
             StorageRoot(
                 id = volume.uuid ?: "primary",
-                title = if (volume.isPrimary) "Vidinė atmintis" else description,
+                title = if (volume.isPrimary) "Internal storage" else description,
                 path = root.absolutePath,
                 totalBytes = root.totalSpace.coerceAtLeast(0),
                 freeBytes = root.usableSpace.coerceAtLeast(0),
@@ -173,7 +173,7 @@ class LocalFileRepository(
                 0,
                 StorageRoot(
                     id = "primary",
-                    title = "Vidinė atmintis",
+                    title = "Internal storage",
                     path = root.absolutePath,
                     totalBytes = root.totalSpace.coerceAtLeast(0),
                     freeBytes = root.usableSpace.coerceAtLeast(0),
@@ -217,7 +217,7 @@ class LocalFileRepository(
     ): Result<List<FileEntry>> = withContext(Dispatchers.IO) {
         try {
             val directory = File(directoryPath).canonicalFile
-            require(directory.isDirectory) { "Tai nėra aplankas" }
+            require(directory.isDirectory) { "This is not a folder" }
             val entries = ArrayList<FileEntry>()
             var scanned = 0
             var truncated = false
@@ -446,10 +446,10 @@ class LocalFileRepository(
         runCatching {
             val name = FileSystemRules.validateFileName(requestedName).getOrThrow()
             val parent = File(parentPath).canonicalFile
-            require(parent.isDirectory) { "Tėvinis aplankas neegzistuoja" }
+            require(parent.isDirectory) { "The parent folder does not exist" }
             val target = File(parent, name)
-            require(!target.exists()) { "Toks pavadinimas jau naudojamas" }
-            check(target.mkdir()) { "Nepavyko sukurti aplanko" }
+            require(!target.exists()) { "That name is already in use" }
+            check(target.mkdir()) { "Could not create the folder" }
             onMutation(listOf(target))
             toEntry(target)
         }
@@ -459,10 +459,10 @@ class LocalFileRepository(
         runCatching {
             val name = FileSystemRules.validateFileName(requestedName).getOrThrow()
             val parent = File(parentPath).canonicalFile
-            require(parent.isDirectory) { "Tėvinis aplankas neegzistuoja" }
+            require(parent.isDirectory) { "The parent folder does not exist" }
             val target = File(parent, name)
-            require(!target.exists()) { "Toks pavadinimas jau naudojamas" }
-            check(target.createNewFile()) { "Nepavyko sukurti failo" }
+            require(!target.exists()) { "That name is already in use" }
+            check(target.createNewFile()) { "Could not create the file" }
             onMutation(listOf(target))
             toEntry(target)
         }
@@ -471,12 +471,12 @@ class LocalFileRepository(
     suspend fun rename(path: String, requestedName: String): Result<FileEntry> = withContext(Dispatchers.IO) {
         runCatching {
             val source = File(path).canonicalFile
-            require(source.exists()) { "Failas nebeegzistuoja" }
+            require(source.exists()) { "The file no longer exists" }
             val name = FileSystemRules.validateFileName(requestedName).getOrThrow()
-            val parent = source.parentFile ?: throw IllegalArgumentException("Šakninio aplanko pervadinti negalima")
+            val parent = source.parentFile ?: throw IllegalArgumentException("The root folder cannot be renamed")
             val target = File(parent, name)
-            require(!target.exists()) { "Toks pavadinimas jau naudojamas" }
-            check(source.renameTo(target)) { "Pervadinti nepavyko" }
+            require(!target.exists()) { "That name is already in use" }
+            check(source.renameTo(target)) { "Could not rename" }
             onMutation(listOf(source, target))
             toEntry(target)
         }
@@ -485,8 +485,8 @@ class LocalFileRepository(
     suspend fun readText(path: String, maxBytes: Long = 2L * 1_024 * 1_024): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val file = File(path)
-            require(file.isFile) { "Failas nepasiekiamas" }
-            require(file.length() <= maxBytes) { "Failas per didelis vidiniam redaktoriui" }
+            require(file.isFile) { "File unavailable" }
+            require(file.length() <= maxBytes) { "The file is too large for the built-in editor" }
             file.readText(Charsets.UTF_8)
         }
     }
@@ -495,9 +495,9 @@ class LocalFileRepository(
         runCatching {
             val bytes = content.toByteArray(Charsets.UTF_8)
             try {
-                require(bytes.size <= maxBytes) { "Turinys per didelis vidiniam redaktoriui" }
+                require(bytes.size <= maxBytes) { "The content is too large for the built-in editor" }
                 val file = File(path)
-                require(file.isFile && file.canWrite()) { "Failo negalima įrašyti" }
+                require(file.isFile && file.canWrite()) { "The file is not writable" }
                 val temporary = File(file.parentFile, ".${file.name}.shovel.tmp")
                 try {
                     temporary.outputStream().use { output ->
@@ -536,7 +536,7 @@ class LocalFileRepository(
                 coroutineContext.ensureActive()
                 val current = pending.removeLast()
                 visited += 1
-                require(visited <= maxEntries) { "Aplankas viršijo skenavimo ribą" }
+                require(visited <= maxEntries) { "The folder exceeded the scan limit" }
                 if (current.isDirectory) {
                     current.listFiles()?.forEach(pending::add)
                 } else {

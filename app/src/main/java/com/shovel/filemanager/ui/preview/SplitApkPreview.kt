@@ -50,18 +50,18 @@ internal fun SplitApkPreview(file: File, onExtract: () -> Unit) {
     val plan = result?.getOrNull()
     val chosen = selected ?: plan?.parts?.map { it.name }?.toSet().orEmpty()
     Column(Modifier.fillMaxSize().padding(14.dp).testTag("split_apk_preview")) {
-        LText("APK rinkinys", style = MaterialTheme.typography.titleLarge)
-        LText("Diegiamos originalios pasirašytos dalys. Jų jungimas į vieną APK pakeistų parašą.", style = MaterialTheme.typography.bodySmall)
-        OutlinedButton(onClick = onExtract, modifier = Modifier.testTag("split_apk_extract")) { LText("Išpakuoti originalias dalis") }
+        LText("APK bundle", style = MaterialTheme.typography.titleLarge)
+        LText("Installs the original signed parts. Merging them into one APK would change the signature.", style = MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick = onExtract, modifier = Modifier.testTag("split_apk_extract")) { LText("Extract original parts") }
         OutlinedButton(onClick = { showContents = true }, modifier = Modifier.testTag("split_apk_open_contents")) {
-            LText("Atidaryti archyvą")
+            LText("Open archive")
         }
         if (result == null) CircularProgressIndicator()
-        result?.exceptionOrNull()?.let { LText(it.message ?: "Netinkamas APK rinkinys", color = MaterialTheme.colorScheme.error) }
+        result?.exceptionOrNull()?.let { LText(it.message ?: "Invalid APK bundle", color = MaterialTheme.colorScheme.error) }
         if (plan != null) {
-            if (plan.hasExtraData) LText("Papildomi OBB duomenys automatiškai nediegiami. Juos galima išpakuoti atskirai.")
+            if (plan.hasExtraData) LText("Additional OBB data is not installed automatically. You can extract it separately.")
             Button(onClick = { confirmInstall = true }, modifier = Modifier.testTag("split_apk_install")) {
-                LText("Atidaryti diegimo lange")
+                LText("Open installer")
             }
             error?.let { LText(it, color = MaterialTheme.colorScheme.error) }
             LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
@@ -93,7 +93,7 @@ internal fun SplitApkPreview(file: File, onExtract: () -> Unit) {
                         .putExtra("archive", file.path).putStringArrayListExtra("parts", ArrayList(chosen)))
                     confirmInstall = false
                 }
-            }.onFailure { error = it.message ?: "Diegti nepavyko" }
+            }.onFailure { error = it.message ?: "Installation failed" }
         },
     )
 }

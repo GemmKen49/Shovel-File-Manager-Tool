@@ -83,10 +83,10 @@ internal fun BackgroundPlaybackControls(
                 Column(modifier = Modifier.weight(1f)) {
                 Text(state.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
                 LText(when {
-                    commandFailed || state.phase == BackgroundPlaybackPhase.ERROR -> "Foninio atkūrimo paleisti nepavyko"
-                    state.phase == BackgroundPlaybackPhase.PREPARING -> "Ruošiamas foninis atkūrimas"
-                    state.phase == BackgroundPlaybackPhase.PAUSED -> "Pauzė"
-                    else -> "Atkuriama fone"
+                    commandFailed || state.phase == BackgroundPlaybackPhase.ERROR -> "Could not start background playback"
+                    state.phase == BackgroundPlaybackPhase.PREPARING -> "Preparing background playback"
+                    state.phase == BackgroundPlaybackPhase.PAUSED -> "Pause"
+                    else -> "Playing in background"
                 }, style = MaterialTheme.typography.bodySmall)
                 }
               }
@@ -95,24 +95,24 @@ internal fun BackgroundPlaybackControls(
               Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (state.active && !stopOnly) {
                 if (state.canSkip) IconButton(onClick = onPrevious, modifier = Modifier.size(48.dp).testTag("background_previous")) {
-                    Icon(Icons.Rounded.SkipPrevious, contentDescription = uiText("Ankstesnis failas"))
+                    Icon(Icons.Rounded.SkipPrevious, contentDescription = uiText("Previous file"))
                 }
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)
                     .testTag("background_toggle").combinedClickable(role = Role.Button,
                         enabled = state.phase != BackgroundPlaybackPhase.PREPARING, onClick = onToggle,
-                        onLongClickLabel = uiText("Sustabdyti"), onLongClick = onStop)) {
+                        onLongClickLabel = uiText("Stop"), onLongClick = onStop)) {
                     CircularProgressIndicator(progress = { if (state.durationMillis > 0) (state.positionMillis.toFloat() / state.durationMillis).coerceIn(0f, 1f) else 0f },
                         modifier = Modifier.size(44.dp), strokeWidth = 2.dp)
                     Icon(if (state.phase == BackgroundPlaybackPhase.PLAYING) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = uiText(if (state.phase == BackgroundPlaybackPhase.PLAYING) "Pauzė" else "Tęsti"))
+                        contentDescription = uiText(if (state.phase == BackgroundPlaybackPhase.PLAYING) "Pause" else "Resume"))
                 }
                 if (state.canSkip) IconButton(onClick = onNext, modifier = Modifier.size(48.dp).testTag("background_next")) {
-                    Icon(Icons.Rounded.SkipNext, contentDescription = uiText("Kitas failas"))
+                    Icon(Icons.Rounded.SkipNext, contentDescription = uiText("Next file"))
                 }
             }
             FilledTonalIconButton(onClick = onStop, modifier = Modifier.size(48.dp).testTag("background_stop")) {
                 Icon(if (state.active) Icons.Rounded.Stop else Icons.Rounded.Close,
-                    contentDescription = uiText(if (state.active) "Sustabdyti" else "Uždaryti"))
+                    contentDescription = uiText(if (state.active) "Stop" else "Close"))
             }
               }
             }

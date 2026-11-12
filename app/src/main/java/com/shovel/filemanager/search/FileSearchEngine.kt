@@ -77,7 +77,7 @@ class FileSearchEngine(
         filters: SearchFilters,
         pathPredicate: (FileEntry) -> Boolean = { true },
     ): FileSearchResult = withContext(Dispatchers.IO) {
-        require(roots.isNotEmpty()) { "Nepasirinkta paieškos vieta" }
+        require(roots.isNotEmpty()) { "No search location selected" }
         val regex = if (filters.useRegex && filters.query.isNotBlank()) {
             Regex(filters.query, RegexOption.IGNORE_CASE)
         } else {
@@ -335,10 +335,10 @@ class FileSearchEngine(
             .filter(File::isDirectory)
             .distinctBy(File::getAbsolutePath)
         val directory = File(directoryPath).canonicalFile
-        require(analysisRoots.isNotEmpty()) { "Analizės vieta nebepasiekiama" }
-        require(directory.isDirectory) { "Tai nėra aplankas" }
+        require(analysisRoots.isNotEmpty()) { "The analyzed location is no longer accessible" }
+        require(directory.isDirectory) { "This is not a folder" }
         require(analysisRoots.any { root -> FileSystemRules.isContained(root, directory) }) {
-            "Aplankas yra už analizuojamos vietos ribų"
+            "The folder is outside the analyzed location"
         }
 
         val children = ArrayList<File>(minOf(maxDirectoryChildren, 256))

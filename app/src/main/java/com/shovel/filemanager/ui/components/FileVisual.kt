@@ -427,7 +427,7 @@ private fun FileVisualFrame(
         } else {
             Icon(
                 imageVector = fallbackIcon(kind, extension),
-                contentDescription = uiText("$name failo tipo piktograma"),
+                contentDescription = uiText("$name file type icon"),
                 tint = fallbackColor(kind),
                 modifier = Modifier.fillMaxSize().padding(7.dp),
             )
@@ -448,9 +448,9 @@ private fun FileVisualFrame(
         }
         if (storageKind != null) {
             val (icon, label) = when (storageKind) {
-                StorageRootKind.SD_CARD -> Icons.Rounded.SdStorage to "SD kortelė"
-                StorageRootKind.USB_STORAGE -> Icons.Rounded.Usb to "USB saugykla"
-                StorageRootKind.REMOVABLE -> Icons.Rounded.SdStorage to "Išimama saugykla"
+                StorageRootKind.SD_CARD -> Icons.Rounded.SdStorage to "SD card"
+                StorageRootKind.USB_STORAGE -> Icons.Rounded.Usb to "USB storage"
+                StorageRootKind.REMOVABLE -> Icons.Rounded.SdStorage to "Removable storage"
                 StorageRootKind.INTERNAL -> null to ""
             }
             if (icon != null) {
@@ -470,7 +470,7 @@ private fun FileVisualFrame(
         if (accessLocked) {
             Icon(
                 imageVector = Icons.Rounded.Lock,
-                contentDescription = uiText("Neprieinama"),
+                contentDescription = uiText("Unavailable"),
                 tint = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier
                     .align(Alignment.TopEnd)

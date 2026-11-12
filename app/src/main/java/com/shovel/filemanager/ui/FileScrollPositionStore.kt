@@ -33,7 +33,7 @@ class FileScrollPositionStore(
     private val maxEntries: Int = 256,
 ) {
     init {
-        require(maxEntries > 0) { "Slinkties pozicijų riba turi būti teigiama" }
+        require(maxEntries > 0) { "The scroll-position limit must be positive" }
     }
 
     private val positions = object : LinkedHashMap<FileScrollKey, FileScrollPosition>(16, 0.75f, true) {

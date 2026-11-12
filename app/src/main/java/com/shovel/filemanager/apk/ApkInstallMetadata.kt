@@ -30,7 +30,7 @@ internal object ApkAbiScanner {
         var count = 0
         while (entries.hasMoreElements()) {
             val entry = entries.nextElement()
-            require(++count <= MAX_ENTRIES) { "APK turi per daug įrašų" }
+            require(++count <= MAX_ENTRIES) { "The APK contains too many entries" }
             if (entry.isDirectory || entry.name.length > 1_024) continue
             val parts = entry.name.split('/', limit = 3)
             if (parts.size == 3 && parts[0] == "lib" && parts[1] in supported && parts[2].endsWith(".so")) {
@@ -43,12 +43,12 @@ internal object ApkAbiScanner {
 
 internal object ApkInstallMetadataReader {
     fun standalone(context: Context, apk: File, displayedBytes: Long = apk.length()): ApkInstallMetadata {
-        require(apk.isFile && apk.canRead()) { "APK failas nepasiekiamas" }
+        require(apk.isFile && apk.canRead()) { "The APK file is unavailable" }
         val manager = context.packageManager
         @Suppress("DEPRECATION")
         val info = manager.getPackageArchiveInfo(apk.absolutePath, 0)
-            ?: throw IllegalArgumentException("APK informacija nepasiekiama")
-        val application = requireNotNull(info.applicationInfo) { "APK informacija nepasiekiama" }.apply {
+            ?: throw IllegalArgumentException("APK information unavailable")
+        val application = requireNotNull(info.applicationInfo) { "APK information unavailable" }.apply {
             sourceDir = apk.absolutePath
             publicSourceDir = apk.absolutePath
         }
@@ -79,11 +79,11 @@ internal object ApkInstallMetadataReader {
 
     fun bundle(context: Context, archive: File, plan: SplitApkPlan, selectedNames: Set<String>): ApkInstallMetadata {
         val chosen = plan.parts.filter { it.name in selectedNames || it == plan.base }
-        require(chosen.isNotEmpty() && plan.base in chosen) { "Turi būti pasirinktas pagrindinis APK" }
+        require(chosen.isNotEmpty() && plan.base in chosen) { "The base APK must be selected" }
         val stagingRoot = File(context.cacheDir, "apk-metadata")
-        require(stagingRoot.exists() || stagingRoot.mkdirs()) { "APK metaduomenų talpyklos sukurti nepavyko" }
+        require(stagingRoot.exists() || stagingRoot.mkdirs()) { "Could not create the APK metadata cache" }
         val stage = File(stagingRoot, UUID.randomUUID().toString()).canonicalFile
-        require(stage.parentFile == stagingRoot.canonicalFile && stage.mkdir()) { "APK metaduomenų talpyklos sukurti nepavyko" }
+        require(stage.parentFile == stagingRoot.canonicalFile && stage.mkdir()) { "Could not create the APK metadata cache" }
         try {
             val base = File(stage, "base.apk")
             SplitApkArchive.copyPart(archive, plan.base, base)

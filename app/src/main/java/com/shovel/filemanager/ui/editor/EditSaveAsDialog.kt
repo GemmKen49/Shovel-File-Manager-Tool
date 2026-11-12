@@ -83,7 +83,7 @@ fun EditSaveAsDialog(
                 .toList()
         }.fold(
             onSuccess = { directories = it },
-            onFailure = { failure -> error = failure.message ?: "Katalogo atidaryti nepavyko" },
+            onFailure = { failure -> error = failure.message ?: "Could not open the folder" },
         )
         loading = false
     }
@@ -102,7 +102,7 @@ fun EditSaveAsDialog(
     AlertDialog(
         onDismissRequest = ::navigateBackOrDismiss,
         icon = { Icon(Icons.Rounded.Folder, contentDescription = null) },
-        title = { LText("Išsaugoti kaip") },
+        title = { LText("Save as") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -110,7 +110,7 @@ fun EditSaveAsDialog(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { parentPath?.let(::navigateTo) }, enabled = parentPath != null && !loading) {
-                        Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Aukštyn"))
+                        Icon(Icons.Rounded.ArrowUpward, contentDescription = uiText("Up"))
                     }
                     Text(
                         currentPath,
@@ -127,7 +127,7 @@ fun EditSaveAsDialog(
                         horizontalArrangement = Arrangement.Center,
                     ) { CircularProgressIndicator() }
                     error != null -> LText(error.orEmpty(), color = MaterialTheme.colorScheme.error)
-                    directories.isEmpty() -> LText("Šiame kataloge nėra poaplankių", style = MaterialTheme.typography.bodySmall)
+                    directories.isEmpty() -> LText("This folder has no subfolders", style = MaterialTheme.typography.bodySmall)
                     else -> LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                         items(directories, key = { it.second }) { (directoryName, directoryPath) ->
                             ListItem(
@@ -146,17 +146,17 @@ fun EditSaveAsDialog(
                     value = name,
                     onValueChange = { name = it.take(255) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { LText("Failo pavadinimas") },
+                    label = { LText("File name") },
                     singleLine = true,
                     isError = name.isNotEmpty() && validatedName == null,
                     supportingText = if (name.isNotEmpty() && validatedName == null) {
-                        { LText("Pavadinime negali būti kelio ar valdymo simbolių") }
+                        { LText("The name cannot contain path or control characters") }
                     } else null,
                 )
                 OutlinedButton(
                     onClick = onOpenSystemPicker,
                     modifier = Modifier.fillMaxWidth(),
-                ) { LText("Rinktis per Android dokumentų sistemą") }
+                ) { LText("Choose through Android Documents") }
             }
         },
         confirmButton = {
@@ -166,9 +166,9 @@ fun EditSaveAsDialog(
                     onSaveLocal(currentPath, safeName)
                 },
                 enabled = validatedName != null && !loading,
-            ) { LText("Išsaugoti čia") }
+            ) { LText("Save here") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { LText("Atšaukti") } },
+        dismissButton = { TextButton(onClick = onDismiss) { LText("Cancel") } },
     )
 }
 

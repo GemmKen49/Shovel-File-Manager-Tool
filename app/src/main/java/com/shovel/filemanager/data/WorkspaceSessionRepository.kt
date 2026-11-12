@@ -54,7 +54,7 @@ class WorkspaceSessionRepository(context: Context) {
     @Synchronized
     fun load(defaultPath: String): WorkspaceSession {
         if (!file.isFile) return defaultSession(defaultPath)
-        require(file.length() in 1..MAX_FILE_BYTES) { "Darbo sesijos failo dydis netinkamas" }
+        require(file.length() in 1..MAX_FILE_BYTES) { "The workspace session file size is invalid" }
         return runCatching {
             val json = JSONObject(file.readText(Charsets.UTF_8))
             val legacy = json.getInt("schemaVersion") < CURRENT_WORKSPACE_SCHEMA
@@ -73,7 +73,7 @@ class WorkspaceSessionRepository(context: Context) {
     fun save(session: WorkspaceSession) {
         validate(session)
         val bytes = session.toJson().toString().toByteArray(Charsets.UTF_8)
-        require(bytes.size.toLong() in 1..MAX_FILE_BYTES) { "Darbo sesija per didelė" }
+        require(bytes.size.toLong() in 1..MAX_FILE_BYTES) { "The workspace session is too large" }
         val temporary = File(file.parentFile, ".${file.name}.tmp")
         try {
             FileOutputStream(temporary).use { output ->
@@ -100,7 +100,7 @@ class WorkspaceSessionRepository(context: Context) {
 
     private fun parse(json: JSONObject): WorkspaceSession {
         val sourceSchema = json.getInt("schemaVersion")
-        require(sourceSchema in 1..CURRENT_WORKSPACE_SCHEMA) { "Nepalaikoma darbo sesijos versija" }
+        require(sourceSchema in 1..CURRENT_WORKSPACE_SCHEMA) { "Unsupported workspace session version" }
         val resetLegacySort = sourceSchema == 1
         // Older sessions stored a left and a right side; only the left side (the main tab set) is kept.
         val workspaceJson = if (sourceSchema <= 3) json.getJSONObject("left") else json.getJSONObject("workspace")
@@ -117,7 +117,7 @@ class WorkspaceSessionRepository(context: Context) {
     }
 
     private fun JSONArray.toTabs(resetLegacySort: Boolean): List<WorkspaceTab> {
-        require(length() <= MAX_TABS_PER_PANEL) { "Kortelių riba viršyta" }
+        require(length() <= MAX_TABS_PER_PANEL) { "The tab limit was exceeded" }
         return (0 until length()).map { index ->
             val item = getJSONObject(index)
             WorkspaceTab(
@@ -140,7 +140,7 @@ class WorkspaceSessionRepository(context: Context) {
     }
 
     private fun JSONArray.toStrings(limit: Int): List<String> {
-        require(length() <= limit) { "Navigacijos istorijos riba viršyta" }
+        require(length() <= limit) { "The navigation history limit was exceeded" }
         return (0 until length()).map(::getString)
     }
 
@@ -166,26 +166,26 @@ class WorkspaceSessionRepository(context: Context) {
         .put("returnToHomeAtBoundary", returnToHomeAtBoundary)
 
     private fun validate(session: WorkspaceSession) {
-        require(session.schemaVersion == CURRENT_WORKSPACE_SCHEMA) { "Nepalaikoma darbo sesijos versija" }
+        require(session.schemaVersion == CURRENT_WORKSPACE_SCHEMA) { "Unsupported workspace session version" }
         validatePanel(session.workspace)
     }
 
     private fun validatePanel(panel: PanelWorkspace) {
-        require(panel.tabs.size in 1..MAX_TABS_PER_PANEL) { "Kortelių skaičius netinkamas" }
-        require(panel.closedTabs.size <= MAX_CLOSED_TABS) { "Uždarytų kortelių riba viršyta" }
-        require(panel.tabs.map(WorkspaceTab::id).distinct().size == panel.tabs.size) { "Kortelių tapatybės kartojasi" }
-        require(panel.activeTabId in panel.tabs.map(WorkspaceTab::id)) { "Aktyvi kortelė nerasta" }
+        require(panel.tabs.size in 1..MAX_TABS_PER_PANEL) { "The tab count is invalid" }
+        require(panel.closedTabs.size <= MAX_CLOSED_TABS) { "The closed-tab limit was exceeded" }
+        require(panel.tabs.map(WorkspaceTab::id).distinct().size == panel.tabs.size) { "Tab identities are duplicated" }
+        require(panel.activeTabId in panel.tabs.map(WorkspaceTab::id)) { "The active tab was not found" }
         (panel.tabs + panel.closedTabs).forEach(::validateTab)
     }
 
     private fun validateTab(tab: WorkspaceTab) {
-        require(SAFE_ID.matches(tab.id)) { "Netinkama kortelės tapatybė" }
+        require(SAFE_ID.matches(tab.id)) { "Invalid tab identity" }
         validatePath(tab.path)
-        require(tab.backHistory.size <= MAX_HISTORY && tab.forwardHistory.size <= MAX_HISTORY) { "Navigacijos istorijos riba viršyta" }
+        require(tab.backHistory.size <= MAX_HISTORY && tab.forwardHistory.size <= MAX_HISTORY) { "The navigation history limit was exceeded" }
         tab.backHistory.forEach(::validatePath)
         tab.forwardHistory.forEach(::validatePath)
     }
 
-    private fun validatePath(path: String) = require(path.isNotBlank() && path.length <= MAX_PATH_LENGTH && '\u0000' !in path) { "Netinkamas kortelės kelias" }
+    private fun validatePath(path: String) = require(path.isNotBlank() && path.length <= MAX_PATH_LENGTH && '\u0000' !in path) { "Invalid tab path" }
     private fun canonicalOrAbsolute(path: String): String = runCatching { File(path).canonicalPath }.getOrElse { File(path).absolutePath }
 }
