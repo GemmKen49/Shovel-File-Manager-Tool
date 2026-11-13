@@ -3,6 +3,7 @@ package com.shovel.filemanager
 import android.app.Application
 import com.shovel.filemanager.advanced.AdvancedAccessManager
 import com.shovel.filemanager.advanced.PrivilegedFileRepository
+import com.shovel.filemanager.crash.CrashReportStore
 import com.shovel.filemanager.archive.ArchiveEngine
 import com.shovel.filemanager.data.LocalFileRepository
 import com.shovel.filemanager.data.ContentFileRepository
@@ -45,6 +46,7 @@ class ShovelApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashReportStore.install(this)
         PDFBoxResourceLoader.init(this)
         graph = AppGraph(this)
         graph.applicationScope.launch {
@@ -81,6 +83,7 @@ class AppGraph(application: Application) {
     val localFileOperator by lazy { LocalFileOperator(onMutation = sharedStorageIndex::changed) }
     val batchRename by lazy { BatchRenameEngine(onMutation = sharedStorageIndex::changed) }
     val operationLogs = com.shovel.filemanager.operations.OperationLogStore(application)
+    val crashReports = CrashReportStore(application)
     val operationManager = FileOperationManager(applicationScope, operationLogs) {
         FileOperationForegroundService.start(application)
     }

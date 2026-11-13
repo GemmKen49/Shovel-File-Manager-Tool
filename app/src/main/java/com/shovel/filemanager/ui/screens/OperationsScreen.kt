@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shovel.filemanager.core.FileSystemRules
+import com.shovel.filemanager.crash.CrashReport
 import com.shovel.filemanager.operations.LogLevel
 import com.shovel.filemanager.operations.OperationLogEvent
 import com.shovel.filemanager.operations.OperationLogStore
@@ -76,6 +77,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 private const val MAX_VISIBLE_LOG_LINES = 300
+private const val MAX_VISIBLE_CRASH_CHARS = 20_000
 
 /** One row of the page, built from the saved log summary and, while it runs, the live snapshot. */
 private data class OperationRow(
@@ -154,6 +156,8 @@ fun OperationsScreen(
     val summaries by viewModel.operationLogs.collectAsStateWithLifecycle()
     val live by viewModel.operations.collectAsStateWithLifecycle()
     val debug by viewModel.operationLogDebugMode.collectAsStateWithLifecycle()
+    val crash by viewModel.crashReport.collectAsStateWithLifecycle()
+    var crashExpanded by rememberSaveable { mutableStateOf(false) }
     var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
     val rows = remember(summaries, live) { buildRows(summaries, live) }
@@ -171,6 +175,23 @@ fun OperationsScreen(
                         if (rows.isEmpty()) "Nothing has run yet" else "${rows.size} saved · newest first",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            crash?.let { report ->
+                item(key = "crash_report") {
+                    CrashReportCard(
+                        report = report,
+                        expanded = crashExpanded,
+                        onToggle = { crashExpanded = !crashExpanded },
+                        onCopy = { copyReport(context, report.text, "Shovel crash report", "Crash report copied") },
+                        onShare = {
+                            shareReport(context, report.text, "shovel-crash-report.txt", "Shovel crash report", "Share crash report")
+                        },
+                        onDismiss = {
+                            crashExpanded = false
+                            viewModel.dismissCrashReport()
+                        },
                     )
                 }
             }
@@ -301,6 +322,82 @@ fun OperationsScreen(
             },
             dismissButton = { TextButton(onClick = { confirmClear = false }) { LText("Cancel") } },
         )
+    }
+}
+
+@Composable
+private fun CrashReportCard(
+    report: CrashReport,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onCopy: () -> Unit,
+    onShare: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val contentColor = MaterialTheme.colorScheme.onErrorContainer
+    // The first line after the header is the exception itself.
+    val headline = remember(report) { report.text.substringAfter("\n\n", report.text).lineSequence().firstOrNull().orEmpty() }
+    Card(
+        onClick = onToggle,
+        modifier = Modifier.fillMaxWidth().testTag("crash_report_card"),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Warning, contentDescription = null, tint = contentColor, modifier = Modifier.size(20.dp))
+                Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+                    LText("The app crashed", fontWeight = FontWeight.SemiBold, color = contentColor)
+                    Text(
+                        OperationLogStore.formatTimestamp(report.timeMillis),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor,
+                    )
+                }
+                Icon(
+                    if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = uiText(if (expanded) "Hide details" else "Show details"),
+                    tint = contentColor,
+                )
+            }
+            if (expanded) {
+                val shown = report.text.take(MAX_VISIBLE_CRASH_CHARS)
+                SelectionContainer {
+                    Text(
+                        text = shown,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 15.sp),
+                        color = contentColor,
+                    )
+                }
+                if (shown.length < report.text.length) {
+                    LText(
+                        "Showing the first ${shown.length} of ${report.text.length} characters. Copy or share the report to get everything.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = contentColor,
+                    )
+                }
+            } else {
+                Text(
+                    headline,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = contentColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onCopy, modifier = Modifier.weight(1f).testTag("crash_report_copy")) {
+                    Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                    LText("Copy", modifier = Modifier.padding(start = 6.dp))
+                }
+                OutlinedButton(onClick = onShare, modifier = Modifier.weight(1f).testTag("crash_report_share")) {
+                    Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    LText("Share", modifier = Modifier.padding(start = 6.dp))
+                }
+                TextButton(onClick = onDismiss, modifier = Modifier.testTag("crash_report_dismiss")) {
+                    LText("Dismiss", color = contentColor)
+                }
+            }
+        }
     }
 }
 
@@ -491,28 +588,39 @@ private fun appInfoLine(context: Context): String {
         "${Build.MANUFACTURER} ${Build.MODEL}"
 }
 
-private fun copyReport(context: Context, report: String) {
+private fun copyReport(
+    context: Context,
+    report: String,
+    label: String = "Shovel operation log",
+    copiedMessage: String = "Log copied",
+) {
     // Clipboard transfers are limited in size, so very long logs are trimmed to the newest part.
     val limit = 100_000
     val text = if (report.length > limit) report.take(limit) + "\n... trimmed, use Share for the full log ..." else report
     context.getSystemService(ClipboardManager::class.java)
-        .setPrimaryClip(ClipData.newPlainText("Shovel operation log", text))
-    Toast.makeText(context, if (report.length > limit) "Copied the newest part of the log" else "Log copied", Toast.LENGTH_SHORT).show()
+        .setPrimaryClip(ClipData.newPlainText(label, text))
+    Toast.makeText(context, if (report.length > limit) "Copied the newest part of the log" else copiedMessage, Toast.LENGTH_SHORT).show()
 }
 
-private fun shareReport(context: Context, report: String) {
+private fun shareReport(
+    context: Context,
+    report: String,
+    fileName: String = "shovel-operation-log.txt",
+    subject: String = "Shovel operation log",
+    chooserTitle: String = "Share log",
+) {
     runCatching {
         val directory = File(context.cacheDir, "operation-log").apply { mkdirs() }
-        val file = File(directory, "shovel-operation-log.txt")
+        val file = File(directory, fileName)
         file.writeText(report)
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "Shovel operation log")
+            putExtra(Intent.EXTRA_SUBJECT, subject)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(send, "Share log").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(Intent.createChooser(send, chooserTitle).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }.onFailure {
         Toast.makeText(context, "Could not share the log", Toast.LENGTH_SHORT).show()
     }

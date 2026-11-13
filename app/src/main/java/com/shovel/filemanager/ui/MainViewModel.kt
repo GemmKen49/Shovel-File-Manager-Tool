@@ -560,6 +560,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun operationLogReport(appInfo: String): String =
         withContext(Dispatchers.IO) { graph.operationLogs.exportText(appInfo) }
 
+    /** The saved stack trace of the last app crash. It stays until the user dismisses it. */
+    val crashReport: StateFlow<com.shovel.filemanager.crash.CrashReport?> = graph.crashReports.report
+
+    fun dismissCrashReport() = graph.crashReports.dismiss()
+
     private val _messages = MutableSharedFlow<UiMessage>(extraBufferCapacity = 16)
     val messages: SharedFlow<UiMessage> = _messages.asSharedFlow()
 
