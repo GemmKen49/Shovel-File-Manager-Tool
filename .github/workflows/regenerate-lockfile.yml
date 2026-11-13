@@ -1,0 +1,40 @@
+name: Regenerate lockfile
+
+# Helper. Run this once after the network libraries were removed from
+# app/build.gradle.kts. It rewrites app/gradle.lockfile and commits it.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
+        with:
+          cache-provider: basic
+
+      - name: Write lockfile
+        run: ./gradlew :app:dependencies -PshovelTargetAbi=arm64-v8a --write-locks --no-daemon
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add app/gradle.lockfile
+          if git diff --cached --quiet; then
+            echo "Lockfile already up to date"
+            exit 0
+          fi
+          git commit -m "Regenerate dependency lockfile"
+          git push
