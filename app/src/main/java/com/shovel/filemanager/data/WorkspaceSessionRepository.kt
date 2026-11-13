@@ -26,7 +26,7 @@ data class WorkspaceTab(
     val returnToHomeAtBoundary: Boolean = false,
 )
 
-data class PanelWorkspace(
+data class TabWorkspace(
     val tabs: List<WorkspaceTab>,
     val activeTabId: String,
     val closedTabs: List<WorkspaceTab> = emptyList(),
@@ -36,12 +36,12 @@ data class PanelWorkspace(
 
 data class WorkspaceSession(
     val schemaVersion: Int = CURRENT_WORKSPACE_SCHEMA,
-    val workspace: PanelWorkspace,
+    val workspace: TabWorkspace,
 )
 
 class WorkspaceSessionRepository(context: Context) {
     companion object {
-        const val MAX_TABS_PER_PANEL = 16
+        const val MAX_TABS_PER_WORKSPACE = 16
         const val MAX_CLOSED_TABS = 8
         private const val MAX_HISTORY = 50
         private const val MAX_PATH_LENGTH = 4_096
@@ -95,7 +95,7 @@ class WorkspaceSessionRepository(context: Context) {
 
     private fun defaultSession(path: String): WorkspaceSession {
         val tab = newTab(path)
-        return WorkspaceSession(workspace = PanelWorkspace(listOf(tab), tab.id))
+        return WorkspaceSession(workspace = TabWorkspace(listOf(tab), tab.id))
     }
 
     private fun parse(json: JSONObject): WorkspaceSession {
@@ -106,18 +106,18 @@ class WorkspaceSessionRepository(context: Context) {
         val workspaceJson = if (sourceSchema <= 3) json.getJSONObject("left") else json.getJSONObject("workspace")
         return WorkspaceSession(
             schemaVersion = CURRENT_WORKSPACE_SCHEMA,
-            workspace = parsePanel(workspaceJson, resetLegacySort),
+            workspace = parseWorkspace(workspaceJson, resetLegacySort),
         ).also(::validate)
     }
 
-    private fun parsePanel(json: JSONObject, resetLegacySort: Boolean): PanelWorkspace {
+    private fun parseWorkspace(json: JSONObject, resetLegacySort: Boolean): TabWorkspace {
         val tabs = json.getJSONArray("tabs").toTabs(resetLegacySort)
         val closed = json.optJSONArray("closedTabs")?.toTabs(resetLegacySort).orEmpty()
-        return PanelWorkspace(tabs, json.getString("activeTabId"), closed)
+        return TabWorkspace(tabs, json.getString("activeTabId"), closed)
     }
 
     private fun JSONArray.toTabs(resetLegacySort: Boolean): List<WorkspaceTab> {
-        require(length() <= MAX_TABS_PER_PANEL) { "The tab limit was exceeded" }
+        require(length() <= MAX_TABS_PER_WORKSPACE) { "The tab limit was exceeded" }
         return (0 until length()).map { index ->
             val item = getJSONObject(index)
             WorkspaceTab(
@@ -148,7 +148,7 @@ class WorkspaceSessionRepository(context: Context) {
         .put("schemaVersion", schemaVersion)
         .put("workspace", workspace.toJson())
 
-    private fun PanelWorkspace.toJson(): JSONObject = JSONObject()
+    private fun TabWorkspace.toJson(): JSONObject = JSONObject()
         .put("tabs", JSONArray().apply { tabs.forEach { put(it.toJson()) } })
         .put("activeTabId", activeTabId)
         .put("closedTabs", JSONArray().apply { closedTabs.forEach { put(it.toJson()) } })
@@ -167,15 +167,15 @@ class WorkspaceSessionRepository(context: Context) {
 
     private fun validate(session: WorkspaceSession) {
         require(session.schemaVersion == CURRENT_WORKSPACE_SCHEMA) { "Unsupported workspace session version" }
-        validatePanel(session.workspace)
+        validateWorkspace(session.workspace)
     }
 
-    private fun validatePanel(panel: PanelWorkspace) {
-        require(panel.tabs.size in 1..MAX_TABS_PER_PANEL) { "The tab count is invalid" }
-        require(panel.closedTabs.size <= MAX_CLOSED_TABS) { "The closed-tab limit was exceeded" }
-        require(panel.tabs.map(WorkspaceTab::id).distinct().size == panel.tabs.size) { "Tab identities are duplicated" }
-        require(panel.activeTabId in panel.tabs.map(WorkspaceTab::id)) { "The active tab was not found" }
-        (panel.tabs + panel.closedTabs).forEach(::validateTab)
+    private fun validateWorkspace(workspace: TabWorkspace) {
+        require(workspace.tabs.size in 1..MAX_TABS_PER_WORKSPACE) { "The tab count is invalid" }
+        require(workspace.closedTabs.size <= MAX_CLOSED_TABS) { "The closed-tab limit was exceeded" }
+        require(workspace.tabs.map(WorkspaceTab::id).distinct().size == workspace.tabs.size) { "Tab identities are duplicated" }
+        require(workspace.activeTabId in workspace.tabs.map(WorkspaceTab::id)) { "The active tab was not found" }
+        (workspace.tabs + workspace.closedTabs).forEach(::validateTab)
     }
 
     private fun validateTab(tab: WorkspaceTab) {

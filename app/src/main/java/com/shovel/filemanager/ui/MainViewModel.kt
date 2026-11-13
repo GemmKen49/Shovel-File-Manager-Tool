@@ -34,7 +34,7 @@ import com.shovel.filemanager.data.TrashBrowserEntry
 import com.shovel.filemanager.data.TrashItem
 import com.shovel.filemanager.data.TrashPathRules
 import com.shovel.filemanager.data.TrashRetentionPeriod
-import com.shovel.filemanager.data.PanelWorkspace
+import com.shovel.filemanager.data.TabWorkspace
 import com.shovel.filemanager.data.WorkspaceSession
 import com.shovel.filemanager.data.WorkspaceTab
 import com.shovel.filemanager.data.WorkspaceSessionRepository
@@ -150,7 +150,7 @@ enum class AppSection {
     TOOLS,
 }
 
-data class PanelUiState(
+data class BrowserUiState(
     val path: String = Environment.getExternalStorageDirectory().absolutePath,
     val entries: List<FileEntry> = emptyList(),
     val selectedPaths: Set<String> = emptySet(),
@@ -426,12 +426,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val homeCustomization: StateFlow<HomeCustomization> = _homeCustomization.asStateFlow()
 
     private val _tabs = MutableStateFlow(initialWorkspace.workspace)
-    val tabs: StateFlow<PanelWorkspace> = _tabs.asStateFlow()
+    val tabs: StateFlow<TabWorkspace> = _tabs.asStateFlow()
 
     private val fileScrollPositions = FileScrollPositionStore()
 
-    private val _panel = MutableStateFlow(initialWorkspace.workspace.activeTab.toPanelUiState())
-    val panel: StateFlow<PanelUiState> = _panel.asStateFlow()
+    private val _browser = MutableStateFlow(initialWorkspace.workspace.activeTab.toBrowserUiState())
+    val browser: StateFlow<BrowserUiState> = _browser.asStateFlow()
 
     private val _roots = MutableStateFlow<List<StorageRoot>>(emptyList())
     val roots: StateFlow<List<StorageRoot>> = _roots.asStateFlow()
@@ -583,7 +583,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var fileEditJob: Job? = null
     private var fileEditRequestId = 0L
     private var signatureLibraryJob: Job? = null
-    private var panelRefreshJob: Job? = null
+    private var browserRefreshJob: Job? = null
     private val handledOperations = ArrayDeque<String>()
     private val workspaceSaveRequests = Channel<WorkspaceSession>(Channel.CONFLATED)
     private val searchDraftSaveRequests = Channel<SearchDraftPreferences>(Channel.CONFLATED)
@@ -613,7 +613,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }.forEach { snapshot ->
                     handledOperations.add(snapshot.id)
                     while (handledOperations.size > 128) handledOperations.removeFirst()
-                    refreshPanel()
+                    refreshBrowser()
                     refreshTrash()
                     refreshRecentFiles()
                     if (_safBrowser.value.location != null) refreshSafBrowser()
@@ -913,7 +913,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (moving && result.skippedRoots == 0) _clipboard.value = null
             refreshAdvancedBrowser()
             if (clipboard.source == ClipboardSource.LOCAL && moving) {
-                refreshPanel()
+                refreshBrowser()
             }
         }.onFailure { message(it.message ?: "Could not start pasting", true) }
     }
@@ -1140,7 +1140,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 DirectoryDisplayDefaults(normalized, sortMode, sortDirection),
             )
         }.onSuccess {
-            _panel.update { it.withDirectoryDisplaySettings(normalized).copy(sortMode = sortMode, sortDirection = sortDirection) }
+            _browser.update { it.withDirectoryDisplaySettings(normalized).copy(sortMode = sortMode, sortDirection = sortDirection) }
             _fileCategory.update {
                 it.withFileCategoryDisplaySettings(normalized).copy(sortMode = sortMode, sortDirection = sortDirection)
             }
@@ -1163,7 +1163,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _tabs.update { workspace -> workspace.withGlobalDisplayDefaults(normalized, sortMode, sortDirection) }
             persistWorkspace()
-            refreshPanel()
+            refreshBrowser()
             if (_advancedBrowser.value.open) refreshAdvancedBrowser()
             if (_trashBrowser.value.open) refreshTrashBrowser()
             if (_safBrowser.value.location != null) refreshSafBrowser()
@@ -1175,7 +1175,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun currentDirectoryDisplayDefaults(): DirectoryDisplayDefaults =
         runCatching { graph.navigation.directoryDisplayDefaults() }.getOrNull()
-            ?: panelState().let { state ->
+            ?: browserState().let { state ->
                 DirectoryDisplayDefaults(state.directoryDisplaySettings(), state.sortMode, state.sortDirection)
             }
 
@@ -1259,7 +1259,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshPermissionDependentState() {
         viewModelScope.launch {
             _roots.value = graph.localFiles.roots()
-            refreshPanel()
+            refreshBrowser()
         }
     }
 
@@ -1274,8 +1274,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (removedRoots.isEmpty()) return@launch
             val fallback = refreshed.firstOrNull { it.kind == StorageRootKind.INTERNAL } ?: refreshed.firstOrNull()
             if (fallback == null) return@launch
-            val panelPath = _panel.value.path
-            if (removedRoots.any { removed -> storagePathContains(removed.path, panelPath) }) {
+            val browserPath = _browser.value.path
+            if (removedRoots.any { removed -> storagePathContains(removed.path, browserPath) }) {
                 navigate(fallback.path, rememberHistory = false)
             }
         }
@@ -1303,11 +1303,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _filesHomeVisible.value = false
         val displaySettings = savedDirectoryDisplaySettings(target)
         val sortSettings = savedDirectorySortSettings(target)
-        val currentState = _panel.value
+        val currentState = _browser.value
         if (currentState.path != target) {
             fileScrollPositions.reset(_tabs.value.activeTabId, target)
         }
-        _panel.update { state ->
+        _browser.update { state ->
             if (state.path == target) return@update state.copy(selectedPaths = emptySet())
             state.copy(
                 path = target,
@@ -1324,7 +1324,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .withDirectorySortSettings(sortSettings)
         }
         syncActiveTab()
-        refreshPanel()
+        refreshBrowser()
     }
 
     fun fileScrollPosition(key: FileScrollKey): FileScrollPosition = fileScrollPositions.read(key)
@@ -1334,7 +1334,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun navigateBack(): Boolean {
-        val flow = _panel
+        val flow = _browser
         val state = flow.value
         val target = state.backHistory.lastOrNull() ?: return false
         val displaySettings = savedDirectoryDisplaySettings(target)
@@ -1355,12 +1355,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .withDirectorySortSettings(sortSettings)
         }
         syncActiveTab()
-        refreshPanel()
+        refreshBrowser()
         return true
     }
 
     fun navigateForward(): Boolean {
-        val flow = _panel
+        val flow = _browser
         val state = flow.value
         val target = state.forwardHistory.lastOrNull() ?: return false
         val displaySettings = savedDirectoryDisplaySettings(target)
@@ -1381,21 +1381,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .withDirectorySortSettings(sortSettings)
         }
         syncActiveTab()
-        refreshPanel()
+        refreshBrowser()
         return true
     }
 
     fun navigateUp(): Boolean {
-        val state = _panel.value
+        val state = _browser.value
         val parent = File(state.path).parentFile ?: return false
         navigate(parent.absolutePath)
         return true
     }
 
-    fun refreshPanel(scrollToTop: Boolean = false) {
-        val flow = _panel
+    fun refreshBrowser(scrollToTop: Boolean = false) {
+        val flow = _browser
         val snapshot = flow.value
-        panelRefreshJob?.cancel()
+        browserRefreshJob?.cancel()
         val job = viewModelScope.launch {
             flow.update {
                 it.copy(
@@ -1449,17 +1449,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 },
             )
         }
-        panelRefreshJob = job
+        browserRefreshJob = job
     }
 
     fun toggleHidden() {
-        _panel.update { it.copy(includeHidden = !it.includeHidden) }
+        _browser.update { it.copy(includeHidden = !it.includeHidden) }
         syncActiveTab()
-        refreshPanel()
+        refreshBrowser()
     }
 
     fun toggleGrid() {
-        val current = _panel.value
+        val current = _browser.value
         setDirectoryDisplaySettings(
             current.directoryDisplaySettings().copy(
                 layoutMode = if (current.grid) DirectoryLayoutMode.LIST else DirectoryLayoutMode.GRID,
@@ -1468,24 +1468,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleThumbnails() {
-        val snapshot = _panel.value
+        val snapshot = _browser.value
         setDirectoryDisplaySettings(snapshot.directoryDisplaySettings().copy(showThumbnails = !snapshot.showThumbnails))
     }
 
     fun setDirectoryDisplaySettings(settings: DirectoryDisplaySettings) {
-        val snapshot = _panel.value
+        val snapshot = _browser.value
         runCatching { graph.navigation.setDirectoryDisplaySettings(snapshot.path, settings) }
             .onSuccess {
-                _panel.update { current ->
+                _browser.update { current ->
                     if (current.path == snapshot.path) current.withDirectoryDisplaySettings(settings) else current
                 }
-                if (_panel.value.path == snapshot.path) syncActiveTab()
+                if (_browser.value.path == snapshot.path) syncActiveTab()
             }
             .onFailure { message(it.message ?: "Could not save folder display settings", true) }
     }
 
     fun setSort(mode: SortMode) {
-        val snapshot = _panel.value
+        val snapshot = _browser.value
         val next = if (snapshot.sortMode == mode) {
             DirectorySortSettings(
                 mode = mode,
@@ -1503,56 +1503,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 message(it.message ?: "Could not save the folder sort setting", true)
                 return
             }
-        _panel.update {
+        _browser.update {
             if (it.sortMode == mode) it.copy(sortDirection = if (it.sortDirection == SortDirection.ASCENDING) SortDirection.DESCENDING else SortDirection.ASCENDING)
             else it.copy(sortMode = mode, sortDirection = SortDirection.ASCENDING)
         }
         syncActiveTab()
-        refreshPanel()
+        refreshBrowser()
     }
 
     fun setSort(mode: SortMode, direction: SortDirection) {
-        val snapshot = _panel.value
+        val snapshot = _browser.value
         runCatching {
             graph.navigation.setDirectorySortSettings(snapshot.path, DirectorySortSettings(mode, direction))
         }.onFailure {
             message(it.message ?: "Could not save the folder sort setting", true)
             return
         }
-        _panel.update { it.copy(sortMode = mode, sortDirection = direction) }
+        _browser.update { it.copy(sortMode = mode, sortDirection = direction) }
         syncActiveTab()
-        refreshPanel()
+        refreshBrowser()
     }
 
     fun newTab() {
         syncActiveTab(persist = false)
         val tabsFlow = _tabs
         val current = tabsFlow.value
-        if (current.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_PANEL) {
-            message("You can have up to ${WorkspaceSessionRepository.MAX_TABS_PER_PANEL} tabs", true)
+        if (current.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_WORKSPACE) {
+            message("You can have up to ${WorkspaceSessionRepository.MAX_TABS_PER_WORKSPACE} tabs", true)
             return
         }
-        val tab = graph.workspaceSession.newTab(_panel.value.path)
+        val tab = graph.workspaceSession.newTab(_browser.value.path)
         tabsFlow.value = current.copy(tabs = current.tabs + tab, activeTabId = tab.id)
-        _panel.value = tab.toPanelUiState()
+        _browser.value = tab.toBrowserUiState()
         persistWorkspace()
-        refreshPanel()
+        refreshBrowser()
     }
 
     fun duplicateTab() {
         syncActiveTab(persist = false)
         val tabsFlow = _tabs
         val current = tabsFlow.value
-        if (current.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_PANEL) {
+        if (current.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_WORKSPACE) {
             message("Tab limit reached", true)
             return
         }
         val source = current.activeTab
         val duplicate = source.copy(id = java.util.UUID.randomUUID().toString(), locked = false)
         tabsFlow.value = current.copy(tabs = current.tabs + duplicate, activeTabId = duplicate.id)
-        _panel.value = duplicate.toPanelUiState()
+        _browser.value = duplicate.toBrowserUiState()
         persistWorkspace()
-        refreshPanel()
+        refreshBrowser()
     }
 
     fun activateTab(tabId: String) {
@@ -1561,9 +1561,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         syncActiveTab(persist = false)
         val tab = tabsFlow.value.tabs.firstOrNull { it.id == tabId } ?: return
         tabsFlow.update { it.copy(activeTabId = tabId) }
-        _panel.value = tab.toPanelUiState()
+        _browser.value = tab.toBrowserUiState()
         persistWorkspace()
-        refreshPanel()
+        refreshBrowser()
     }
 
     fun toggleTabLock() {
@@ -1597,9 +1597,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeTabId = next.id,
             closedTabs = (listOf(closing.copy(locked = false)) + workspace.closedTabs).take(WorkspaceSessionRepository.MAX_CLOSED_TABS),
         )
-        _panel.value = next.toPanelUiState()
+        _browser.value = next.toBrowserUiState()
         persistWorkspace()
-        refreshPanel()
+        refreshBrowser()
     }
 
     fun restoreClosedTab() {
@@ -1610,7 +1610,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             message("There are no closed tabs to restore")
             return
         }
-        if (workspace.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_PANEL) {
+        if (workspace.tabs.size >= WorkspaceSessionRepository.MAX_TABS_PER_WORKSPACE) {
             message("Tab limit reached", true)
             return
         }
@@ -1619,16 +1619,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeTabId = restored.id,
             closedTabs = workspace.closedTabs.drop(1),
         )
-        _panel.value = restored.toPanelUiState()
+        _browser.value = restored.toBrowserUiState()
         persistWorkspace()
-        refreshPanel()
+        refreshBrowser()
     }
 
 
 
 
     fun toggleSelection(path: String) {
-        _panel.update { state ->
+        _browser.update { state ->
             val selection = state.selectedPaths.toMutableSet()
             if (!selection.add(path)) selection.remove(path)
             state.copy(selectedPaths = selection)
@@ -1636,11 +1636,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectAll() {
-        _panel.update { it.copy(selectedPaths = it.entries.map(FileEntry::absolutePath).toSet()) }
+        _browser.update { it.copy(selectedPaths = it.entries.map(FileEntry::absolutePath).toSet()) }
     }
 
     fun selectPaths(paths: Collection<String>) {
-        _panel.update { state ->
+        _browser.update { state ->
             val available = state.entries.mapTo(hashSetOf(), FileEntry::absolutePath)
             state.copy(selectedPaths = paths.filterTo(linkedSetOf(), available::contains))
         }
@@ -1648,7 +1648,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSelection(paths: Collection<String>, selected: Boolean) {
         if (paths.isEmpty()) return
-        _panel.update { state ->
+        _browser.update { state ->
             val updated = state.selectedPaths.toMutableSet()
             if (selected) updated.addAll(paths) else updated.removeAll(paths.toSet())
             state.copy(selectedPaths = updated)
@@ -1660,11 +1660,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearSelection() {
-        _panel.update { it.copy(selectedPaths = emptySet()) }
+        _browser.update { it.copy(selectedPaths = emptySet()) }
     }
 
     fun copySelection(move: Boolean) {
-        val selected = _panel.value.selectedPaths.toList()
+        val selected = _browser.value.selectedPaths.toList()
         if (selected.isEmpty()) return
         if (setLocalClipboard(selected, move = move, append = false)) clearSelection()
     }
@@ -1678,7 +1678,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addSelectionToClipboard() {
-        val selected = _panel.value.selectedPaths.toList()
+        val selected = _browser.value.selectedPaths.toList()
         if (selected.isEmpty()) return
         if (setLocalClipboard(selected, move = false, append = true)) clearSelection()
     }
@@ -1995,7 +1995,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun openCleanupFromHome() {
         _cleanupRequested.value = true
         _section.value = AppSection.ANALYZE
-        val activePath = panelState().path
+        val activePath = browserState().path
         val normalizedActivePath = runCatching { File(activePath).absoluteFile.toPath().normalize() }.getOrNull()
         val analysisRoot = _roots.value
             .filter { root ->
@@ -2216,7 +2216,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         failurePolicy: TransferFailurePolicy = TransferFailurePolicy.STOP,
     ) {
         val clipboard = _clipboard.value ?: return
-        val destination = _panel.value.path
+        val destination = _browser.value.path
         val moving = clipboard.mode == ClipboardMode.MOVE
         if (clipboard.source == ClipboardSource.PRIVILEGED) {
             graph.operationManager.submit("Copying from a protected Android location") {
@@ -2232,7 +2232,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _clipboard.value = null
                     _shovelClipboard.value = null
                 }
-                refreshPanel()
+                refreshBrowser()
                 refreshRecentFiles()
                 if (_advancedBrowser.value.open) refreshAdvancedBrowser()
             }.onFailure { message(it.message ?: "Could not start the operation", true) }
@@ -2257,13 +2257,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun moveSelectionToTrash() {
-        val requestedState = _panel.value
+        val requestedState = _browser.value
         val selected = requestedState.selectedPaths.toList()
         if (selected.isEmpty()) return
         graph.operationManager.submit("Moving to trash") {
             graph.trash.moveToTrash(selected, this)
             clearSelection()
-            if (_panel.value.path == requestedState.path) refreshPanel()
+            if (_browser.value.path == requestedState.path) refreshBrowser()
             refreshTrash()
         }.onFailure { message(it.message ?: "Could not start the operation", true) }
     }
@@ -2281,28 +2281,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             graph.trash.moveToTrash(selected, this)
             refreshRecentFiles()
             refreshTrash()
-            refreshPanel()
+            refreshBrowser()
         }.onFailure { message(it.message ?: "Could not start the operation", true) }
     }
 
     fun deleteSelectionPermanently() {
-        val requestedState = _panel.value
+        val requestedState = _browser.value
         val selected = requestedState.selectedPaths.toList()
         if (selected.isEmpty()) return
         graph.operationManager.submit("Deleting permanently") {
             graph.localFileOperator.deletePermanently(selected, this)
             clearSelection()
-            if (_panel.value.path == requestedState.path) refreshPanel()
+            if (_browser.value.path == requestedState.path) refreshBrowser()
         }.onFailure { message(it.message ?: "Could not start the operation", true) }
     }
 
     fun createDirectory(name: String) {
         viewModelScope.launch {
-            graph.localFiles.createDirectory(_panel.value.path, name).fold(
+            graph.localFiles.createDirectory(_browser.value.path, name).fold(
                 onSuccess = { created ->
                     runCatching { graph.recentFiles.recordAdded(created.absolutePath) }
                         .onFailure { message(it.message ?: "Could not save the recent-file entry", true) }
-                    refreshPanel()
+                    refreshBrowser()
                     refreshRecentFiles()
                 },
                 onFailure = { message(it.message ?: "Could not create the folder", true) },
@@ -2312,11 +2312,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createFile(name: String) {
         viewModelScope.launch {
-            graph.localFiles.createEmptyFile(_panel.value.path, name).fold(
+            graph.localFiles.createEmptyFile(_browser.value.path, name).fold(
                 onSuccess = { created ->
                     runCatching { graph.recentFiles.recordAdded(created.absolutePath) }
                         .onFailure { message(it.message ?: "Could not save the recent-file entry", true) }
-                    refreshPanel()
+                    refreshBrowser()
                     refreshRecentFiles()
                 },
                 onFailure = { message(it.message ?: "Could not create the file", true) },
@@ -2330,7 +2330,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 onSuccess = { renamed ->
                     runCatching { graph.recentFiles.record(renamed.absolutePath) }
                     clearSelection()
-                    refreshPanel()
+                    refreshBrowser()
                     refreshRecentFiles()
                 },
                 onFailure = { message(it.message ?: "Could not rename", true) },
@@ -2365,7 +2365,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         graph.operationManager.submit("Batch rename") {
             val undo = graph.batchRename.execute(preview, this)
             _renameUndo.value = undo
-            _panel.update { it.copy(selectedPaths = emptySet()) }
+            _browser.update { it.copy(selectedPaths = emptySet()) }
             rerunSearchIfVisible()
             message(
                 "Pervadinta: ${undo.items.size}",
@@ -2479,7 +2479,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val source = if (category.open && category.entries.any { it.absolutePath == current.absolutePath }) {
             category.entries
         } else {
-            _panel.value.entries
+            _browser.value.entries
         }
         return source.filter { entry ->
             !entry.isDirectory && entry.kind == current.kind && entry.kind in setOf(EntryKind.IMAGE, EntryKind.AUDIO, EntryKind.VIDEO)
@@ -2703,7 +2703,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         when (session.origin) {
                             is EditOrigin.Local -> {
-                                refreshPanel()
+                                refreshBrowser()
                             }
                             is EditOrigin.Privileged -> refreshAdvancedBrowser()
                             is EditOrigin.Content -> Unit
@@ -2903,7 +2903,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         when (result.destination) {
                             is EditDestination.Local -> {
-                                refreshPanel()
+                                refreshBrowser()
                             }
                             is EditDestination.Content -> Unit
                         }
@@ -3192,7 +3192,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 require(!destination.exists() && staging.renameTo(destination)) { "Could not finish extraction" }
                 message("Archive extracted to ${destination.absolutePath}")
                 closePreview()
-                refreshPanel()
+                refreshBrowser()
             } finally {
                 password?.fill('\u0000')
                 if (staging.exists()) staging.deleteRecursively()
@@ -3212,7 +3212,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         maxOutputBytes: Long? = null,
         hideNames: Boolean = false,
     ) {
-        val state = _panel.value
+        val state = _browser.value
         val createEmpty = sourcePaths != null && sourcePaths.isEmpty()
         val requestedPaths = (sourcePaths ?: state.selectedPaths).distinct()
         if (requestedPaths.isEmpty() && !createEmpty) {
@@ -3294,7 +3294,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         graph.fileSelectionInfo.scan(paths)
     }
 
-    fun search(filters: SearchFilters, roots: List<String> = listOf(panelState().path)) {
+    fun search(filters: SearchFilters, roots: List<String> = listOf(browserState().path)) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _searchState.value = SearchUiState(filters = filters, roots = roots, running = true)
@@ -3384,10 +3384,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val parent = entry.file.parentFile ?: return
         _section.value = AppSection.FILES
         navigate(parent.absolutePath)
-        _panel.update { it.copy(selectedPaths = setOf(entry.absolutePath)) }
+        _browser.update { it.copy(selectedPaths = setOf(entry.absolutePath)) }
     }
 
-    fun analyze(path: String = panelState().path) {
+    fun analyze(path: String = browserState().path) {
         startAnalysis(listOf(path), allStorage = false)
     }
 
@@ -3542,13 +3542,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (_preview.value == target) closePreviewImmediately()
             when (target) {
                 is PreviewTarget.PrivilegedFile -> if (!target.localOrigin) refreshAdvancedBrowser() else {
-                    refreshPanel()
+                    refreshBrowser()
                     refreshFileCategory()
                     refreshRecentFiles()
                     refreshTrash()
                 }
                 else -> {
-                    refreshPanel()
+                    refreshBrowser()
                     refreshFileCategory()
                     refreshRecentFiles()
                     refreshTrash()
@@ -4027,7 +4027,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 graph.archives.extractEntries(archive, entryPaths, staging, this, password ?: archivePasswordFor(archive))
                 require(!destination.exists() && staging.renameTo(destination)) { "Could not finish extraction" }
                 message("Selected archive entries extracted to ${destination.absolutePath}")
-                refreshPanel()
+                refreshBrowser()
             } finally {
                 password?.fill('\u0000')
                 if (staging.exists()) staging.deleteRecursively()
@@ -4073,7 +4073,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             graph.archives.extractEntries(archive, entryPaths, destination, this)
             val entries = graph.archives.deleteZipEntries(archive, entryPaths)
             updateArchivePreviewEntries(target, entries)
-            refreshPanel()
+            refreshBrowser()
             message("Archive entries moved to ${destination.name}")
         }.onFailure { message(it.message ?: "Could not start moving", true) }
     }
@@ -4113,7 +4113,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun shareSelection() {
-        val paths = _panel.value.selectedPaths
+        val paths = _browser.value.selectedPaths
         if (paths.isEmpty()) return
         viewModelScope.launch {
             graph.localShare.share(paths).fold(
@@ -4149,7 +4149,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun bookmarkSelection() {
-        bookmarkPaths(_panel.value.selectedPaths)
+        bookmarkPaths(_browser.value.selectedPaths)
         clearSelection()
     }
 
@@ -4241,7 +4241,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val displaySettings = savedDirectoryDisplaySettings(target)
         val sortSettings = savedDirectorySortSettings(target)
         fileScrollPositions.reset(_tabs.value.activeTabId, target)
-        _panel.update { state ->
+        _browser.update { state ->
             state.copy(
                 path = target,
                 entries = emptyList(),
@@ -4258,7 +4258,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .withDirectorySortSettings(sortSettings)
         }
         syncActiveTab()
-        refreshPanel()
+        refreshBrowser()
     }
 
     fun clearRecents() {
@@ -4290,7 +4290,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun restoreTrash(id: String) {
         viewModelScope.launch {
             graph.trash.restore(id).fold(
-                onSuccess = { refreshTrash(); refreshPanel() },
+                onSuccess = { refreshTrash(); refreshBrowser() },
                 onFailure = { message(it.message ?: "Could not restore", true) },
             )
         }
@@ -4368,8 +4368,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         openLocalDirectoryFromHome(parent.absolutePath)
         viewModelScope.launch {
-            panelRefreshJob?.join()
-            _panel.update { state ->
+            browserRefreshJob?.join()
+            _browser.update { state ->
                 if (state.path == parent.absolutePath && state.entries.any { it.absolutePath == file.absolutePath }) {
                     state.copy(selectedPaths = setOf(file.absolutePath))
                 } else state
@@ -4552,7 +4552,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun copySafToLocal(entry: SafEntry) {
-        val destination = File(_panel.value.path)
+        val destination = File(_browser.value.path)
         graph.operationManager.submit("Copying from an Android location") {
             graph.safFiles.copyToLocal(entry.uri, destination, this).getOrThrow()
         }.onFailure { message(it.message ?: "Could not start copying", true) }
@@ -4581,7 +4581,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun dismissFinishedOperations() = graph.operationManager.dismissFinished()
 
-    fun panelState(): PanelUiState = _panel.value
+    fun browserState(): BrowserUiState = _browser.value
 
     override fun onCleared() {
         clearArchiveSession()
@@ -4641,14 +4641,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         "virtual:trash/$itemId/${TrashPathRules.normalize(relativePath)}"
     }
 
-    private fun WorkspaceTab.toPanelUiState(): PanelUiState {
+    private fun WorkspaceTab.toBrowserUiState(): BrowserUiState {
         val saved = runCatching { graph.navigation.directoryDisplaySettings(path) }.getOrNull()
         val savedSort = runCatching { graph.navigation.directorySortSettingsOverride(path) }.getOrNull()
         val settings = saved ?: DirectoryDisplaySettings(
             layoutMode = if (grid) DirectoryLayoutMode.GRID else DirectoryLayoutMode.LIST,
             showThumbnails = runCatching { graph.navigation.thumbnailsEnabled(path) }.getOrDefault(false),
         )
-        return PanelUiState(
+        return BrowserUiState(
             path = path,
             sortMode = savedSort?.mode ?: sortMode,
             sortDirection = savedSort?.direction ?: sortDirection,
@@ -4659,7 +4659,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ).withDirectoryDisplaySettings(settings)
     }
 
-    private fun PanelUiState.directoryDisplaySettings(): DirectoryDisplaySettings = DirectoryDisplaySettings(
+    private fun BrowserUiState.directoryDisplaySettings(): DirectoryDisplaySettings = DirectoryDisplaySettings(
         layoutMode = if (grid) DirectoryLayoutMode.GRID else DirectoryLayoutMode.LIST,
         iconScalePercent = iconScalePercent,
         spacingScalePercent = spacingScalePercent,
@@ -4729,7 +4729,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         showThumbnails = settings.showThumbnails,
     )
 
-    private fun PanelUiState.withDirectoryDisplaySettings(settings: DirectoryDisplaySettings): PanelUiState = copy(
+    private fun BrowserUiState.withDirectoryDisplaySettings(settings: DirectoryDisplaySettings): BrowserUiState = copy(
         grid = settings.layoutMode == DirectoryLayoutMode.GRID,
         iconScalePercent = settings.iconScalePercent,
         spacingScalePercent = settings.spacingScalePercent,
@@ -4738,17 +4738,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         showThumbnails = settings.showThumbnails,
     )
 
-    private fun PanelUiState.withDirectorySortSettings(settings: DirectorySortSettings): PanelUiState = copy(
+    private fun BrowserUiState.withDirectorySortSettings(settings: DirectorySortSettings): BrowserUiState = copy(
         sortMode = settings.mode,
         sortDirection = settings.direction,
     )
 
 
-    private fun PanelWorkspace.withGlobalDisplayDefaults(
+    private fun TabWorkspace.withGlobalDisplayDefaults(
         settings: DirectoryDisplaySettings,
         sortMode: SortMode,
         sortDirection: SortDirection,
-    ): PanelWorkspace = copy(
+    ): TabWorkspace = copy(
         tabs = tabs.map { tab ->
             tab.copy(
                 grid = settings.layoutMode == DirectoryLayoutMode.GRID,
@@ -4759,7 +4759,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     private fun syncActiveTab(persist: Boolean = true) {
-        val state = _panel.value
+        val state = _browser.value
         _tabs.update { workspace ->
             workspace.copy(
                 tabs = workspace.tabs.map { tab ->
@@ -4792,7 +4792,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
 
 
-    private fun PanelUiState.matchesListingRequest(request: PanelUiState): Boolean =
+    private fun BrowserUiState.matchesListingRequest(request: BrowserUiState): Boolean =
         path == request.path && includeHidden == request.includeHidden && sortMode == request.sortMode && sortDirection == request.sortDirection
 
     private fun scheduleBatchRenamePreview(immediate: Boolean) {

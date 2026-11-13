@@ -117,13 +117,13 @@ fun AnalyzeScreen(viewModel: MainViewModel, contentPadding: PaddingValues) {
     val analysisState by viewModel.analysisState.collectAsStateWithLifecycle()
     val savedSearches by viewModel.savedSearches.collectAsStateWithLifecycle()
     val storageRoots by viewModel.roots.collectAsStateWithLifecycle()
-    val panelState by viewModel.panel.collectAsStateWithLifecycle()
+    val browserState by viewModel.browser.collectAsStateWithLifecycle()
     val renameUndo by viewModel.renameUndo.collectAsStateWithLifecycle()
     val clipboard by viewModel.clipboard.collectAsStateWithLifecycle()
     val cleanupRequested by viewModel.cleanupRequested.collectAsStateWithLifecycle()
     val deviceCleanup by viewModel.deviceCleanup.collectAsStateWithLifecycle()
     val searchDraft by viewModel.searchDraftPreferences.collectAsStateWithLifecycle()
-    val activePath = panelState.path
+    val activePath = browserState.path
     val hasActiveSearch = searchState.roots.isNotEmpty()
 
     var query by remember { mutableStateOf(searchState.filters.query) }

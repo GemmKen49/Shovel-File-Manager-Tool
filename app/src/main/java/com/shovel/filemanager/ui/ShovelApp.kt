@@ -138,7 +138,7 @@ fun ShovelApp(
     val preview by viewModel.preview.collectAsStateWithLifecycle()
     val fileEditState by viewModel.fileEditState.collectAsStateWithLifecycle()
     val signatureLibrary by viewModel.signatureLibrary.collectAsStateWithLifecycle()
-    val panelState by viewModel.panel.collectAsStateWithLifecycle()
+    val browserState by viewModel.browser.collectAsStateWithLifecycle()
     val storageRoots by viewModel.roots.collectAsStateWithLifecycle()
     val trashItems by viewModel.trashItems.collectAsStateWithLifecycle()
     val trashBrowser by viewModel.trashBrowser.collectAsStateWithLifecycle()
@@ -157,7 +157,7 @@ fun ShovelApp(
         it.status == OperationStatus.RUNNING || it.status == OperationStatus.PAUSED || it.status == OperationStatus.QUEUED
     }
     val selectionDockVisible = when (section) {
-        AppSection.FILES -> panelState.selectedPaths.isNotEmpty()
+        AppSection.FILES -> browserState.selectedPaths.isNotEmpty()
         else -> false
     }
     val visibleOperation = operations.firstOrNull {
@@ -171,12 +171,12 @@ fun ShovelApp(
         previewOpen = preview != null,
         section = section,
         filesHomeVisible = filesHomeVisible,
-        selectedCount = panelState.selectedPaths.size,
-        hasBackHistory = panelState.backHistory.isNotEmpty(),
-        returnToHomeAtBoundary = panelState.returnToHomeAtBoundary,
-        hasParent = File(panelState.path).parentFile != null &&
-            !sameNormalizedPath(Environment.getExternalStorageDirectory().absolutePath, panelState.path) &&
-            storageRoots.none { root -> sameNormalizedPath(root.path, panelState.path) },
+        selectedCount = browserState.selectedPaths.size,
+        hasBackHistory = browserState.backHistory.isNotEmpty(),
+        returnToHomeAtBoundary = browserState.returnToHomeAtBoundary,
+        hasParent = File(browserState.path).parentFile != null &&
+            !sameNormalizedPath(Environment.getExternalStorageDirectory().absolutePath, browserState.path) &&
+            storageRoots.none { root -> sameNormalizedPath(root.path, browserState.path) },
     )
 
     BackHandler(
@@ -380,7 +380,7 @@ fun ShovelApp(
     if (safBrowser.location != null) {
         SafBrowserDialog(
             state = safBrowser,
-            selectedLocalPath = panelState.selectedPaths.singleOrNull(),
+            selectedLocalPath = browserState.selectedPaths.singleOrNull(),
             viewModel = viewModel,
             onDismiss = viewModel::closeSafBrowser,
         )
@@ -416,7 +416,7 @@ fun ShovelApp(
             onSaveEditAsLocal = { directory, name -> viewModel.saveFileEditAsLocal(directory, name) },
             onResolveSaveAsConflict = viewModel::resolveFileEditSaveAsConflict,
             onDismissSaveAsConflict = viewModel::dismissFileEditSaveAsConflict,
-            initialLocalSavePath = panelState.path,
+            initialLocalSavePath = browserState.path,
             loadLocalSaveDirectory = viewModel::listLocalDirectoryForUpload,
             onExternalEditorReturned = viewModel::refreshFileEditAfterExternalEditor,
             onDismissEditConflict = viewModel::dismissFileEditConflict,

@@ -153,7 +153,7 @@ import com.shovel.filemanager.model.EntryKind
 import com.shovel.filemanager.model.SortMode
 import com.shovel.filemanager.model.StorageRoot
 import com.shovel.filemanager.model.StorageRootKind
-import com.shovel.filemanager.data.PanelWorkspace
+import com.shovel.filemanager.data.TabWorkspace
 import com.shovel.filemanager.data.DirectoryDisplaySettings
 import com.shovel.filemanager.data.DirectoryGridStyle
 import com.shovel.filemanager.data.DirectoryLayoutMode
@@ -171,7 +171,7 @@ import com.shovel.filemanager.advanced.AdvancedAccessBackend
 import com.shovel.filemanager.ui.MainViewModel
 import com.shovel.filemanager.ui.AppSection
 import com.shovel.filemanager.ui.FileScrollKey
-import com.shovel.filemanager.ui.PanelUiState
+import com.shovel.filemanager.ui.BrowserUiState
 import com.shovel.filemanager.ui.ProgressiveScrollRules
 import com.shovel.filemanager.ui.components.LocalFileVisual
 import com.shovel.filemanager.ui.components.ShovelModalDialog
@@ -243,7 +243,7 @@ fun FilesScreen(
     onAddSafLocation: () -> Unit,
     onOpenSystemFiles: () -> Unit,
 ) {
-    val panelState by viewModel.panel.collectAsStateWithLifecycle()
+    val browserState by viewModel.browser.collectAsStateWithLifecycle()
     val tabs by viewModel.tabs.collectAsStateWithLifecycle()
     val roots by viewModel.roots.collectAsStateWithLifecycle()
     val recentFiles by viewModel.recentFiles.collectAsStateWithLifecycle()
@@ -303,7 +303,7 @@ fun FilesScreen(
                         else -> false
                     }
                 }
-                val state = panelState
+                val state = browserState
                 when {
                     event.isCtrlPressed && event.isShiftPressed && event.key == Key.T -> {
                         viewModel.restoreClosedTab(); true
@@ -330,7 +330,7 @@ fun FilesScreen(
                     event.isAltPressed && event.key == Key.DirectionRight -> viewModel.navigateForward()
                     event.key == Key.Backspace -> viewModel.navigateUp()
                     event.key == Key.F5 -> {
-                        viewModel.refreshPanel(scrollToTop = true); true
+                        viewModel.refreshBrowser(scrollToTop = true); true
                     }
                     event.key == Key.Delete && state.selectedPaths.isNotEmpty() -> {
                         showTrashConfirm = true; true
@@ -352,7 +352,7 @@ fun FilesScreen(
                 PermissionBanner(onRequestAllFilesAccess)
             }
             if (fileCategory.open) {
-                PanelTabsBar(
+                BrowserTabsBar(
                     workspace = tabs,
                     viewModel = viewModel,
                     onBeforeTabAction = viewModel::closeFileCategory,
@@ -396,8 +396,8 @@ fun FilesScreen(
                     onCustomizeHome = { showHomeCustomization = true },
                 )
             } else {
-                FilePanel(
-                    state = panelState,
+                FileBrowser(
+                    state = browserState,
                     tabs = tabs,
                     clipboardAvailable = clipboardAvailable,
                     batchRenameUndoAvailable = renameUndo != null,
@@ -410,7 +410,7 @@ fun FilesScreen(
                     onTrashEntry = { entry -> viewModel.selectOnly(entry.absolutePath); showTrashConfirm = true },
                     onInfo = { infoTargets = it },
                     onArchive = {
-                        archiveRequest = ArchiveRequest.fromSelection(panelState.selectedPaths)
+                        archiveRequest = ArchiveRequest.fromSelection(browserState.selectedPaths)
                     },
                     onArchiveEntry = { entry -> archiveRequest = ArchiveRequest.fromEntry(entry) },
                     onPaste = { showPaste = true },
@@ -442,7 +442,7 @@ fun FilesScreen(
         )
     }
     if (showTrashConfirm) {
-        val selectedState = panelState
+        val selectedState = browserState
         val paths = selectedState.selectedPaths.toList()
         val entries = selectedState.entries.filter { it.absolutePath in selectedState.selectedPaths }
         DeleteConfirmationDialog(
@@ -467,7 +467,7 @@ fun FilesScreen(
         )
     }
     if (showPermanentDelete) {
-        val selectedState = panelState
+        val selectedState = browserState
         val paths = selectedState.selectedPaths.toList()
         val entries = selectedState.entries.filter { it.absolutePath in selectedState.selectedPaths }
         DeleteConfirmationDialog(
@@ -511,7 +511,7 @@ fun FilesScreen(
         }
     }
     if (showDisplaySettings) {
-        val state = panelState
+        val state = browserState
         DirectoryDisplaySettingsDialog(
             initialSettings = state.toDirectoryDisplaySettings(),
             thumbnailsAvailable = true,
@@ -589,11 +589,11 @@ fun FilesScreen(
             entries = entries,
             loadSummary = viewModel::loadFileSelectionInfo,
             onDismiss = { infoTargets = null },
-            loadFolderStats = { entry -> viewModel.folderStats(entry, panelState.includeHidden) },
+            loadFolderStats = { entry -> viewModel.folderStats(entry, browserState.includeHidden) },
         )
     }
     if (showHomeCustomization) {
-        val currentPath = panelState.path
+        val currentPath = browserState.path
         HomeCustomizationDialog(
             customization = homeCustomization,
             roots = roots,
@@ -641,7 +641,7 @@ private fun PermissionBanner(onRequest: () -> Unit) {
 
 private fun itemCountLabel(count: Int): String = if (count == 1) "1 item" else "$count items"
 
-private fun PanelUiState.toDirectoryDisplaySettings(): DirectoryDisplaySettings = DirectoryDisplaySettings(
+private fun BrowserUiState.toDirectoryDisplaySettings(): DirectoryDisplaySettings = DirectoryDisplaySettings(
     layoutMode = if (grid) DirectoryLayoutMode.GRID else DirectoryLayoutMode.LIST,
     iconScalePercent = iconScalePercent,
     spacingScalePercent = spacingScalePercent,
@@ -651,9 +651,9 @@ private fun PanelUiState.toDirectoryDisplaySettings(): DirectoryDisplaySettings 
 )
 
 @Composable
-private fun FilePanel(
-    state: PanelUiState,
-    tabs: PanelWorkspace,
+private fun FileBrowser(
+    state: BrowserUiState,
+    tabs: TabWorkspace,
     clipboardAvailable: Boolean,
     batchRenameUndoAvailable: Boolean,
     modifier: Modifier,
@@ -694,7 +694,7 @@ private fun FilePanel(
         modifier = modifier
             .fillMaxHeight(),
     ) {
-        PanelTabsBar(tabs, viewModel)
+        BrowserTabsBar(tabs, viewModel)
         if (state.selectedPaths.isNotEmpty()) {
             SelectionHeader(
                 count = state.selectedPaths.size,
@@ -725,7 +725,7 @@ private fun FilePanel(
                 onToggleLayout = { viewModel.toggleGrid() },
                 onOpenSettings = onDisplaySettings,
             ) {
-                CompactPanelActions(
+                CompactBrowserActions(
                     expanded = compactMenu,
                     onExpandedChange = { compactMenu = it },
                     state = state,
@@ -782,15 +782,15 @@ private fun FilePanel(
 
         ShovelPullToRefresh(
             isRefreshing = state.loading,
-            onRefresh = { viewModel.refreshPanel(scrollToTop = true) },
+            onRefresh = { viewModel.refreshBrowser(scrollToTop = true) },
             modifier = Modifier.weight(1f).fillMaxWidth(),
             testTag = "pull_to_refresh_local",
         ) {
             when {
-                state.error != null -> EmptyPanel("Folder unavailable", state.error)
+                state.error != null -> EmptyBrowser("Folder unavailable", state.error)
                 state.loading && state.entries.isEmpty() -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                state.entries.isEmpty() -> EmptyPanel("Folder is empty", "No files here yet")
-                displayedEntries.isEmpty() -> EmptyPanel("No matches found", "Try another name")
+                state.entries.isEmpty() -> EmptyBrowser("Folder is empty", "No files here yet")
+                displayedEntries.isEmpty() -> EmptyBrowser("No matches found", "Try another name")
                 state.grid -> FileGrid(displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
                 else -> FileList(displayedState, scrollKey, viewModel, onRename, { onInfo(listOf(it)) }, onTrashEntry, onArchiveEntry)
             }
@@ -888,10 +888,10 @@ private fun FilePanel(
 }
 
 @Composable
-private fun CompactPanelActions(
+private fun CompactBrowserActions(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    state: PanelUiState,
+    state: BrowserUiState,
     clipboardAvailable: Boolean,
     batchRenameUndoAvailable: Boolean,
     viewModel: MainViewModel,
@@ -957,7 +957,7 @@ private fun CompactPanelActions(
             DropdownMenuItem(
                 text = { LText("Refresh") },
                 leadingIcon = { Icon(Icons.Rounded.Refresh, contentDescription = null) },
-                onClick = { viewModel.refreshPanel(scrollToTop = true); onExpandedChange(false) },
+                onClick = { viewModel.refreshBrowser(scrollToTop = true); onExpandedChange(false) },
             )
         }
     }
@@ -1008,8 +1008,8 @@ private fun ViewingHistoryDialog(
 }
 
 @Composable
-private fun PanelTabsBar(
-    workspace: PanelWorkspace,
+private fun BrowserTabsBar(
+    workspace: TabWorkspace,
     viewModel: MainViewModel,
     onBeforeTabAction: () -> Unit = {},
 ) {
@@ -1018,7 +1018,7 @@ private fun PanelTabsBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("panel_tabs")
+            .testTag("browser_tabs")
             .padding(horizontal = 6.dp, vertical = 3.dp)
             .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(22.dp))
             .horizontalScroll(rememberScrollState())
@@ -1094,7 +1094,7 @@ private fun Breadcrumbs(path: String, onNavigate: (String) -> Unit) {
 
 @Composable
 internal fun FileList(
-    state: PanelUiState,
+    state: BrowserUiState,
     scrollKey: FileScrollKey,
     viewModel: MainViewModel,
     onRename: (FileEntry) -> Unit,
@@ -1255,7 +1255,7 @@ internal fun FileList(
 
 @Composable
 internal fun FileGrid(
-    state: PanelUiState,
+    state: BrowserUiState,
     scrollKey: FileScrollKey,
     viewModel: MainViewModel,
     onRename: (FileEntry) -> Unit,
@@ -1408,7 +1408,7 @@ internal fun FileGrid(
     }
 }
 
-private fun handleEntryClick(state: PanelUiState, entry: FileEntry, viewModel: MainViewModel) {
+private fun handleEntryClick(state: BrowserUiState, entry: FileEntry, viewModel: MainViewModel) {
     if (state.selectedPaths.isNotEmpty()) viewModel.toggleSelection(entry.absolutePath) else viewModel.open(entry)
 }
 
@@ -1706,7 +1706,7 @@ private fun EntryActionsButton(
 }
 
 @Composable
-private fun EmptyPanel(title: String, description: String) {
+private fun EmptyBrowser(title: String, description: String) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.widget.Toast
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -52,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -160,6 +162,7 @@ fun OperationsScreen(
     var crashExpanded by rememberSaveable { mutableStateOf(false) }
     var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
+    var confirmCrash by remember { mutableStateOf(false) } // TEMPORARY test trigger, see the dialog below
     val rows = remember(summaries, live) { buildRows(summaries, live) }
 
     Column(modifier = Modifier.fillMaxSize().padding(contentPadding).testTag("operations_screen")) {
@@ -170,7 +173,12 @@ fun OperationsScreen(
         ) {
             item {
                 Column {
-                    LText("Operations", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    LText(
+                        "Operations",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { confirmCrash = true }) },
+                    )
                     LText(
                         if (rows.isEmpty()) "Nothing has run yet" else "${rows.size} saved · newest first",
                         style = MaterialTheme.typography.bodySmall,
@@ -302,6 +310,27 @@ fun OperationsScreen(
                 }
             }
         }
+    }
+
+    // TEMPORARY: hidden test trigger (long-press the "Operations" title) for checking the crash report viewer.
+    // Remove this dialog, the confirmCrash state and the pointerInput on the title once the viewer is verified.
+    if (confirmCrash) {
+        AlertDialog(
+            onDismissRequest = { confirmCrash = false },
+            title = { LText("Crash the app on purpose?") },
+            text = { LText("The app closes and a test crash report is saved here, so you can check the crash viewer.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmCrash = false
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            throw RuntimeException("Deliberate test crash from the Operations tab")
+                        }
+                    },
+                ) { LText("Crash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmCrash = false }) { LText("Cancel") } },
+        )
     }
 
     if (confirmClear) {

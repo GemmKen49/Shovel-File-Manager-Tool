@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
             val appearance = mainViewModel.appearanceSettings.collectAsStateWithLifecycle()
             val section = mainViewModel.section.collectAsStateWithLifecycle()
             val filesHomeVisible = mainViewModel.filesHomeVisible.collectAsStateWithLifecycle()
-            val panel = mainViewModel.panel.collectAsStateWithLifecycle()
+            val browser = mainViewModel.browser.collectAsStateWithLifecycle()
             val storageRoots = mainViewModel.roots.collectAsStateWithLifecycle()
             // The start-up animation plays whenever the screen is opened fresh, not after a rotation.
             val showStartupSplash = rememberSaveable { mutableStateOf(savedInstanceState == null) }
@@ -73,14 +73,14 @@ class MainActivity : AppCompatActivity() {
                 section.value,
                 filesHomeVisible.value,
                 storageRoots.value.size,
-                panel.value.path,
-                panel.value.loading,
-                panel.value.entries.size,
+                browser.value.path,
+                browser.value.loading,
+                browser.value.entries.size,
             ) {
                 val homeReady = section.value == AppSection.FILES &&
                     filesHomeVisible.value &&
                     storageRoots.value.isNotEmpty()
-                val localReady = panel.value.entries.isNotEmpty()
+                val localReady = browser.value.entries.isNotEmpty()
                 if (homeReady || localReady) reportFullyDrawn()
             }
             ShovelTheme(settings = appearance.value) {

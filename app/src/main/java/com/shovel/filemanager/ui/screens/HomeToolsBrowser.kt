@@ -166,7 +166,7 @@ import com.shovel.filemanager.ui.components.featureVisible
 import com.shovel.filemanager.data.HomeDisplayArea
 import com.shovel.filemanager.data.HomeSection
 import com.shovel.filemanager.data.HomeShortcut
-import com.shovel.filemanager.data.PanelWorkspace
+import com.shovel.filemanager.data.TabWorkspace
 import com.shovel.filemanager.data.RecentFileItem
 import com.shovel.filemanager.data.RecentItem
 import com.shovel.filemanager.data.SafLocation
@@ -182,7 +182,7 @@ import com.shovel.filemanager.operations.TransferVerification
 import com.shovel.filemanager.ui.AppSection
 import com.shovel.filemanager.ui.FileScrollKey
 import com.shovel.filemanager.ui.MainViewModel
-import com.shovel.filemanager.ui.PanelUiState
+import com.shovel.filemanager.ui.BrowserUiState
 import com.shovel.filemanager.ui.ProgressiveScrollRules
 import com.shovel.filemanager.ui.components.ShovelModalDialog
 import com.shovel.filemanager.ui.components.ShovelPullToRefresh

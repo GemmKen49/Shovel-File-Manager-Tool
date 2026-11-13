@@ -148,10 +148,6 @@ dependencies {
     implementation("com.github.topjohnwu.libsu:service:6.0.0")
     implementation("com.github.topjohnwu.libsu:nio:6.0.0")
 
-    implementation("com.github.mwiede:jsch:2.28.6")
-    implementation("com.hierynomus:smbj:0.14.0")
-    implementation("commons-net:commons-net:3.12.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.10")
     implementation("net.lingala.zip4j:zip4j:2.11.6")
